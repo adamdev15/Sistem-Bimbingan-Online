@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Kehadiran extends Model
 {
@@ -13,6 +13,7 @@ class Kehadiran extends Model
     protected $fillable = [
         'student_id',
         'jadwal_id',
+        'tutor_id',
         'tanggal',
         'status',
     ];
@@ -29,5 +30,10 @@ class Kehadiran extends Model
     public function jadwal(): BelongsTo
     {
         return $this->belongsTo(Jadwal::class);
+    }
+
+    public function tutor(): BelongsTo
+    {
+        return $this->belongsTo(Tutor::class);
     }
 }

@@ -10,9 +10,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PresensiController extends Controller
 {
-    public function __construct(private readonly ManagementService $service)
-    {
-    }
+    public function __construct(private readonly ManagementService $service) {}
 
     public function index(Request $request): View
     {
@@ -32,12 +30,13 @@ class PresensiController extends Controller
 
         return response()->streamDownload(function () use ($rows): void {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Tanggal', 'Nama', 'Sesi', 'Status']);
+            fputcsv($handle, ['Tanggal', 'Nama', 'Sesi', 'Tutor', 'Status']);
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     optional($row->tanggal)->format('Y-m-d'),
                     optional($row->siswa)->nama,
                     optional($row->jadwal)->mapel,
+                    optional($row->tutor)->nama ?? optional(optional($row->jadwal)->tutor)->nama ?? '',
                     $row->status,
                 ]);
             }

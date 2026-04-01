@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\MataPelajaran;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
 {
@@ -12,6 +14,24 @@ class DatabaseSeeder extends Seeder
     {
         // Jalankan RoleSeeder dulu
         $this->call(RoleSeeder::class);
+
+        if (Schema::hasTable('mata_pelajarans')) {
+            foreach (
+                [
+                    ['nama' => 'Matematika', 'kode' => 'MTK'],
+                    ['nama' => 'Bahasa Indonesia', 'kode' => 'BIND'],
+                    ['nama' => 'Bahasa Inggris', 'kode' => 'BING'],
+                    ['nama' => 'Fisika', 'kode' => 'FIS'],
+                    ['nama' => 'Kimia', 'kode' => 'KIM'],
+                    ['nama' => 'Biologi', 'kode' => 'BIO'],
+                ] as $mp
+            ) {
+                MataPelajaran::query()->firstOrCreate(
+                    ['nama' => $mp['nama']],
+                    ['kode' => $mp['kode']]
+                );
+            }
+        }
 
         // Super Admin
         $superAdmin = User::updateOrCreate(

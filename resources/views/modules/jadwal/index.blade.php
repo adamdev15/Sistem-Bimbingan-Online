@@ -1,39 +1,36 @@
 @php $isSiswaJadwal = auth()->user()->hasRole('siswa'); @endphp
 <x-layouts.dashboard-shell title="Jadwal ? eBimbel">
-    <div x-data="{createOpen:false,editOpen:false,deleteOpen:false,edit:{id:null,tutor_id:'',cabang_id:'',mapel:'',hari:'senin',jam_mulai:'08:00',jam_selesai:'09:00'},removeId:null}">
+    <div x-data="{createOpen:false,editOpen:false,deleteOpen:false,edit:{id:null,tutor_id:'',cabang_id:'',mata_pelajaran_id:'',hari:'senin',jam_mulai:'08:00',jam_selesai:'09:00'},removeId:null}">
         <x-module-page-header
             title="{{ $isSiswaJadwal ? 'Jadwal sesi saya' : 'Jadwal & sesi kelas' }}"
             :description="$isSiswaJadwal ? 'Sesi kelas yang terhubung dengan akun Anda (berdasarkan riwayat kehadiran).' : 'Kalender mingguan, tutor, cabang, dan daftar sesi.'"
         >
-            <x-slot name="actions">
-                @if (auth()->user()->hasAnyRole(['super_admin', 'admin_cabang']))
-                    <button @click="createOpen = true" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700">
-                        Buat sesi baru
-                    </button>
-                @endif
-            </x-slot>
+            
         </x-module-page-header>
 
         <form method="GET" class="mb-6 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
             <div class="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 @if (auth()->user()->hasAnyRole(['super_admin', 'admin_cabang']))
                     <select name="cabang_id" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                        <option value="">Cabang ? semua</option>
+                        <option value="">Cabang - semua</option>
                         @foreach ($cabangs as $cabang)
                             <option value="{{ $cabang->id }}" @selected(($filters['cabang_id'] ?? null) == $cabang->id)>{{ $cabang->nama_cabang }}</option>
                         @endforeach
                     </select>
                 @endif
                 <select name="hari" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                    <option value="">Hari ? semua</option>
+                    <option value="">Hari - semua</option>
                     @foreach (['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'] as $hari)
                         <option value="{{ $hari }}" @selected(($filters['hari'] ?? '') === $hari)>{{ ucfirst($hari) }}</option>
                     @endforeach
                 </select>
                 <button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Terapkan</button>
-            </div>
-            <div class="flex gap-2">
                 <a href="{{ route('jadwal.index') }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Reset</a>
+                @if (auth()->user()->hasAnyRole(['super_admin', 'admin_cabang']))
+                    <button @click="createOpen = true" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700">
+                        Buat sesi baru
+                    </button>
+                @endif
             </div>
         </form>
 
@@ -49,7 +46,7 @@
                         @foreach ($jadwals->where('hari', ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'][$i])->take(2) as $item)
                             <div class="rounded-lg border border-blue-100 bg-blue-50/80 p-2">
                                 <p class="font-semibold text-slate-900">{{ substr($item->jam_mulai, 0, 5) }} {{ $item->mapel }}</p>
-                                <p class="text-xs text-slate-600">{{ optional($item->cabang)->nama_cabang }} ? {{ optional($item->tutor)->nama }}</p>
+                                <p class="text-xs text-slate-600">{{ optional($item->cabang)->nama_cabang }} - {{ optional($item->tutor)->nama }}</p>
                             </div>
                         @endforeach
                     </div>
@@ -84,7 +81,7 @@
                                 @if (! $isSiswaJadwal)
                                     <td class="py-3 space-x-3">
                                         @if (auth()->user()->hasAnyRole(['super_admin', 'admin_cabang']))
-                                            <button @click="editOpen = true; edit = {id: {{ $j->id }}, tutor_id: '{{ $j->tutor_id }}', cabang_id: '{{ $j->cabang_id }}', mapel: @js($j->mapel), hari: @js($j->hari), jam_mulai: @js(substr($j->jam_mulai, 0, 5)), jam_selesai: @js(substr($j->jam_selesai, 0, 5))}" type="button" class="text-blue-600 hover:underline">Edit</button>
+                                            <button @click="editOpen = true; edit = {id: {{ $j->id }}, tutor_id: '{{ $j->tutor_id }}', cabang_id: '{{ $j->cabang_id }}', mata_pelajaran_id: '{{ $j->mata_pelajaran_id }}', hari: @js($j->hari), jam_mulai: @js(substr($j->jam_mulai, 0, 5)), jam_selesai: @js(substr($j->jam_selesai, 0, 5))}" type="button" class="text-blue-600 hover:underline">Edit</button>
                                             <button @click="deleteOpen = true; removeId = {{ $j->id }}" type="button" class="text-rose-600 hover:underline">Delete</button>
                                         @else
                                             <span class="text-slate-400">Lihat saja</span>
@@ -107,9 +104,25 @@
                 <h3 class="text-lg font-semibold">Buat Sesi</h3>
                 <form method="POST" action="{{ route('jadwal.store') }}" class="mt-4 grid gap-3">
                     @csrf
-                    <select name="tutor_id" class="rounded-lg border px-3 py-2">@foreach($tutors as $tutor)<option value="{{ $tutor->id }}">{{ $tutor->nama }}</option>@endforeach</select>
-                    <select name="cabang_id" class="rounded-lg border px-3 py-2">@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>@endforeach</select>
-                    <input name="mapel" placeholder="Mapel" class="rounded-lg border px-3 py-2">
+                    
+                    <select name="tutor_id" class="rounded-lg border px-3 py-2">
+                        <option value="">Pilih tutor</option>
+                        @foreach($tutors as $tutor)
+                            <option value="{{ $tutor->id }}">{{ $tutor->nama }}</option>
+                        @endforeach
+                    </select>
+                    <select name="cabang_id" class="rounded-lg border px-3 py-2">
+                        <option value="">Pilih cabang</option>
+                        @foreach($cabangs as $cabang)
+                            <option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>
+                        @endforeach
+                    </select>
+                    <select name="mata_pelajaran_id" class="rounded-lg border px-3 py-2" required>
+                        <option value="">Pilih mata pelajaran</option>
+                        @foreach ($mataPelajarans as $mp)
+                            <option value="{{ $mp->id }}">{{ $mp->nama }}@if($mp->kode) ({{ $mp->kode }})@endif</option>
+                        @endforeach
+                    </select>
                     <select name="hari" class="rounded-lg border px-3 py-2">@foreach(['senin','selasa','rabu','kamis','jumat','sabtu','minggu'] as $h)<option value="{{ $h }}">{{ ucfirst($h) }}</option>@endforeach</select>
                     <div class="grid grid-cols-2 gap-3"><input name="jam_mulai" type="time" class="rounded-lg border px-3 py-2"><input name="jam_selesai" type="time" class="rounded-lg border px-3 py-2"></div>
                     <div class="flex justify-end gap-2"><button type="button" @click="createOpen = false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-blue-600 px-3 py-2 text-white">Simpan</button></div>
@@ -124,7 +137,11 @@
                     @csrf @method('PUT')
                     <select name="tutor_id" x-model="edit.tutor_id" class="rounded-lg border px-3 py-2">@foreach($tutors as $tutor)<option value="{{ $tutor->id }}">{{ $tutor->nama }}</option>@endforeach</select>
                     <select name="cabang_id" x-model="edit.cabang_id" class="rounded-lg border px-3 py-2">@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>@endforeach</select>
-                    <input name="mapel" x-model="edit.mapel" class="rounded-lg border px-3 py-2">
+                    <select name="mata_pelajaran_id" x-model="edit.mata_pelajaran_id" class="rounded-lg border px-3 py-2" required>
+                        @foreach ($mataPelajarans as $mp)
+                            <option value="{{ $mp->id }}">{{ $mp->nama }}@if($mp->kode) ({{ $mp->kode }})@endif</option>
+                        @endforeach
+                    </select>
                     <select name="hari" x-model="edit.hari" class="rounded-lg border px-3 py-2">@foreach(['senin','selasa','rabu','kamis','jumat','sabtu','minggu'] as $h)<option value="{{ $h }}">{{ ucfirst($h) }}</option>@endforeach</select>
                     <div class="grid grid-cols-2 gap-3"><input name="jam_mulai" type="time" x-model="edit.jam_mulai" class="rounded-lg border px-3 py-2"><input name="jam_selesai" type="time" x-model="edit.jam_selesai" class="rounded-lg border px-3 py-2"></div>
                     <div class="flex justify-end gap-2"><button type="button" @click="editOpen = false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-blue-600 px-3 py-2 text-white">Update</button></div>

@@ -86,6 +86,7 @@
                         @else
                             <th class="px-4 py-3">Waktu</th>
                             <th class="px-4 py-3">Sesi</th>
+                            <th class="px-4 py-3">Tutor</th>
                             <th class="px-4 py-3">Nama</th>
                             <th class="px-4 py-3">Peran</th>
                             <th class="px-4 py-3">Status</th>
@@ -103,7 +104,7 @@
                             <tr class="text-slate-700">
                                 <td class="px-4 py-3 font-mono text-xs">{{ optional($p->tanggal)->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3 font-medium text-slate-900">{{ optional($p->jadwal)->mapel ?? '—' }}</td>
-                                <td class="px-4 py-3">{{ optional(optional($p->jadwal)->tutor)->nama ?? '—' }}</td>
+                                <td class="px-4 py-3">{{ optional($p->tutor)->nama ?? optional(optional($p->jadwal)->tutor)->nama ?? '—' }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ optional(optional($p->jadwal)->cabang)->nama_cabang ?? '—' }}</td>
                                 <td class="px-4 py-3">
                                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold @class([
@@ -117,6 +118,7 @@
                             <tr class="text-slate-700">
                                 <td class="px-4 py-3 font-mono text-xs">{{ optional($p->tanggal)->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3">{{ optional($p->jadwal)->mapel }}</td>
+                                <td class="px-4 py-3">{{ optional($p->tutor)->nama ?? optional(optional($p->jadwal)->tutor)->nama ?? '—' }}</td>
                                 <td class="px-4 py-3 font-medium">{{ optional($p->siswa)->nama }}</td>
                                 <td class="px-4 py-3">Siswa</td>
                                 <td class="px-4 py-3">
@@ -134,7 +136,7 @@
                         @endif
                     @empty
                         <tr>
-                            <td colspan="{{ $isSiswa ? 5 : (auth()->user()->hasAnyRole(['super_admin', 'admin_cabang']) ? 7 : 6) }}" class="px-4 py-6 text-center text-slate-500">Belum ada data presensi.</td>
+                            <td colspan="{{ $isSiswa ? 5 : (auth()->user()->hasAnyRole(['super_admin', 'admin_cabang']) ? 8 : 7) }}" class="px-4 py-6 text-center text-slate-500">Belum ada data presensi.</td>
                         </tr>
                     @endforelse
                 </tbody>

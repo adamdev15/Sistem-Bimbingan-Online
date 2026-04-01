@@ -13,9 +13,7 @@ use Illuminate\View\View;
 
 class TutorController extends Controller
 {
-    public function __construct(private readonly ManagementService $service)
-    {
-    }
+    public function __construct(private readonly ManagementService $service) {}
 
     public function index(Request $request): View
     {
@@ -29,7 +27,7 @@ class TutorController extends Controller
     public function show(Tutor $tutor): View
     {
         $this->guardCabangScope($tutor->cabang_id);
-        $tutor->load(['cabang', 'jadwals']);
+        $tutor->load(['cabang', 'jadwals.mataPelajaran']);
 
         return view('modules.tutor.show', compact('tutor'));
     }

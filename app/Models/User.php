@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -13,7 +14,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -62,5 +63,20 @@ class User extends Authenticatable
     public function siswa(): HasOne
     {
         return $this->hasOne(Siswa::class);
+    }
+
+    public function salariesCreated(): HasMany
+    {
+        return $this->hasMany(Salary::class, 'created_by');
+    }
+
+    /**
+     * Notifikasi in-app (lonceng header), bukan Laravel database notifications channel.
+     *
+     * @return HasMany<UserNotification, $this>
+     */
+    public function bellNotifications(): HasMany
+    {
+        return $this->hasMany(UserNotification::class, 'user_id')->latest();
     }
 }

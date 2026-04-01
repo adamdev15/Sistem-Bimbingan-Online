@@ -6,16 +6,18 @@ use App\Models\Cabang;
 use App\Models\Fee;
 use App\Models\Jadwal;
 use App\Models\Kehadiran;
+use App\Models\MataPelajaran;
 use App\Models\Payment;
+use App\Models\Salary;
 use App\Models\Siswa;
 use App\Models\Tutor;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class ManagementService
 {
@@ -304,7 +306,7 @@ class ManagementService
 
         $jadwalMengajar = Jadwal::query()
             ->where('tutor_id', $tutorId)
-            ->with('cabang:id,nama_cabang')
+            ->with(['cabang:id,nama_cabang', 'mataPelajaran:id,nama'])
             ->orderByRaw("CASE hari WHEN 'senin' THEN 1 WHEN 'selasa' THEN 2 WHEN 'rabu' THEN 3 WHEN 'kamis' THEN 4 WHEN 'jumat' THEN 5 WHEN 'sabtu' THEN 6 WHEN 'minggu' THEN 7 ELSE 8 END")
             ->orderBy('jam_mulai')
             ->limit(12)
@@ -312,12 +314,13 @@ class ManagementService
 
         $siswaPerhatian = DB::table('kehadirans')
             ->join('jadwals', 'jadwals.id', '=', 'kehadirans.jadwal_id')
+            ->join('mata_pelajarans', 'mata_pelajarans.id', '=', 'jadwals.mata_pelajaran_id')
             ->join('siswas', 'siswas.id', '=', 'kehadirans.student_id')
             ->where('jadwals.tutor_id', $tutorId)
             ->where('kehadirans.status', 'alfa')
             ->where('kehadirans.tanggal', '>=', Carbon::now()->subDays(30))
-            ->select('siswas.nama', 'jadwals.mapel', DB::raw('COUNT(*) as cnt'))
-            ->groupBy('siswas.id', 'siswas.nama', 'jadwals.mapel')
+            ->select('siswas.nama', 'mata_pelajarans.nama as mapel', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('siswas.id', 'siswas.nama', 'mata_pelajarans.nama')
             ->orderByDesc('cnt')
             ->limit(6)
             ->get()
@@ -472,7 +475,7 @@ class ManagementService
         $jadwalBesok = Jadwal::query()
             ->where('hari', $hariBesok)
             ->whereHas('kehadirans', fn ($k) => $k->where('student_id', $siswaId))
-            ->with(['tutor:id,nama', 'cabang:id,nama_cabang'])
+            ->with(['tutor:id,nama', 'cabang:id,nama_cabang', 'mataPelajaran:id,nama'])
             ->orderBy('jam_mulai')
             ->get();
 
@@ -485,7 +488,7 @@ class ManagementService
 
         $presensiLines = Kehadiran::query()
             ->where('student_id', $siswaId)
-            ->with('jadwal:id,mapel')
+            ->with(['jadwal:id,mata_pelajaran_id', 'jadwal.mataPelajaran:id,nama'])
             ->latest('tanggal')
             ->limit(5)
             ->get()
@@ -544,9 +547,11 @@ class ManagementService
         }
 
         return Jadwal::query()
-            ->select('jadwals.id', 'jadwals.mapel')
+            ->with('mataPelajaran:id,nama')
             ->whereHas('kehadirans', fn ($k) => $k->where('student_id', $siswaId))
-            ->orderBy('jadwals.mapel')
+            ->join('mata_pelajarans as _mp', '_mp.id', '=', 'jadwals.mata_pelajaran_id')
+            ->orderBy('_mp.nama')
+            ->select('jadwals.*')
             ->get();
     }
 
@@ -617,7 +622,7 @@ class ManagementService
         $siswaId = $this->actorSiswaId();
 
         return Jadwal::query()
-            ->with(['tutor:id,nama', 'cabang:id,nama_cabang'])
+            ->with(['tutor:id,nama', 'cabang:id,nama_cabang', 'mataPelajaran:id,nama'])
             ->when($siswaId, fn ($q) => $q->whereHas('kehadirans', fn ($k) => $k->where('student_id', $siswaId)))
             ->when($cabangId && ! $siswaId, fn ($q) => $q->where('cabang_id', $cabangId))
             ->when($tutorId, fn ($q) => $q->where('tutor_id', $tutorId))
@@ -636,7 +641,14 @@ class ManagementService
         $tutorId = $this->actorTutorId();
 
         return Kehadiran::query()
-            ->with(['siswa:id,nama', 'jadwal:id,mapel,tutor_id,cabang_id', 'jadwal.tutor:id,nama', 'jadwal.cabang:id,nama_cabang'])
+            ->with([
+                'siswa:id,nama',
+                'tutor:id,nama',
+                'jadwal:id,mata_pelajaran_id,tutor_id,cabang_id',
+                'jadwal.mataPelajaran:id,nama',
+                'jadwal.tutor:id,nama',
+                'jadwal.cabang:id,nama_cabang',
+            ])
             ->when($tutorId, fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('tutor_id', $tutorId)))
             ->when($cabangId && ! $tutorId && ! $siswaId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
             ->when($siswaId, fn ($q) => $q->where('student_id', $siswaId))
@@ -814,12 +826,46 @@ class ManagementService
 
     public function studentsForSelect(): Collection
     {
-        return Siswa::query()->select('id', 'nama')->orderBy('nama')->get();
+        $q = Siswa::query()->select('id', 'nama', 'cabang_id')->orderBy('nama');
+
+        $user = Auth::user();
+        if ($user && $user->hasRole('admin_cabang')) {
+            $cid = $this->actorCabangId();
+            if ($cid) {
+                $q->where('cabang_id', $cid);
+            }
+        }
+
+        return $q->get();
+    }
+
+    /**
+     * Jumlah tagihan belum lunas yang sudah lewat / sama dengan jatuh tempo (untuk aksi massal pengingat).
+     */
+    public function pembayaranDueBulkCount(Request $request): int
+    {
+        $cabangId = $this->actorCabangId();
+        $siswaId = $this->actorSiswaId();
+        if ($siswaId !== null) {
+            return 0;
+        }
+
+        $q = Payment::query()
+            ->belum()
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<=', now());
+
+        $user = Auth::user();
+        if ($user && $user->hasRole('admin_cabang') && $cabangId) {
+            $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId));
+        }
+
+        return (int) $q->count();
     }
 
     public function feesForSelect(): Collection
     {
-        return Fee::query()->select('id', 'nama_biaya', 'nominal')->orderBy('nama_biaya')->get();
+        return Fee::query()->select('id', 'nama_biaya', 'nominal', 'tipe')->orderBy('nama_biaya')->get();
     }
 
     public function tutorsForSelect(): Collection
@@ -837,5 +883,26 @@ class ManagementService
             ->orderBy('nama_cabang')
             ->get();
     }
-}
 
+    public function mataPelajaranForSelect(): Collection
+    {
+        return MataPelajaran::query()->orderBy('nama')->get(['id', 'nama', 'kode']);
+    }
+
+    public function salaryIndex(Request $request): LengthAwarePaginator
+    {
+        $cabangId = $this->actorCabangId();
+
+        return Salary::query()
+            ->with(['tutor:id,nama,cabang_id', 'creator:id,name'])
+            ->when(
+                $cabangId && ! Auth::user()?->hasRole('super_admin'),
+                fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId))
+            )
+            ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('status', $s))
+            ->when($request->filled('tutor_id'), fn ($q) => $q->where('tutor_id', $request->integer('tutor_id')))
+            ->latest('id')
+            ->paginate(12)
+            ->withQueryString();
+    }
+}

@@ -48,6 +48,18 @@ final class DashboardNavigation
                 'patterns' => ['tutors.*'],
             ],
             [
+                'label' => 'Mata pelajaran',
+                'route' => 'mata-pelajaran.index',
+                'roles' => ['super_admin'],
+                'patterns' => ['mata-pelajaran.*'],
+            ],
+            [
+                'label' => 'Gaji tutor',
+                'route' => 'salaries.index',
+                'roles' => ['super_admin', 'admin_cabang'],
+                'patterns' => ['salaries.*'],
+            ],
+            [
                 'label' => 'Jadwal',
                 'route' => 'jadwal.index',
                 'roles' => ['super_admin', 'admin_cabang', 'tutor', 'siswa'],
@@ -62,7 +74,7 @@ final class DashboardNavigation
             [
                 'label' => 'Pembayaran',
                 'route' => 'pembayaran.index',
-                'roles' => ['super_admin', 'siswa'],
+                'roles' => ['super_admin', 'admin_cabang', 'siswa'],
                 'patterns' => ['pembayaran.*'],
             ],
             [

@@ -6,7 +6,7 @@
 @endphp
 
 <x-layouts.dashboard :title="$title">
-    <div class="flex min-h-screen" x-data="{ sidebarOpen: true, mobileSidebar: false, profileOpen: false }" @keydown.escape.window="mobileSidebar = false; profileOpen = false">
+    <div class="flex min-h-screen" x-data="{ sidebarOpen: true, mobileSidebar: false, profileOpen: false, bellOpen: false }" @keydown.escape.window="mobileSidebar = false; profileOpen = false; bellOpen = false">
         {{-- Desktop sidebar --}}
         <aside
             :class="sidebarOpen ? 'w-64' : 'w-20'"
@@ -56,6 +56,12 @@
                                 @break
                             @case('Laporan')
                                 <svg class="h-5 w-5 shrink-0 text-current opacity-90" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+                                @break
+                            @case('Mata pelajaran')
+                                <svg class="h-5 w-5 shrink-0 text-current opacity-90" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                @break
+                            @case('Gaji tutor')
+                                <svg class="h-5 w-5 shrink-0 text-current opacity-90" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/></svg>
                                 @break
                             @case('Profil')
                                 <svg class="h-5 w-5 shrink-0 text-current opacity-90" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
@@ -133,6 +139,12 @@
                                 @case('Laporan')
                                     <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
                                     @break
+                                @case('Mata pelajaran')
+                                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                    @break
+                                @case('Gaji tutor')
+                                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/></svg>
+                                    @break
                                 @case('Profil')
                                     <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
                                     @break
@@ -170,10 +182,60 @@
                     </div>
 
                     <div class="flex shrink-0 items-center gap-1 sm:gap-2">
-                        <button type="button" class="relative rounded-full border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50" aria-label="Notifikasi">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
-                            <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" aria-hidden="true"></span>
-                        </button>
+                        <div class="relative">
+                            <button type="button" @click="bellOpen = !bellOpen" class="relative rounded-full border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50" aria-label="Notifikasi" :aria-expanded="bellOpen.toString()">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+                                @if (($bellUnreadCount ?? 0) > 0)
+                                    <span class="absolute right-1 top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-0.5 text-[10px] font-bold text-white ring-2 ring-white">{{ $bellUnreadCount > 9 ? '9+' : $bellUnreadCount }}</span>
+                                @endif
+                            </button>
+                            <div
+                                x-show="bellOpen"
+                                x-cloak
+                                x-transition
+                                @click.outside="bellOpen = false"
+                                class="absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5"
+                            >
+                                <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+                                    <span class="text-sm font-semibold text-slate-900">Notifikasi</span>
+                                    @if (($bellNotifications ?? collect())->isNotEmpty())
+                                        <form method="POST" action="{{ route('notifications.read-all') }}" class="inline">
+                                            @csrf
+                                            <button type="submit" class="text-xs font-semibold text-blue-600 hover:text-blue-800">Tandai dibaca</button>
+                                        </form>
+                                    @endif
+                                </div>
+                                <ul class="max-h-80 overflow-y-auto py-1 text-sm">
+                                    @forelse ($bellNotifications ?? [] as $n)
+                                        <li class="border-b border-slate-50 last:border-0">
+                                            <form method="POST" action="{{ route('notifications.read', $n) }}" class="block">
+                                                @csrf
+                                                <button type="submit" class="flex w-full flex-col gap-0.5 px-4 py-3 text-left transition hover:bg-slate-50 {{ $n->read_at ? 'opacity-75' : 'bg-blue-50/40' }}">
+                                                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ str_replace('.', ' · ', $n->type) }}</span>
+                                                    <span class="font-semibold text-slate-900">{{ $n->title }}</span>
+                                                    @if ($n->body)
+                                                        <span class="line-clamp-2 text-xs text-slate-600">{{ $n->body }}</span>
+                                                    @endif
+                                                    <span class="mt-1 text-[11px] text-slate-500">
+                                                        @if ($n->sender)
+                                                            {{ $n->sender->name }} · {{ $n->sender->email }}
+                                                        @else
+                                                            Sistem
+                                                        @endif
+                                                        @if ($n->subject_type)
+                                                            · {{ class_basename($n->subject_type) }} #{{ $n->subject_id }}
+                                                        @endif
+                                                    </span>
+                                                    <span class="text-[11px] font-medium text-blue-600">Buka tautan terkait →</span>
+                                                </button>
+                                            </form>
+                                        </li>
+                                    @empty
+                                        <li class="px-4 py-8 text-center text-slate-500">Belum ada notifikasi.</li>
+                                    @endforelse
+                                </ul>
+                            </div>
+                        </div>
                         <button type="button" class="rounded-full border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50" aria-label="Pesan">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-3.977-.163a48.424 48.424 0 01-3.498 0 48.64 48.64 0 01-3.498-.163c-1.133-.093-1.98-.957-1.98-2.193V10.61c0-.97.616-1.813 1.5-2.097V6.75A2.25 2.25 0 0111.25 4.5h1.5a2.25 2.25 0 012.25 2.25v1.761z"/></svg>
                         </button>

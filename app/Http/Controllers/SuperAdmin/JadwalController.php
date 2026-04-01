@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\Cabang;
 use App\Models\Jadwal;
+use App\Services\Notifications\InAppBellNotifier;
 use App\Services\SuperAdmin\ManagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -13,9 +14,7 @@ use Illuminate\View\View;
 
 class JadwalController extends Controller
 {
-    public function __construct(private readonly ManagementService $service)
-    {
-    }
+    public function __construct(private readonly ManagementService $service) {}
 
     public function index(Request $request): View
     {
@@ -23,6 +22,7 @@ class JadwalController extends Controller
             'jadwals' => $this->service->jadwalIndex($request),
             'cabangs' => $this->service->cabangForSelect(),
             'tutors' => $this->service->tutorsForSelect(),
+            'mataPelajarans' => $this->service->mataPelajaranForSelect(),
             'filters' => $request->only(['cabang_id', 'hari']),
         ]);
     }
@@ -32,13 +32,15 @@ class JadwalController extends Controller
         $data = $request->validate([
             'tutor_id' => ['required', 'exists:tutors,id'],
             'cabang_id' => ['required', 'exists:cabangs,id'],
-            'mapel' => ['required', 'string', 'max:120'],
+            'mata_pelajaran_id' => ['required', 'exists:mata_pelajarans,id'],
             'hari' => ['required', 'in:senin,selasa,rabu,kamis,jumat,sabtu,minggu'],
             'jam_mulai' => ['required', 'date_format:H:i'],
             'jam_selesai' => ['required', 'date_format:H:i', 'after:jam_mulai'],
         ]);
 
         $jadwal = Jadwal::create($data);
+
+        app(InAppBellNotifier::class)->jadwalCreated($jadwal);
 
         return $this->respondMutation($request, 'Jadwal berhasil ditambahkan.', $jadwal);
     }
@@ -49,7 +51,7 @@ class JadwalController extends Controller
         $data = $request->validate([
             'tutor_id' => ['required', 'exists:tutors,id'],
             'cabang_id' => ['required', 'exists:cabangs,id'],
-            'mapel' => ['required', 'string', 'max:120'],
+            'mata_pelajaran_id' => ['required', 'exists:mata_pelajarans,id'],
             'hari' => ['required', 'in:senin,selasa,rabu,kamis,jumat,sabtu,minggu'],
             'jam_mulai' => ['required', 'date_format:H:i'],
             'jam_selesai' => ['required', 'date_format:H:i', 'after:jam_mulai'],
