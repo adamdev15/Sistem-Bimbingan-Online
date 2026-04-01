@@ -13,6 +13,7 @@ class Tutor extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'user_id',
         'foto',
         'nama',
         'email',
@@ -26,6 +27,11 @@ class Tutor extends Model
     public function cabang(): BelongsTo
     {
         return $this->belongsTo(Cabang::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function jadwals(): HasMany

@@ -1,72 +1,11 @@
-<x-layouts.dashboard-shell title="Siswa â€” eBimbel">
-    <x-module-page-header
-        title="Data siswa"
-        description="Pendaftaran, kelas, orang tua/wali, dan status akademik. Data contoh untuk tampilan prototipe."
-    >
-        <x-slot name="actions">
-            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                Ekspor CSV
-            </button>
-            <button type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700">
-                Tambah siswa
-            </button>
-        </x-slot>
-    </x-module-page-header>
+<x-layouts.dashboard-shell title="Siswa — eBimbel">
+<div x-data="{createOpen:false,editOpen:false,deleteOpen:false,edit:{id:null,nama:'',email:'',jenis_kelamin:'laki_laki',nik:'',no_hp:'',alamat:'',cabang_id:'',status:'aktif'},removeId:null}">
+<x-module-page-header title="Data siswa" description="Pendaftaran, kelas, orang tua/wali, dan status akademik."><x-slot name="actions"><a href="{{ route('siswa.export.csv', request()->query()) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Ekspor CSV</a><button @click="createOpen=true" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700">Tambah siswa</button></x-slot></x-module-page-header>
+<form method="GET" class="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama / email / NIK" class="min-w-[220px] rounded-lg border border-slate-200 px-3 py-2 text-sm"><select name="cabang_id" class="rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Cabang — semua</option>@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}" @selected(($filters['cabang_id'] ?? null) == $cabang->id)>{{ $cabang->nama_cabang }}</option>@endforeach</select><button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Terapkan</button></form>
+<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm"><thead class="bg-slate-50"><tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500"><th class="px-4 py-3">NIS</th><th class="px-4 py-3">Nama</th><th class="px-4 py-3">Cabang</th><th class="px-4 py-3">No HP</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-100">@forelse ($siswas as $siswa)<tr><td class="px-4 py-3 font-mono text-xs text-slate-600">SIS-{{ str_pad((string) $siswa->id, 4, '0', STR_PAD_LEFT) }}</td><td class="px-4 py-3 font-medium text-slate-900">{{ $siswa->nama }}</td><td class="px-4 py-3 text-slate-600">{{ optional($siswa->cabang)->nama_cabang }}</td><td class="px-4 py-3 text-slate-600">{{ $siswa->no_hp }}</td><td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $siswa->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800' }}">{{ ucfirst($siswa->status) }}</span></td><td class="px-4 py-3 text-right space-x-3"><a href="{{ route('siswa.show', $siswa) }}" class="text-blue-600 hover:underline">Profil</a><button @click="editOpen=true; edit={id:{{ $siswa->id }},nama:@js($siswa->nama),email:@js($siswa->email),jenis_kelamin:@js($siswa->jenis_kelamin),nik:@js($siswa->nik),no_hp:@js($siswa->no_hp),alamat:@js($siswa->alamat),cabang_id:'{{ $siswa->cabang_id }}',status:@js($siswa->status)}" type="button" class="text-blue-600 hover:underline">Edit</button><button @click="deleteOpen=true; removeId={{ $siswa->id }}" type="button" class="text-rose-600 hover:underline">Delete</button></td></tr>@empty<tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">Belum ada data siswa.</td></tr>@endforelse</tbody></table></div><div class="px-4 py-3">{{ $siswas->links() }}</div></div>
 
-    <div class="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <input type="search" placeholder="Nama / NIS / email" class="min-w-[220px] rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-        <select class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option>Cabang â€” semua</option>
-            <option>Kelapa Gading</option>
-            <option>Dago</option>
-        </select>
-        <select class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option>Tingkat â€” semua</option>
-            <option>X</option>
-            <option>XI</option>
-            <option>XII</option>
-        </select>
-        <button type="button" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Terapkan</button>
-    </div>
-
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50">
-                    <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <th class="px-4 py-3">NIS</th>
-                        <th class="px-4 py-3">Nama</th>
-                        <th class="px-4 py-3">Cabang</th>
-                        <th class="px-4 py-3">Kelas</th>
-                        <th class="px-4 py-3">Telp wali</th>
-                        <th class="px-4 py-3">Status bayar</th>
-                        <th class="px-4 py-3 text-right">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach ([
-                        ['2024-001', 'Alya Putri', 'Kelapa Gading', 'X IPA 2', '0812***', 'lunas'],
-                        ['2024-018', 'Budi Santoso', 'Dago', 'XI IPS 1', '0813***', 'tunggakan'],
-                        ['2023-204', 'Citra Lestari', 'Kelapa Gading', 'XII IPA 1', '0811***', 'lunas'],
-                    ] as $s)
-                        <tr>
-                            <td class="px-4 py-3 font-mono text-xs text-slate-600">{{ $s[0] }}</td>
-                            <td class="px-4 py-3 font-medium text-slate-900">{{ $s[1] }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ $s[2] }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ $s[3] }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ $s[4] }}</td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $s[5] === 'lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800' }}">
-                                    {{ $s[5] === 'lunas' ? 'Lunas' : 'Tunggakan' }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-right">
-                                <button type="button" class="text-blue-600 hover:underline">Profil</button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
+<div x-show="createOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="createOpen=false" class="w-full max-w-2xl rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Tambah Siswa</h3><form method="POST" action="{{ route('siswa.store') }}" class="mt-4 grid gap-3">@csrf<input name="nama" placeholder="Nama" class="rounded-lg border px-3 py-2"><input name="email" type="email" placeholder="Email" class="rounded-lg border px-3 py-2"><select name="jenis_kelamin" class="rounded-lg border px-3 py-2"><option value="laki_laki">Laki-laki</option><option value="perempuan">Perempuan</option></select><input name="nik" placeholder="NIK" class="rounded-lg border px-3 py-2"><input name="no_hp" placeholder="No HP" class="rounded-lg border px-3 py-2"><textarea name="alamat" placeholder="Alamat" class="rounded-lg border px-3 py-2"></textarea><select name="cabang_id" class="rounded-lg border px-3 py-2">@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>@endforeach</select><select name="status" class="rounded-lg border px-3 py-2"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select><div class="flex justify-end gap-2"><button type="button" @click="createOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-blue-600 px-3 py-2 text-white">Simpan</button></div></form></div></div>
+<div x-show="editOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="editOpen=false" class="w-full max-w-2xl rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Edit Siswa</h3><form method="POST" :action="`{{ url('/siswa') }}/${edit.id}`" class="mt-4 grid gap-3">@csrf @method('PUT')<input name="nama" x-model="edit.nama" class="rounded-lg border px-3 py-2"><input name="email" x-model="edit.email" class="rounded-lg border px-3 py-2"><select name="jenis_kelamin" x-model="edit.jenis_kelamin" class="rounded-lg border px-3 py-2"><option value="laki_laki">Laki-laki</option><option value="perempuan">Perempuan</option></select><input name="nik" x-model="edit.nik" class="rounded-lg border px-3 py-2"><input name="no_hp" x-model="edit.no_hp" class="rounded-lg border px-3 py-2"><textarea name="alamat" x-model="edit.alamat" class="rounded-lg border px-3 py-2"></textarea><select name="cabang_id" x-model="edit.cabang_id" class="rounded-lg border px-3 py-2">@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>@endforeach</select><select name="status" x-model="edit.status" class="rounded-lg border px-3 py-2"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select><div class="flex justify-end gap-2"><button type="button" @click="editOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-blue-600 px-3 py-2 text-white">Update</button></div></form></div></div>
+<div x-show="deleteOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="deleteOpen=false" class="w-full max-w-md rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Hapus Siswa</h3><form method="POST" :action="`{{ url('/siswa') }}/${removeId}`" class="mt-4 flex justify-end gap-2">@csrf @method('DELETE')<button type="button" @click="deleteOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-rose-600 px-3 py-2 text-white">Hapus</button></form></div></div>
+</div>
 </x-layouts.dashboard-shell>

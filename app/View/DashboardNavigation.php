@@ -26,7 +26,7 @@ final class DashboardNavigation
             [
                 'label' => 'Cabang',
                 'route' => 'cabang.index',
-                'roles' => ['super_admin', 'admin_cabang'],
+                'roles' => ['super_admin'],
                 'patterns' => ['cabang.*'],
             ],
             [
@@ -34,6 +34,12 @@ final class DashboardNavigation
                 'route' => 'siswa.index',
                 'roles' => ['super_admin', 'admin_cabang'],
                 'patterns' => ['siswa.*'],
+            ],
+            [
+                'label' => 'Siswa',
+                'route' => 'tutor.siswa.index',
+                'roles' => ['tutor'],
+                'patterns' => ['tutor.siswa.*'],
             ],
             [
                 'label' => 'Tutor',
@@ -56,7 +62,7 @@ final class DashboardNavigation
             [
                 'label' => 'Pembayaran',
                 'route' => 'pembayaran.index',
-                'roles' => ['super_admin', 'admin_cabang', 'siswa'],
+                'roles' => ['super_admin', 'siswa'],
                 'patterns' => ['pembayaran.*'],
             ],
             [

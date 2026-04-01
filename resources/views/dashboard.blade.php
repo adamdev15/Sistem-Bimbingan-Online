@@ -12,8 +12,10 @@
     }
 @endphp
 <x-layouts.dashboard-shell :title="$dashTitle">
-    @if ($user->hasAnyRole(['super_admin', 'admin_cabang']))
+    @if ($user->hasRole('super_admin'))
         @include('dashboard.partials.operator')
+    @elseif ($user->hasRole('admin_cabang'))
+        @include('dashboard.partials.admin-cabang')
     @elseif ($user->hasRole('tutor'))
         @include('dashboard.partials.tutor-home')
     @else

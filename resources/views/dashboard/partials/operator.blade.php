@@ -1,5 +1,7 @@
 @php
     $isSuper = auth()->user()->hasRole('super_admin');
+    $moduleCards = $dashboardData['module_cards'] ?? ['siswa' => 0, 'jadwal' => 0, 'tagihan' => 0];
+    $monthlyRevenue = collect($dashboardData['monthly_revenue'] ?? []);
 @endphp
 {{-- Page intro --}}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -23,10 +25,10 @@
 
 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     @foreach ([
-        ['title' => 'Total Siswa Aktif', 'value' => '1.284', 'delta' => '+2,4%', 'tone' => 'text-emerald-600', 'icon' => 'users'],
-        ['title' => 'Tutor Terdaftar', 'value' => '126', 'delta' => '+3', 'tone' => 'text-emerald-600', 'icon' => 'academic'],
-        ['title' => 'Pembayaran Bulan Ini', 'value' => 'Rp 92,3 jt', 'delta' => 'Lunas 78%', 'tone' => 'text-blue-600', 'icon' => 'cash'],
-        ['title' => 'Sesi Kelas Hari Ini', 'value' => '36', 'delta' => $isSuper ? '8 cabang' : 'Cabang ini', 'tone' => 'text-slate-600', 'icon' => 'calendar'],
+        ['title' => 'Total Siswa Aktif', 'value' => number_format($dashboardData['total_siswa'] ?? 0), 'delta' => '+2,4%', 'tone' => 'text-emerald-600', 'icon' => 'users'],
+        ['title' => 'Tutor Terdaftar', 'value' => number_format($dashboardData['total_tutor'] ?? 0), 'delta' => '+3', 'tone' => 'text-emerald-600', 'icon' => 'academic'],
+        ['title' => 'Pembayaran Bulan Ini', 'value' => 'Rp '.number_format((int) ($dashboardData['pembayaran_bulan'] ?? 0), 0, ',', '.'), 'delta' => 'Lunas berjalan', 'tone' => 'text-blue-600', 'icon' => 'cash'],
+        ['title' => 'Sesi Kelas Hari Ini', 'value' => number_format($dashboardData['sesi_hari_ini'] ?? 0), 'delta' => $isSuper ? 'Semua cabang' : 'Cabang ini', 'tone' => 'text-slate-600', 'icon' => 'calendar'],
     ] as $card)
         <article class="relative overflow-hidden rounded-xl border border-blue-100/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/5">
             <div class="flex items-start justify-between gap-3">
@@ -60,9 +62,9 @@
             </div>
             <div class="grid gap-4 sm:grid-cols-3">
                 @foreach ([
-                    ['label' => 'Data Siswa', 'href' => route('siswa.index'), 'files' => '1.284 aktif', 'date' => 'Update hari ini', 'bg' => 'from-sky-50 to-blue-50', 'border' => 'border-blue-100'],
-                    ['label' => 'Jadwal & Kelas', 'href' => route('jadwal.index'), 'files' => '36 sesi', 'date' => 'Minggu ini', 'bg' => 'from-blue-700 to-blue-900', 'border' => 'border-blue-800', 'dark' => true],
-                    ['label' => 'Pembayaran', 'href' => route('pembayaran.index'), 'files' => '92 tagihan', 'date' => 'Bulan berjalan', 'bg' => 'from-blue-50 to-indigo-50', 'border' => 'border-indigo-100'],
+                    ['label' => 'Data Siswa', 'href' => route('siswa.index'), 'files' => number_format($moduleCards['siswa']).' aktif', 'date' => 'Update hari ini', 'bg' => 'from-sky-50 to-blue-50', 'border' => 'border-blue-100'],
+                    ['label' => 'Jadwal & Kelas', 'href' => route('jadwal.index'), 'files' => number_format($moduleCards['jadwal']).' sesi', 'date' => 'Minggu ini', 'bg' => 'from-blue-700 to-blue-900', 'border' => 'border-blue-800', 'dark' => true],
+                    ['label' => 'Pembayaran', 'href' => route('pembayaran.index'), 'files' => number_format($moduleCards['tagihan']).' tagihan', 'date' => 'Bulan berjalan', 'bg' => 'from-blue-50 to-indigo-50', 'border' => 'border-indigo-100'],
                 ] as $mod)
                     <a href="{{ $mod['href'] }}" class="group flex flex-col rounded-xl border {{ $mod['border'] }} bg-gradient-to-br {{ $mod['bg'] }} p-4 transition hover:shadow-md {{ !empty($mod['dark']) ? 'text-white' : '' }}">
                         <div class="flex items-center justify-between">
@@ -119,15 +121,25 @@
                             <stop offset="100%" stop-color="rgb(37 99 235 / 0)" />
                         </linearGradient>
                     </defs>
-                    <path d="M0 180 L100 150 L200 170 L300 120 L400 140 L500 90 L600 110 L700 60 L800 80 L800 220 L0 220 Z" fill="url(#chartFillOp)" />
-                    <path d="M0 180 L100 150 L200 170 L300 120 L400 140 L500 90 L600 110 L700 60 L800 80" fill="none" stroke="rgb(37 99 235)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-                    @foreach ([[0,180],[100,150],[200,170],[300,120],[400,140],[500,90],[600,110],[700,60],[800,80]] as $pt)
+                    @php
+                        $vals = $monthlyRevenue->pluck('value');
+                        $max = max($vals->max() ?: 1, 1);
+                        $points = $monthlyRevenue->values()->map(function ($item, $idx) use ($max) {
+                            $x = (int) round(($idx / 7) * 800);
+                            $y = 200 - (int) round(($item['value'] / $max) * 150);
+                            return [$x, $y];
+                        })->all();
+                        $line = collect($points)->map(fn ($p) => "{$p[0]} {$p[1]}")->implode(' L');
+                    @endphp
+                    <path d="M{{ $line }} L800 220 L0 220 Z" fill="url(#chartFillOp)" />
+                    <path d="M{{ $line }}" fill="none" stroke="rgb(37 99 235)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                    @foreach ($points as $pt)
                         <circle cx="{{ $pt[0] }}" cy="{{ $pt[1] }}" r="5" fill="white" stroke="rgb(37 99 235)" stroke-width="2" />
                     @endforeach
                 </svg>
                 <div class="mt-2 flex justify-between text-xs text-slate-400">
-                    @foreach (['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu'] as $m)
-                        <span>{{ $m }}</span>
+                    @foreach ($monthlyRevenue as $m)
+                        <span>{{ $m['label'] }}</span>
                     @endforeach
                 </div>
             </div>
@@ -192,21 +204,17 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @foreach ([
-                            ['Siswa A', 'SPP Bulanan', 'Rp 450.000', 'lunas', '28 Mar 2026'],
-                            ['Siswa B', 'Registrasi', 'Rp 150.000', 'lunas', '27 Mar 2026'],
-                            ['Siswa C', 'SPP Bulanan', 'Rp 450.000', 'belum', '26 Mar 2026'],
-                        ] as $r)
+                        @foreach (($dashboardData['pembayaran_terbaru'] ?? collect()) as $payment)
                             <tr class="text-slate-700">
-                                <td class="py-3 pr-4 font-medium">{{ $r[0] }}</td>
-                                <td class="py-3 pr-4">{{ $r[1] }}</td>
-                                <td class="py-3 pr-4">{{ $r[2] }}</td>
+                                <td class="py-3 pr-4 font-medium">{{ optional($payment->siswa)->nama }}</td>
+                                <td class="py-3 pr-4">{{ optional($payment->fee)->nama_biaya }}</td>
+                                <td class="py-3 pr-4">Rp {{ number_format((int) $payment->nominal, 0, ',', '.') }}</td>
                                 <td class="py-3 pr-4">
-                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $r[3] === 'lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
-                                        {{ $r[3] === 'lunas' ? 'Lunas' : 'Belum' }}
+                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $payment->status === 'lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
+                                        {{ $payment->status === 'lunas' ? 'Lunas' : 'Belum' }}
                                     </span>
                                 </td>
-                                <td class="py-3 text-slate-500">{{ $r[4] }}</td>
+                                <td class="py-3 text-slate-500">{{ optional($payment->tanggal_bayar)->format('d M Y') }}</td>
                             </tr>
                         @endforeach
                     </tbody>

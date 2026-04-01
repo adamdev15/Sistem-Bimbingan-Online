@@ -1,69 +1,10 @@
-<x-layouts.dashboard-shell title="Tutor â€” eBimbel">
-    <x-module-page-header
-        title="Data tutor"
-        description="Mapel, jam mengajar, dan penugasan cabang. Integrasi nanti dengan model Tutor & jadwal."
-    >
-        <x-slot name="actions">
-            <button type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700">
-                Undang tutor
-            </button>
-        </x-slot>
-    </x-module-page-header>
-
-    <div class="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <input type="search" placeholder="Nama tutor" class="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
-        <select class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option>Mapel â€” semua</option>
-            <option>Matematika</option>
-            <option>Bahasa Inggris</option>
-            <option>Fisika</option>
-        </select>
-        <select class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            <option>Status â€” semua</option>
-            <option>Aktif</option>
-            <option>Cuti</option>
-        </select>
-    </div>
-
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50">
-                    <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <th class="px-4 py-3">Kode</th>
-                        <th class="px-4 py-3">Nama</th>
-                        <th class="px-4 py-3">Mapel utama</th>
-                        <th class="px-4 py-3">Cabang</th>
-                        <th class="px-4 py-3">Sesi / minggu</th>
-                        <th class="px-4 py-3">Status</th>
-                        <th class="px-4 py-3 text-right">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach ([
-                        ['T-102', 'Dr. Andi Wijaya', 'Matematika', 'KG + Dago', '18', 'aktif'],
-                        ['T-088', 'Sarah Melati, M.Pd', 'B. Inggris', 'KG', '12', 'aktif'],
-                        ['T-095', 'Rizki Pratama', 'Fisika', 'Dago', '10', 'cuti'],
-                    ] as $t)
-                        <tr class="text-slate-700">
-                            <td class="px-4 py-3 font-mono text-xs">{{ $t[0] }}</td>
-                            <td class="px-4 py-3 font-medium">{{ $t[1] }}</td>
-                            <td class="px-4 py-3">{{ $t[2] }}</td>
-                            <td class="px-4 py-3">{{ $t[3] }}</td>
-                            <td class="px-4 py-3">{{ $t[4] }}</td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $t[5] === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700' }}">
-                                    {{ ucfirst($t[5]) }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-right space-x-2">
-                                <button type="button" class="text-blue-600 hover:underline">Jadwal</button>
-                                <button type="button" class="text-slate-600 hover:underline">Edit</button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
+<x-layouts.dashboard-shell title="Tutor — eBimbel">
+<div x-data="{createOpen:false,editOpen:false,deleteOpen:false,edit:{id:null,nama:'',email:'',nik:'',no_hp:'',alamat:'',cabang_id:'',status:'aktif'},removeId:null}">
+<x-module-page-header title="Data tutor" description="Mapel, jam mengajar, dan penugasan cabang."><x-slot name="actions"><button @click="createOpen=true" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700">Undang tutor</button></x-slot></x-module-page-header>
+<form method="GET" class="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama tutor" class="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm"><select name="cabang_id" class="rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Cabang — semua</option>@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}" @selected(($filters['cabang_id'] ?? null) == $cabang->id)>{{ $cabang->nama_cabang }}</option>@endforeach</select><select name="status" class="rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Status — semua</option><option value="aktif" @selected(($filters['status'] ?? '')==='aktif')>Aktif</option><option value="nonaktif" @selected(($filters['status'] ?? '')==='nonaktif')>Nonaktif</option></select><button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Terapkan</button></form>
+<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm"><thead class="bg-slate-50"><tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500"><th class="px-4 py-3">Kode</th><th class="px-4 py-3">Nama</th><th class="px-4 py-3">Cabang</th><th class="px-4 py-3">Sesi/minggu</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-100">@forelse($tutors as $tutor)<tr class="text-slate-700"><td class="px-4 py-3 font-mono text-xs">T-{{ str_pad((string) $tutor->id, 3, '0', STR_PAD_LEFT) }}</td><td class="px-4 py-3 font-medium">{{ $tutor->nama }}</td><td class="px-4 py-3">{{ optional($tutor->cabang)->nama_cabang }}</td><td class="px-4 py-3">{{ $tutor->jadwals_count }}</td><td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $tutor->status==='aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700' }}">{{ ucfirst($tutor->status) }}</span></td><td class="px-4 py-3 text-right space-x-3"><a href="{{ route('tutors.show', $tutor) }}" class="text-blue-600 hover:underline">Profil</a><button @click="editOpen=true; edit={id:{{ $tutor->id }},nama:@js($tutor->nama),email:@js($tutor->email),nik:@js($tutor->nik),no_hp:@js($tutor->no_hp),alamat:@js($tutor->alamat),cabang_id:'{{ $tutor->cabang_id }}',status:@js($tutor->status)}" type="button" class="text-blue-600 hover:underline">Edit</button><button @click="deleteOpen=true; removeId={{ $tutor->id }}" type="button" class="text-rose-600 hover:underline">Delete</button></td></tr>@empty<tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">Belum ada data tutor.</td></tr>@endforelse</tbody></table></div><div class="px-4 py-3">{{ $tutors->links() }}</div></div>
+<div x-show="createOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="createOpen=false" class="w-full max-w-2xl rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Tambah Tutor</h3><form method="POST" action="{{ route('tutors.store') }}" class="mt-4 grid gap-3">@csrf<input name="nama" placeholder="Nama" class="rounded-lg border px-3 py-2"><input name="email" type="email" placeholder="Email" class="rounded-lg border px-3 py-2"><input name="nik" placeholder="NIK" class="rounded-lg border px-3 py-2"><input name="no_hp" placeholder="No HP" class="rounded-lg border px-3 py-2"><textarea name="alamat" placeholder="Alamat" class="rounded-lg border px-3 py-2"></textarea><select name="cabang_id" class="rounded-lg border px-3 py-2">@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>@endforeach</select><select name="status" class="rounded-lg border px-3 py-2"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select><div class="flex justify-end gap-2"><button type="button" @click="createOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-blue-600 px-3 py-2 text-white">Simpan</button></div></form></div></div>
+<div x-show="editOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="editOpen=false" class="w-full max-w-2xl rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Edit Tutor</h3><form method="POST" :action="`{{ url('/tutors') }}/${edit.id}`" class="mt-4 grid gap-3">@csrf @method('PUT')<input name="nama" x-model="edit.nama" class="rounded-lg border px-3 py-2"><input name="email" x-model="edit.email" class="rounded-lg border px-3 py-2"><input name="nik" x-model="edit.nik" class="rounded-lg border px-3 py-2"><input name="no_hp" x-model="edit.no_hp" class="rounded-lg border px-3 py-2"><textarea name="alamat" x-model="edit.alamat" class="rounded-lg border px-3 py-2"></textarea><select name="cabang_id" x-model="edit.cabang_id" class="rounded-lg border px-3 py-2">@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>@endforeach</select><select name="status" x-model="edit.status" class="rounded-lg border px-3 py-2"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select><div class="flex justify-end gap-2"><button type="button" @click="editOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-blue-600 px-3 py-2 text-white">Update</button></div></form></div></div>
+<div x-show="deleteOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="deleteOpen=false" class="w-full max-w-md rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Hapus Tutor</h3><form method="POST" :action="`{{ url('/tutors') }}/${removeId}`" class="mt-4 flex justify-end gap-2">@csrf @method('DELETE')<button type="button" @click="deleteOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-rose-600 px-3 py-2 text-white">Hapus</button></form></div></div>
+</div>
 </x-layouts.dashboard-shell>

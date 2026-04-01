@@ -78,7 +78,7 @@
                             <a href="#faq" @click.prevent="scrollToSection('faq')" class="rounded-lg border border-white/50 px-5 py-3 text-sm font-bold text-white">Pelajari Lebih Lanjut</a>
                         </div>
                     </div>
-                    <div class="p-4 shadow-xl backdrop-blur">
+                    <div class="p-4 backdrop-blur">
                         <img src="{{ asset('image/hero.png') }}" alt="Hero Bimbel" class="mx-auto w-full rounded-xl">
                     </div>
                 </div>
