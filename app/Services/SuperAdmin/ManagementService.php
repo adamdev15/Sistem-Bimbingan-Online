@@ -15,6 +15,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection as SupportCollection;
@@ -814,12 +815,32 @@ class ManagementService
         ];
     }
 
-    public function pembayaranIndex(Request $request): LengthAwarePaginator
+    /**
+     * Query dasar pembayaran dengan filter halaman (status, siswa, bulan, scope cabang).
+     *
+     * @return Builder<Payment>
+     */
+    public function pembayaranFilteredQuery(Request $request): Builder
     {
         $cabangId = $this->actorCabangId();
         $siswaId = $this->actorSiswaId();
 
         return Payment::query()
+            ->when($cabangId && ! $siswaId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
+            ->when($siswaId, fn ($q) => $q->where('payments.student_id', $siswaId))
+            ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('payments.status', $status))
+            ->when($request->filled('student_id') && ! $siswaId, fn ($q) => $q->where('payments.student_id', $request->integer('student_id')))
+            ->when($request->filled('bulan'), function ($q) use ($request) {
+                $b = $request->string('bulan')->toString();
+                if (preg_match('/^(\d{4})-(\d{2})$/', $b, $m)) {
+                    $q->whereYear('payments.tanggal_bayar', (int) $m[1])->whereMonth('payments.tanggal_bayar', (int) $m[2]);
+                }
+            });
+    }
+
+    public function pembayaranIndex(Request $request): LengthAwarePaginator
+    {
+        return $this->pembayaranFilteredQuery($request)
             ->with([
                 'siswa:id,nama,email,no_hp,nik,alamat,jenis_kelamin,cabang_id,user_id',
                 'siswa.cabang:id,nama_cabang',
@@ -827,16 +848,6 @@ class ManagementService
                 'fee:id,nama_biaya,nominal,tipe',
                 'creator:id,name,email',
             ])
-            ->when($cabangId && ! $siswaId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
-            ->when($siswaId, fn ($q) => $q->where('student_id', $siswaId))
-            ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->filled('student_id') && ! $siswaId, fn ($q) => $q->where('student_id', $request->integer('student_id')))
-            ->when($request->filled('bulan'), function ($q) use ($request) {
-                $b = $request->string('bulan')->toString();
-                if (preg_match('/^(\d{4})-(\d{2})$/', $b, $m)) {
-                    $q->whereYear('tanggal_bayar', (int) $m[1])->whereMonth('tanggal_bayar', (int) $m[2]);
-                }
-            })
             ->latest('tanggal_bayar')
             ->paginate(12)
             ->withQueryString();
@@ -847,27 +858,17 @@ class ManagementService
         $cabangId = $this->actorCabangId();
         $siswaId = $this->actorSiswaId();
 
-        $base = Payment::query()
-            ->when($cabangId && ! $siswaId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
-            ->when($siswaId, fn ($q) => $q->where('student_id', $siswaId))
-            ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->filled('student_id') && ! $siswaId, fn ($q) => $q->where('student_id', $request->integer('student_id')))
-            ->when($request->filled('bulan'), function ($q) use ($request) {
-                $b = $request->string('bulan')->toString();
-                if (preg_match('/^(\d{4})-(\d{2})$/', $b, $m)) {
-                    $q->whereYear('tanggal_bayar', (int) $m[1])->whereMonth('tanggal_bayar', (int) $m[2]);
-                }
-            });
+        $base = $this->pembayaranFilteredQuery($request);
 
-        $total = (clone $base)->sum('nominal');
-        $paid = (clone $base)->where('status', 'lunas')->sum('nominal');
+        $total = (clone $base)->sum('payments.nominal');
+        $paid = (clone $base)->where('payments.status', 'lunas')->sum('payments.nominal');
 
         return [
             'total' => $total,
             'paid' => $paid,
             'outstanding' => max($total - $paid, 0),
-            'belum_count' => (int) (clone $base)->where('status', 'belum')->count(),
-            'lunas_count' => (int) (clone $base)->where('status', 'lunas')->count(),
+            'belum_count' => (int) (clone $base)->where('payments.status', 'belum')->count(),
+            'lunas_count' => (int) (clone $base)->where('payments.status', 'lunas')->count(),
             'pie' => Fee::query()
                 ->select('nama_biaya', DB::raw('SUM(payments.nominal) as total_nominal'))
                 ->join('payments', 'payments.biaya_id', '=', 'fees.id')
@@ -922,7 +923,10 @@ class ManagementService
             ->limit(20)
             ->get();
 
-        return compact('paymentByFee', 'rankingCabang', 'trx', 'start', 'end');
+        return array_merge(
+            compact('paymentByFee', 'rankingCabang', 'trx', 'start', 'end'),
+            $this->laporanAnalytics($request, $start, $end),
+        );
     }
 
     public function studentsForSelect(): Collection
@@ -996,21 +1000,363 @@ class ManagementService
         return MataPelajaran::query()->orderBy('nama')->get(['id', 'nama', 'kode']);
     }
 
-    public function salaryIndex(Request $request): LengthAwarePaginator
+    /**
+     * Query gaji dengan filter halaman (status, tutor, scope cabang).
+     *
+     * @return Builder<Salary>
+     */
+    public function salaryFilteredQuery(Request $request): Builder
     {
         $cabangId = $this->actorCabangId();
 
         return Salary::query()
-            ->with(['tutor:id,nama,cabang_id', 'creator:id,name'])
             ->when(
                 $cabangId && ! Auth::user()?->hasRole('super_admin'),
-                fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId))
+                fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('tutors.cabang_id', $cabangId))
             )
-            ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('status', $s))
-            ->when($request->filled('tutor_id'), fn ($q) => $q->where('tutor_id', $request->integer('tutor_id')))
-            ->latest('id')
+            ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('salaries.status', $s))
+            ->when($request->filled('tutor_id'), fn ($q) => $q->where('salaries.tutor_id', $request->integer('tutor_id')));
+    }
+
+    public function salaryIndex(Request $request): LengthAwarePaginator
+    {
+        return $this->salaryFilteredQuery($request)
+            ->with(['tutor:id,nama,cabang_id', 'creator:id,name'])
+            ->latest('salaries.id')
             ->paginate(12)
             ->withQueryString();
+    }
+
+    /**
+     * Payload laporan ekspor gaji tutor (ringkasan, agregat, detail, insight).
+     *
+     * @return array<string, mixed>
+     */
+    public function salaryReportPayload(Request $request): array
+    {
+        $user = Auth::user();
+        $isSuper = (bool) $user?->hasRole('super_admin');
+        $base = $this->salaryFilteredQuery($request);
+
+        $perTutor = (clone $base)
+            ->join('tutors', 'tutors.id', '=', 'salaries.tutor_id')
+            ->leftJoin('cabangs', 'cabangs.id', '=', 'tutors.cabang_id')
+            ->select([
+                'tutors.id as tutor_id',
+                'tutors.nama as tutor_nama',
+                'cabangs.nama_cabang',
+                DB::raw('SUM(salaries.total_jam) as total_jam'),
+                DB::raw('SUM(salaries.total_gaji) as total_gaji'),
+                DB::raw('COUNT(salaries.id) as entri_count'),
+            ])
+            ->groupBy('tutors.id', 'tutors.nama', 'cabangs.id', 'cabangs.nama_cabang')
+            ->orderByDesc(DB::raw('SUM(salaries.total_jam)'))
+            ->get();
+
+        $perPeriode = (clone $base)
+            ->select([
+                'salaries.periode',
+                DB::raw('SUM(salaries.total_jam) as total_jam'),
+                DB::raw('SUM(salaries.total_gaji) as total_gaji'),
+                DB::raw('COUNT(salaries.id) as entri_count'),
+            ])
+            ->groupBy('salaries.periode')
+            ->orderBy('salaries.periode')
+            ->get();
+
+        $detailRows = (clone $base)
+            ->with(['tutor.cabang:id,nama_cabang', 'creator:id,name'])
+            ->orderByDesc('salaries.id')
+            ->get();
+
+        $totalGaji = (float) (clone $base)->sum('salaries.total_gaji');
+        $totalJam = (int) (clone $base)->sum('salaries.total_jam');
+
+        $topJam = $perTutor->sortByDesc('total_jam')->first();
+        $topGaji = $perTutor->sortByDesc('total_gaji')->first();
+
+        $parts = [];
+        if ($request->string('status')->toString() !== '') {
+            $parts[] = 'Status '.$request->string('status');
+        }
+        if ($request->filled('tutor_id')) {
+            $parts[] = 'Tutor ID '.$request->integer('tutor_id');
+        }
+        $filterLabel = $parts === [] ? 'Semua entri (sesuai hak akses cabang)' : implode(' · ', $parts);
+
+        return [
+            'generated_at' => now(),
+            'filter_label' => $filterLabel,
+            'is_super_admin' => $isSuper,
+            'per_tutor' => $perTutor,
+            'per_periode' => $perPeriode,
+            'detail_rows' => $detailRows,
+            'total_gaji' => $totalGaji,
+            'total_jam' => $totalJam,
+            'entri_count' => $detailRows->count(),
+            'insight_aktif' => $topJam
+                ? 'Tutor paling aktif (total jam mengajar pada filter): '.$topJam->tutor_nama.' ('.(int) $topJam->total_jam.' jam).'
+                : 'Belum ada data jam mengajar pada filter ini.',
+            'insight_biaya' => $totalGaji > 0
+                ? 'Total beban gaji (operasional tutor) pada filter: Rp '.number_format((int) round($totalGaji), 0, ',', '.').' — pantau proporsi terhadap pendapatan di menu Laporan.'
+                : 'Tidak ada nominal gaji pada filter ini.',
+            'insight_top_gaji' => $topGaji && (float) $topGaji->total_gaji > 0
+                ? 'Tutor dengan total nominal gaji tertinggi: '.$topGaji->tutor_nama.' (Rp '.number_format((int) round((float) $topGaji->total_gaji), 0, ',', '.').').'
+                : '',
+        ];
+    }
+
+    /**
+     * Data grafik & KPI analitik untuk halaman laporan.
+     *
+     * @return array<string, mixed>
+     */
+    public function laporanAnalytics(Request $request, CarbonInterface $start, CarbonInterface $end): array
+    {
+        $cabangId = $this->actorCabangId();
+        $driver = DB::getDriverName();
+        $payDateExpr = match ($driver) {
+            'sqlite' => 'date(payments.tanggal_bayar)',
+            default => 'DATE(payments.tanggal_bayar)',
+        };
+
+        $revMode = $request->string('rev_mode', 'bulan')->toString();
+        if (! in_array($revMode, ['minggu', 'bulan', 'tahun'], true)) {
+            $revMode = 'bulan';
+        }
+
+        $revenueChart = $this->buildRevenueChartSeries($cabangId, $payDateExpr, $revMode, now());
+
+        $khDimensi = $request->string('kh_dimensi', 'cabang')->toString();
+        if (! in_array($khDimensi, ['cabang', 'tutor', 'mapel'], true)) {
+            $khDimensi = 'cabang';
+        }
+
+        $kehadiranChart = $this->buildKehadiranChartByDimensi($cabangId, $khDimensi);
+
+        $cvWindow = $request->string('cv_window', 'bulan')->toString();
+        if (! in_array($cvWindow, ['bulan', 'tahun'], true)) {
+            $cvWindow = 'bulan';
+        }
+        $cvEnd = now()->endOfDay();
+        $cvStart = $cvWindow === 'tahun'
+            ? now()->copy()->subYear()->startOfDay()
+            : now()->copy()->subMonth()->startOfDay();
+
+        $conversionChart = $this->buildPaymentConversionSeries($cvStart, $cvEnd, $cabangId, $cvWindow);
+
+        return [
+            'revenue_chart' => $revenueChart,
+            'kehadiran_chart' => $kehadiranChart,
+            'conversion_chart' => $conversionChart,
+            'rev_mode' => $revMode,
+            'kh_dimensi' => $khDimensi,
+            'cv_window' => $cvWindow,
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, values: list<float>, title: string, subtitle: string, trend: string}
+     */
+    private function buildRevenueChartSeries(?int $cabangId, string $payDateExpr, string $revMode, CarbonInterface $revRef): array
+    {
+        $paymentBase = function () use ($cabangId) {
+            return Payment::query()
+                ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)));
+        };
+
+        if ($revMode === 'minggu') {
+            $weekStart = $revRef->copy()->locale('id')->startOfWeek(Carbon::MONDAY)->startOfDay();
+            $weekEnd = $revRef->copy()->locale('id')->endOfWeek(Carbon::SUNDAY)->endOfDay();
+            $shortDays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+            $labels = [];
+            $keys = [];
+            for ($i = 0; $i < 7; $i++) {
+                $d = $weekStart->copy()->addDays($i);
+                $labels[] = $shortDays[$i];
+                $keys[] = $d->format('Y-m-d');
+            }
+            $sums = $paymentBase()
+                ->whereBetween('payments.tanggal_bayar', [$weekStart, $weekEnd])
+                ->selectRaw("{$payDateExpr} as bucket, SUM(payments.nominal) as total")
+                ->groupBy(DB::raw($payDateExpr))
+                ->pluck('total', 'bucket');
+            $values = [];
+            foreach ($keys as $k) {
+                $values[] = (float) ($sums[$k] ?? 0);
+            }
+            $title = 'Pendapatan (minggu)';
+            $subtitle = $weekStart->translatedFormat('d M').' – '.$weekEnd->translatedFormat('d M Y');
+        } elseif ($revMode === 'tahun') {
+            $yStart = $revRef->copy()->startOfYear()->startOfDay();
+            $yEnd = $revRef->copy()->endOfYear()->endOfDay();
+            $monthExpr = match (DB::getDriverName()) {
+                'sqlite' => "cast(strftime('%m', payments.tanggal_bayar) as integer)",
+                default => 'MONTH(payments.tanggal_bayar)',
+            };
+            $rows = $paymentBase()
+                ->whereBetween('payments.tanggal_bayar', [$yStart, $yEnd])
+                ->selectRaw("{$monthExpr} as m, SUM(payments.nominal) as total")
+                ->groupBy(DB::raw((string) $monthExpr))
+                ->pluck('total', 'm');
+            $byMonth = [];
+            foreach ($rows as $k => $v) {
+                $byMonth[(int) $k] = (float) $v;
+            }
+            $labels = [];
+            $values = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $labels[] = self::ID_MONTH_SHORT[$m] ?? (string) $m;
+                $values[] = $byMonth[$m] ?? 0.0;
+            }
+            $title = 'Pendapatan (tahun)';
+            $subtitle = (string) $revRef->year;
+        } else {
+            $mStart = $revRef->copy()->startOfMonth()->startOfDay();
+            $mEnd = $revRef->copy()->endOfMonth()->endOfDay();
+            $daysInMonth = (int) $mEnd->day;
+            $sums = $paymentBase()
+                ->whereBetween('payments.tanggal_bayar', [$mStart, $mEnd])
+                ->selectRaw("{$payDateExpr} as bucket, SUM(payments.nominal) as total")
+                ->groupBy(DB::raw($payDateExpr))
+                ->pluck('total', 'bucket');
+            $labels = [];
+            $values = [];
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                $dayDate = $mStart->copy()->addDays($d - 1);
+                $key = $dayDate->format('Y-m-d');
+                $labels[] = (string) $d;
+                $values[] = (float) ($sums[$key] ?? 0);
+            }
+            $title = 'Pendapatan (bulan)';
+            $subtitle = $mStart->translatedFormat('F Y');
+        }
+
+        $n = count($values);
+        $trend = 'Cukup data untuk tren setelah periode berjalan.';
+        if ($n >= 2) {
+            $first = array_slice($values, 0, (int) floor($n / 2));
+            $second = array_slice($values, (int) floor($n / 2));
+            $a = array_sum($first) / max(count($first), 1);
+            $b = array_sum($second) / max(count($second), 1);
+            if ($b > $a * 1.05) {
+                $trend = 'Tren nominal pendapatan cenderung naik di paruh kedua periode tampilan.';
+            } elseif ($b < $a * 0.95) {
+                $trend = 'Tren nominal pendapatan cenderung turun di paruh kedua periode tampilan.';
+            } else {
+                $trend = 'Tren stabil di sepanjang periode tampilan.';
+            }
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values,
+            'title' => $title,
+            'subtitle' => $subtitle,
+            'trend' => $trend,
+        ];
+    }
+
+    /**
+     * Grafik kehadiran: bar bertumpuk per cabang / tutor / mapel (hingga 12 entitas terbanyak).
+     *
+     * @return array<string, mixed>
+     */
+    private function buildKehadiranChartByDimensi(?int $actorCabangId, string $dimensi): array
+    {
+        $agg = [
+            DB::raw("SUM(CASE WHEN kehadirans.status = 'hadir' THEN 1 ELSE 0 END) as c_hadir"),
+            DB::raw("SUM(CASE WHEN kehadirans.status = 'izin' THEN 1 ELSE 0 END) as c_izin"),
+            DB::raw("SUM(CASE WHEN kehadirans.status = 'sakit' THEN 1 ELSE 0 END) as c_sakit"),
+            DB::raw("SUM(CASE WHEN kehadirans.status = 'alfa' THEN 1 ELSE 0 END) as c_alfa"),
+            DB::raw('COUNT(kehadirans.id) as c_total'),
+        ];
+
+        $q = Kehadiran::query()
+            ->join('jadwals', 'jadwals.id', '=', 'kehadirans.jadwal_id')
+            ->when($actorCabangId, fn ($qq) => $qq->where('jadwals.cabang_id', $actorCabangId));
+
+        if ($dimensi === 'cabang') {
+            $q->join('cabangs', 'cabangs.id', '=', 'jadwals.cabang_id');
+            $rows = $q->select(array_merge([DB::raw('cabangs.nama_cabang as dim_label')], $agg))
+                ->groupBy('cabangs.id', 'cabangs.nama_cabang')
+                ->orderByDesc('c_total')
+                ->limit(12)
+                ->get();
+            $dimensiLabel = 'cabang';
+        } elseif ($dimensi === 'tutor') {
+            $q->join('tutors', 'tutors.id', '=', 'kehadirans.tutor_id');
+            $rows = $q->select(array_merge([DB::raw('tutors.nama as dim_label')], $agg))
+                ->groupBy('tutors.id', 'tutors.nama')
+                ->orderByDesc('c_total')
+                ->limit(12)
+                ->get();
+            $dimensiLabel = 'tutor';
+        } else {
+            $q->leftJoin('mata_pelajarans', 'mata_pelajarans.id', '=', 'jadwals.mata_pelajaran_id');
+            $rows = $q->select(array_merge([
+                DB::raw("COALESCE(MAX(mata_pelajarans.nama), 'Tanpa mapel') as dim_label"),
+            ], $agg))
+                ->groupBy('jadwals.mata_pelajaran_id')
+                ->orderByDesc('c_total')
+                ->limit(12)
+                ->get();
+            $dimensiLabel = 'mata pelajaran';
+        }
+
+        $totalHadir = (int) $rows->sum('c_hadir');
+        $totalAll = (int) $rows->sum('c_total');
+        $hadirPct = $totalAll > 0 ? round(100 * $totalHadir / $totalAll, 1) : 0.0;
+
+        $labels = $rows->pluck('dim_label')->map(fn ($l) => (string) $l)->all();
+
+        return [
+            'chart_kind' => 'stacked_bar',
+            'labels' => $labels,
+            'datasets' => [
+                ['label' => 'Hadir', 'data' => $rows->pluck('c_hadir')->map(fn ($v) => (int) $v)->all(), 'backgroundColor' => '#059669'],
+                ['label' => 'Izin', 'data' => $rows->pluck('c_izin')->map(fn ($v) => (int) $v)->all(), 'backgroundColor' => '#3b82f6'],
+                ['label' => 'Sakit', 'data' => $rows->pluck('c_sakit')->map(fn ($v) => (int) $v)->all(), 'backgroundColor' => '#8b5cf6'],
+                ['label' => 'Alfa', 'data' => $rows->pluck('c_alfa')->map(fn ($v) => (int) $v)->all(), 'backgroundColor' => '#e11d48'],
+            ],
+            'hadir_pct' => $hadirPct,
+            'subtitle' => $rows->isEmpty()
+                ? 'Belum ada data presensi.'
+                : 'Hingga 12 '.$dimensiLabel.' dengan presensi terbanyak · keseluruhan data.',
+            'dimensi_label' => $dimensiLabel,
+        ];
+    }
+
+    /**
+     * @return array{lunas_nominal: float, belum_nominal: float, lunas_count: int, belum_count: int, total_count: int, paid_rate_pct: float, subtitle: string, window_label: string}
+     */
+    private function buildPaymentConversionSeries(CarbonInterface $start, CarbonInterface $end, ?int $cabangId, string $cvWindow): array
+    {
+        $base = Payment::query()
+            ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
+            ->whereBetween('payments.tanggal_bayar', [$start->copy()->startOfDay(), $end->copy()->endOfDay()]);
+
+        $lunasNom = (float) (clone $base)->where('payments.status', 'lunas')->sum('payments.nominal');
+        $belumNom = (float) (clone $base)->where('payments.status', 'belum')->sum('payments.nominal');
+        $lunasCount = (int) (clone $base)->where('payments.status', 'lunas')->count();
+        $belumCount = (int) (clone $base)->where('payments.status', 'belum')->count();
+        $totalCount = $lunasCount + $belumCount;
+        $paidRate = $totalCount > 0 ? round(100 * $lunasCount / $totalCount, 1) : 0.0;
+
+        $windowLabel = $cvWindow === 'tahun' ? '1 tahun terakhir' : '1 bulan terakhir';
+
+        return [
+            'lunas_nominal' => $lunasNom,
+            'belum_nominal' => $belumNom,
+            'lunas_count' => $lunasCount,
+            'belum_count' => $belumCount,
+            'total_count' => $totalCount,
+            'paid_rate_pct' => $paidRate,
+            'window_label' => $windowLabel,
+            'subtitle' => $totalCount === 0
+                ? 'Belum ada tagihan terbit pada '.$windowLabel.'.'
+                : $windowLabel.' · '.(int) $paidRate.'% transaksi lunas · nominal lunas Rp '.number_format((int) round($lunasNom), 0, ',', '.'),
+        ];
     }
 
     /**

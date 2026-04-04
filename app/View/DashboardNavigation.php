@@ -85,7 +85,7 @@ final class DashboardNavigation
                 'patterns' => ['users.*'],
             ],
             [
-                'label' => 'Laporan',
+                'label' => 'Laporan & analitik',
                 'route' => 'laporan.index',
                 'roles' => ['super_admin', 'admin_cabang'],
                 'patterns' => ['laporan.*'],

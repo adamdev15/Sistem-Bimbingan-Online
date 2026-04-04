@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\SuperAdmin;
 
+use App\Exports\GajiTutorLaporanExport;
 use App\Http\Controllers\Controller;
 use App\Models\Cabang;
 use App\Models\Salary;
 use App\Models\Tutor;
 use App\Services\SuperAdmin\ManagementService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SalaryController extends Controller
 {
@@ -23,6 +28,32 @@ class SalaryController extends Controller
             'tutors' => $this->tutorsForSalaryForm(),
             'filters' => $request->only(['status', 'tutor_id']),
         ]);
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        $this->assertSalaryExportAllowed($request);
+        $payload = $this->service->salaryReportPayload($request);
+        $name = 'gaji-tutor-laporan-'.now()->format('Y-m-d-His').'.pdf';
+
+        return Pdf::loadView('exports.gaji-tutor-laporan-pdf', $payload)
+            ->setPaper('a4', 'landscape')
+            ->download($name);
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        $this->assertSalaryExportAllowed($request);
+        $payload = $this->service->salaryReportPayload($request);
+        $name = 'gaji-tutor-laporan-'.now()->format('Y-m-d-His').'.xlsx';
+
+        return Excel::download(new GajiTutorLaporanExport($payload), $name);
+    }
+
+    private function assertSalaryExportAllowed(Request $request): void
+    {
+        $user = $request->user();
+        abort_unless($user && $user->hasAnyRole(['super_admin', 'admin_cabang']), 403);
     }
 
     public function store(Request $request): RedirectResponse

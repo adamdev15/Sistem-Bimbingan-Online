@@ -34,7 +34,7 @@
         <x-module-page-header
             title="Pembayaran & tagihan"
             :description="$isSiswa
-                ? 'Tagihan biaya (pendaftaran, SPP, dll.)  bayar aman lewat Midtrans Snap.'
+                ? 'Tagihan biaya (pendaftaran, SPP, dll.)'
                 : ($isAdmin
                     ? (auth()->user()->hasRole('admin_cabang')
                         ? 'Kelola tagihan siswa cabang Anda. Kirim pengingat jatuh tempo dan tandai lunas bila perlu.'
@@ -66,7 +66,14 @@
         @endif
 
         @if ($isSiswa && ! $canSnap)
-            <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Pembayaran online belum aktif: pastikan <code class="rounded bg-white px-1">MIDTRANS_CLIENT_KEY</code> dan <code class="rounded bg-white px-1">MIDTRANS_SERVER_KEY</code> di <code class="rounded bg-white px-1">.env</code> sudah benar.</p>
+            <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Pembayaran online (Midtrans) belum aktif — pastikan <code class="rounded bg-white px-1">MIDTRANS_CLIENT_KEY</code> dan <code class="rounded bg-white px-1">MIDTRANS_SERVER_KEY</code> di <code class="rounded bg-white px-1">.env</code> sudah benar.
+                @if ($siswaHasManualPaymentDestinations ?? false)
+                    Anda tetap dapat membayar lewat <strong class="font-semibold">Transfer manual</strong> pada tagihan di bawah.
+                @else
+                    Gunakan tautan <strong class="font-semibold">Transfer manual</strong> untuk panduan; admin dapat mengisi rekening / QRIS di pengaturan <code class="rounded bg-white px-1">.env</code>.
+                @endif
+            </p>
         @endif
 
         <form method="GET" class="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
@@ -135,6 +142,25 @@
             @endif
         </div>
 
+        @if ($isAdmin)
+            @php
+                $exportQs = request()->getQueryString();
+                $exportSuffix = $exportQs ? '?'.$exportQs : '';
+            @endphp
+            <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">
+                <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-900">Export laporan pembayaran</p>
+                        <p class="text-xs text-slate-500">Mengikuti filter di atas (status, siswa, bulan transaksi). PDF landscape &amp; Excel multi-sheet.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ route('pembayaran.export.ringkasan.pdf').$exportSuffix }}" class="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-red-700">PDF ringkasan</a>
+                        <a href="{{ route('pembayaran.export.ringkasan.excel').$exportSuffix }}" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-green-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-green-700">Excel ringkasan</a>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -183,13 +209,16 @@
                                     @if ($isSiswa)
                                         @if ($pay->status === 'lunas')
                                             <span class="text-xs text-slate-500">Selesai{{ $pay->paid_at ? ' · '.$pay->paid_at->timezone(config('app.timezone'))->translatedFormat('d M Y H:i') : '' }}</span>
-                                        @elseif ($canSnap)
-                                            <button type="button" @click="pay({{ $pay->id }})" :disabled="payLoading === {{ $pay->id }}" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">
-                                                <span x-show="payLoading !== {{ $pay->id }}">Bayar</span>
-                                                <span x-show="payLoading === {{ $pay->id }}" x-cloak>Memuat?</span>
-                                            </button>
                                         @else
-                                            <span class="text-xs text-slate-400">Bayar (nonaktif)</span>
+                                            <div class="flex flex-wrap items-center justify-end gap-2">
+                                                @if ($canSnap)
+                                                    <button type="button" @click="pay({{ $pay->id }})" :disabled="payLoading === {{ $pay->id }}" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">
+                                                        <span x-show="payLoading !== {{ $pay->id }}">Bayar online</span>
+                                                        <span x-show="payLoading === {{ $pay->id }}" x-cloak>Memuat…</span>
+                                                    </button>
+                                                @endif
+                                                <a href="{{ route('pembayaran.manual', $pay) }}" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:bg-slate-50">Transfer manual</a>
+                                            </div>
                                         @endif
                                     @else
                                         @if ($pay->status === 'lunas')
@@ -254,12 +283,78 @@
             <div class="border-t border-slate-100 bg-slate-50/50 px-4 py-3">{{ $payments->links() }}</div>
         </div>
 
+        @if ($isAdmin && isset($outstandingPaginator))
+        <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">
+            <div class="space-y-3 p-4">
+                <div class="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Tagihan (outstanding)</h2>
+                        <p class="mt-0.5 text-sm text-slate-500">Hanya status belum lunas, urut jatuh tempo. Aging dari tanggal hari ini.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ route('pembayaran.export.outstanding.pdf').$exportSuffix }}" class="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-red-700">PDF Export</a>
+                        <a href="{{ route('pembayaran.export.outstanding.excel').$exportSuffix }}" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-green-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-green-700">Excel Export</a>
+                    </div>
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-amber-200/80 bg-white shadow-sm ring-1 ring-amber-900/5">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead class="bg-amber-50/90">
+                                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-amber-950/80">
+                                    <th class="px-4 py-3.5">Referensi</th>
+                                    <th class="px-4 py-3.5">Siswa</th>
+                                    <th class="px-4 py-3.5">Cabang</th>
+                                    <th class="px-4 py-3.5">Item biaya</th>
+                                    <th class="px-4 py-3.5">Terbit</th>
+                                    <th class="px-4 py-3.5">Jatuh tempo</th>
+                                    <th class="px-4 py-3.5">Aging</th>
+                                    <th class="px-4 py-3.5">Nominal</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700">
+                                @forelse ($outstandingPaginator as $row)
+                                    @php
+                                        $op = $row['payment'];
+                                        $late = ($row['aging_hari'] ?? null) !== null && $row['aging_hari'] > 0;
+                                    @endphp
+                                    <tr class="transition hover:bg-amber-50/40">
+                                        <td class="px-4 py-3.5 font-mono text-xs">INV-{{ str_pad((string) $op->id, 5, '0', STR_PAD_LEFT) }}</td>
+                                        <td class="px-4 py-3.5 font-medium">{{ optional($op->siswa)->nama }}</td>
+                                        <td class="px-4 py-3.5">{{ optional(optional($op->siswa)->cabang)->nama_cabang }}</td>
+                                        <td class="px-4 py-3.5">{{ optional($op->fee)->nama_biaya }}</td>
+                                        <td class="px-4 py-3.5">{{ optional($op->tanggal_bayar)->translatedFormat('d M Y') }}</td>
+                                        <td class="px-4 py-3.5">{{ $op->due_date ? $op->due_date->translatedFormat('d M Y') : '—' }}</td>
+                                        <td class="px-4 py-3.5">
+                                            <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $late ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-700' }}">
+                                                {{ $row['aging_label'] }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3.5 font-medium">Rp {{ number_format((int) round((float) $op->nominal), 0, ',', '.') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="8" class="px-4 py-10 text-center text-slate-500">Tidak ada tagihan outstanding pada filter ini.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    @if ($outstandingPaginator->hasPages())
+                        <div class="border-t border-slate-100 bg-amber-50/40 px-4 py-3">{{ $outstandingPaginator->links() }}</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endif
+
         @if ($isSiswa && ($summary['belum_count'] ?? 0) > 0)
             <div x-show="pendingOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]">
                 <div @click.outside="pendingOpen = false" class="max-h-[min(85vh,520px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
                     <div class="flex items-start justify-between gap-3">
                         <h3 class="text-lg font-bold text-slate-900">Tagihan menunggu pembayaran</h3>
-                        <button type="button" @click="pendingOpen = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100" aria-label="Tutup">?</button>
+                        <button type="button" @click="pendingOpen = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
                     <ul class="mt-4 space-y-3">
                         @foreach ($unpaidQuick ?? [] as $p)
@@ -268,9 +363,12 @@
                                     <p class="font-medium text-slate-900">{{ optional($p->fee)->nama_biaya }}</p>
                                     <p class="text-xs text-slate-500">Rp {{ number_format((int) $p->nominal, 0, ',', '.') }} @if ($p->due_date) ? jt {{ $p->due_date->translatedFormat('d M Y') }} @endif</p>
                                 </div>
-                                @if ($canSnap)
-                                    <button type="button" @click="pay({{ $p->id }}); pendingOpen = false" class="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">Bayar</button>
-                                @endif
+                                <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                                    @if ($canSnap)
+                                        <button type="button" @click="pay({{ $p->id }}); pendingOpen = false" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">Bayar online</button>
+                                    @endif
+                                    <a href="{{ route('pembayaran.manual', $p) }}" @click="pendingOpen = false" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50">Manual</a>
+                                </div>
                             </li>
                         @endforeach
                     </ul>
@@ -479,73 +577,87 @@
         @push('scripts')
             <script src="{{ $midtransSnapJsUrl }}" data-client-key="{{ $midtransClientKey }}"></script>
             <script>
-                window.payWithMidtrans = async function (paymentId) {
-                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                    const res = await fetch('{{ url('/pembayaran') }}/' + paymentId + '/snap-token', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': token,
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                    });
-                    let data = {};
-                    try {
-                        const text = await res.text();
-                        data = text ? JSON.parse(text) : {};
-                    } catch (e) {
-                        data = {};
+                (function () {
+                    var payBase = @json(rtrim(url('/pembayaran'), '/'));
+                    function pembayaranManualUrl(paymentId) {
+                        return payBase + '/' + paymentId + '/manual';
                     }
-                    if (!res.ok) {
-                        const msg = data.message || (data.error ? String(data.error) : '') || 'Gagal memulai pembayaran (' + res.status + ').';
-                        alert(msg);
-                        return;
-                    }
-                    if (typeof snap === 'undefined' || !data.token) {
-                        alert('Midtrans Snap belum termuat.');
-                        return;
-                    }
-                    const syncMidtrans = async function () {
-                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                        const url = '{{ url('/pembayaran') }}/' + paymentId + '/sync-midtrans';
-                        for (let attempt = 0; attempt < 6; attempt++) {
-                            try {
-                                const sr = await fetch(url, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Accept': 'application/json',
-                                        'X-CSRF-TOKEN': csrf,
-                                        'X-Requested-With': 'XMLHttpRequest',
-                                    },
-                                });
-                                const body = await sr.json().catch(() => ({}));
-                                if (body.is_lunas) {
-                                    return;
-                                }
-                                if (body.midtrans_transaction_status === 'settlement' || body.payment_status === 'lunas') {
-                                    return;
-                                }
-                            } catch (e) { /* lanjut retry */ }
-                            await new Promise(function (r) { setTimeout(r, 800); });
+                    window.payWithMidtrans = async function (paymentId) {
+                        var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        var res = await fetch(payBase + '/' + paymentId + '/snap-token', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': token,
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+                        var data = {};
+                        try {
+                            var text = await res.text();
+                            data = text ? JSON.parse(text) : {};
+                        } catch (e) {
+                            data = {};
                         }
+                        if (!res.ok) {
+                            var msg = data.message || (data.error ? String(data.error) : '') || 'Gagal memulai pembayaran (' + res.status + ').';
+                            if (window.confirm(msg + '\n\nBuka panduan transfer manual?')) {
+                                window.location.href = pembayaranManualUrl(paymentId);
+                            }
+                            return;
+                        }
+                        if (typeof snap === 'undefined' || !data.token) {
+                            if (window.confirm('Midtrans Snap belum termuat. Buka panduan transfer manual?')) {
+                                window.location.href = pembayaranManualUrl(paymentId);
+                            }
+                            return;
+                        }
+                        var syncMidtrans = async function () {
+                            var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                            var url = payBase + '/' + paymentId + '/sync-midtrans';
+                            for (var attempt = 0; attempt < 6; attempt++) {
+                                try {
+                                    var sr = await fetch(url, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': csrf,
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                        },
+                                    });
+                                    var body = await sr.json().catch(function () { return {}; });
+                                    if (body.is_lunas) {
+                                        return;
+                                    }
+                                    if (body.midtrans_transaction_status === 'settlement' || body.payment_status === 'lunas') {
+                                        return;
+                                    }
+                                } catch (e) { /* lanjut retry */ }
+                                await new Promise(function (r) { setTimeout(r, 800); });
+                            }
+                        };
+                        snap.pay(data.token, {
+                            onSuccess: async function () {
+                                await syncMidtrans();
+                                window.location.reload();
+                            },
+                            onPending: async function () {
+                                await syncMidtrans();
+                                window.location.reload();
+                            },
+                            onError: async function () {
+                                await syncMidtrans();
+                                if (window.confirm('Pembayaran online gagal atau dibatalkan. Buka panduan transfer manual?')) {
+                                    window.location.href = pembayaranManualUrl(paymentId);
+                                    return;
+                                }
+                                window.location.reload();
+                            },
+                            onClose: function () {},
+                        });
                     };
-                    snap.pay(data.token, {
-                        onSuccess: async function () {
-                            await syncMidtrans();
-                            window.location.reload();
-                        },
-                        onPending: async function () {
-                            await syncMidtrans();
-                            window.location.reload();
-                        },
-                        onError: async function () {
-                            await syncMidtrans();
-                            window.location.reload();
-                        },
-                        onClose: function () {},
-                    });
-                };
+                })();
             </script>
         @endpush
     @endif

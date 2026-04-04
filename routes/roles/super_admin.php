@@ -54,6 +54,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         Route::get('/gaji-tutor', [SalaryController::class, 'index'])->name('salaries.index');
+        Route::get('/gaji-tutor/export/pdf', [SalaryController::class, 'exportPdf'])->name('salaries.export.pdf');
+        Route::get('/gaji-tutor/export/excel', [SalaryController::class, 'exportExcel'])->name('salaries.export.excel');
         Route::post('/gaji-tutor', [SalaryController::class, 'store'])->name('salaries.store');
         Route::patch('/gaji-tutor/{salary}', [SalaryController::class, 'update'])->name('salaries.update');
 
@@ -95,10 +97,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:super_admin|admin_cabang|siswa')->group(function () {
         Route::get('/pembayaran', [PembayaranController::class, 'index'])->name('pembayaran.index');
         Route::middleware('role:siswa')->group(function () {
+            Route::get('/pembayaran/{payment}/manual', [PembayaranController::class, 'manualPayment'])->name('pembayaran.manual');
             Route::post('/pembayaran/{payment}/snap-token', [PembayaranController::class, 'snapToken'])->name('pembayaran.snap-token');
             Route::post('/pembayaran/{payment}/sync-midtrans', [PembayaranController::class, 'syncMidtrans'])->name('pembayaran.sync-midtrans');
         });
         Route::middleware('role:super_admin|admin_cabang')->group(function () {
+            Route::get('/pembayaran/export/ringkasan.pdf', [PembayaranController::class, 'exportRingkasanPdf'])->name('pembayaran.export.ringkasan.pdf');
+            Route::get('/pembayaran/export/ringkasan.xlsx', [PembayaranController::class, 'exportRingkasanExcel'])->name('pembayaran.export.ringkasan.excel');
+            Route::get('/pembayaran/export/outstanding.pdf', [PembayaranController::class, 'exportOutstandingPdf'])->name('pembayaran.export.outstanding.pdf');
+            Route::get('/pembayaran/export/outstanding.xlsx', [PembayaranController::class, 'exportOutstandingExcel'])->name('pembayaran.export.outstanding.excel');
             Route::post('/pembayaran/massal', [PembayaranController::class, 'massStore'])->name('pembayaran.mass.store');
             Route::post('/pembayaran/notify-due-bulk', [PembayaranController::class, 'notifyDueBulk'])->name('pembayaran.notify-due-bulk');
             Route::post('/pembayaran/{payment}/mark-lunas', [PembayaranController::class, 'markLunas'])->name('pembayaran.mark-lunas');

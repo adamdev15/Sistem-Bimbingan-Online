@@ -44,6 +44,12 @@
             </select>
             <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">Terapkan</button>
             <a href="{{ route('salaries.index') }}" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reset</a>
+            @php
+                $salaryExportQs = request()->getQueryString();
+                $salaryExportSuffix = $salaryExportQs ? '?'.$salaryExportQs : '';
+            @endphp
+            <a href="{{ route('salaries.export.pdf').$salaryExportSuffix }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">PDF laporan</a>
+            <a href="{{ route('salaries.export.excel').$salaryExportSuffix }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">Excel laporan</a>
         </form>
 
         <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">

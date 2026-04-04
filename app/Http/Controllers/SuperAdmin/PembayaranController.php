@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\SuperAdmin;
 
+use App\Exports\PembayaranOutstandingExport;
+use App\Exports\PembayaranRingkasanExport;
 use App\Http\Controllers\Controller;
 use App\Models\Cabang;
 use App\Models\Payment;
@@ -9,17 +11,23 @@ use App\Models\Siswa;
 use App\Models\User;
 use App\Services\Midtrans\MidtransService;
 use App\Services\Notifications\InAppBellNotifier;
+use App\Services\PembayaranReportService;
 use App\Services\SuperAdmin\ManagementService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PembayaranController extends Controller
 {
     public function __construct(
         private readonly ManagementService $service,
+        private readonly PembayaranReportService $reports,
         private readonly MidtransService $midtrans,
         private readonly InAppBellNotifier $bell,
     ) {}
@@ -43,6 +51,11 @@ class PembayaranController extends Controller
             }
         }
 
+        $outstandingPaginator = null;
+        if ($user && $user->hasAnyRole(['super_admin', 'admin_cabang'])) {
+            $outstandingPaginator = $this->reports->outstandingPaginator($request);
+        }
+
         return view('modules.pembayaran.index', [
             'payments' => $this->service->pembayaranIndex($request),
             'summary' => $this->service->pembayaranSummary($request),
@@ -55,7 +68,96 @@ class PembayaranController extends Controller
                 : 'https://app.sandbox.midtrans.com/snap/snap.js',
             'dueBulkCount' => $this->service->pembayaranDueBulkCount($request),
             'unpaidQuick' => $unpaidQuick,
+            'outstandingPaginator' => $outstandingPaginator,
+            'siswaHasManualPaymentDestinations' => $user && $user->hasRole('siswa')
+                ? $this->siswaHasConfiguredManualDestinations()
+                : false,
         ]);
+    }
+
+    public function manualPayment(Request $request, Payment $payment): View
+    {
+        $this->assertSiswaOwnsPayment($request, $payment);
+        abort_if($payment->isLunas(), 403, 'Tagihan sudah lunas.');
+
+        $payment->load(['fee', 'siswa.cabang']);
+
+        $banks = collect(config('payment_manual.banks', []))
+            ->filter(fn (array $b) => filled($b['account_number'] ?? null))
+            ->all();
+
+        $ewallets = collect(config('payment_manual.ewallets', []))
+            ->filter(fn (array $e) => filled($e['account_id'] ?? null))
+            ->all();
+
+        $qrisRelative = config('payment_manual.qris.public_path', 'images/payment/qris.svg');
+        $qrisPath = public_path($qrisRelative);
+        $qrisUrl = is_file($qrisPath) ? asset($qrisRelative) : null;
+
+        return view('modules.pembayaran.manual-siswa', [
+            'payment' => $payment,
+            'manualBanks' => $banks,
+            'manualEwallets' => $ewallets,
+            'qrisUrl' => $qrisUrl,
+            'hasAnyManualDestination' => count($banks) > 0 || count($ewallets) > 0 || $qrisUrl !== null,
+        ]);
+    }
+
+    public function exportRingkasanPdf(Request $request): Response
+    {
+        $user = $request->user();
+        abort_unless($user && $user->hasAnyRole(['super_admin', 'admin_cabang']), 403);
+
+        $payload = $this->reports->ringkasanPayload($request);
+        $name = 'pembayaran-ringkasan-'.now()->format('Y-m-d-His').'.pdf';
+
+        return Pdf::loadView('exports.pembayaran-ringkasan-pdf', $payload)
+            ->setPaper('a4', 'landscape')
+            ->download($name);
+    }
+
+    public function exportRingkasanExcel(Request $request): BinaryFileResponse
+    {
+        $user = $request->user();
+        abort_unless($user && $user->hasAnyRole(['super_admin', 'admin_cabang']), 403);
+
+        $payload = $this->reports->ringkasanPayload($request);
+        $name = 'pembayaran-ringkasan-'.now()->format('Y-m-d-His').'.xlsx';
+
+        return Excel::download(new PembayaranRingkasanExport($payload), $name);
+    }
+
+    public function exportOutstandingPdf(Request $request): Response
+    {
+        $user = $request->user();
+        abort_unless($user && $user->hasAnyRole(['super_admin', 'admin_cabang']), 403);
+
+        $payload = $this->reports->outstandingPayloadForPdf($request);
+        $name = 'pembayaran-outstanding-'.now()->format('Y-m-d-His').'.pdf';
+
+        return Pdf::loadView('exports.pembayaran-outstanding-pdf', $payload)
+            ->setPaper('a4', 'landscape')
+            ->download($name);
+    }
+
+    public function exportOutstandingExcel(Request $request): BinaryFileResponse
+    {
+        $user = $request->user();
+        abort_unless($user && $user->hasAnyRole(['super_admin', 'admin_cabang']), 403);
+
+        $rows = $this->reports->outstandingForExport($request)->map(function (Payment $p) {
+            $m = $this->reports->agingMeta($p);
+
+            return [
+                'payment' => $p,
+                'aging_hari' => $m['hari_telat'],
+                'aging_label' => $m['label'],
+            ];
+        });
+
+        $name = 'pembayaran-outstanding-'.now()->format('Y-m-d-His').'.xlsx';
+
+        return Excel::download(new PembayaranOutstandingExport($rows), $name);
     }
 
     public function snapToken(Request $request, Payment $payment): JsonResponse
@@ -65,8 +167,7 @@ class PembayaranController extends Controller
             return response()->json(['message' => 'Hanya akun siswa yang dapat membayar tagihan ini.'], 403);
         }
 
-        $siswaId = Siswa::query()->where('user_id', $user->id)->value('id')
-            ?? Siswa::query()->where('email', $user->email)->value('id');
+        $siswaId = $this->siswaIdForAuthenticatedStudent($request);
 
         if (! $siswaId || (int) $payment->student_id !== (int) $siswaId) {
             return response()->json(['message' => 'Tagihan ini bukan milik Anda. Pastikan profil siswa terhubung ke akun (user_id / email).'], 403);
@@ -103,8 +204,7 @@ class PembayaranController extends Controller
             return response()->json(['message' => 'Tidak diizinkan.'], 403);
         }
 
-        $siswaId = Siswa::query()->where('user_id', $user->id)->value('id')
-            ?? Siswa::query()->where('email', $user->email)->value('id');
+        $siswaId = $this->siswaIdForAuthenticatedStudent($request);
 
         if (! $siswaId || (int) $payment->student_id !== (int) $siswaId) {
             return response()->json(['message' => 'Tagihan ini bukan milik Anda.'], 403);
@@ -245,5 +345,36 @@ class PembayaranController extends Controller
         abort_unless($cabangId, 403);
         $payment->loadMissing('siswa');
         abort_unless((int) $payment->siswa?->cabang_id === (int) $cabangId, 403);
+    }
+
+    private function siswaIdForAuthenticatedStudent(Request $request): ?int
+    {
+        $user = $request->user();
+        if (! $user || ! $user->hasRole('siswa')) {
+            return null;
+        }
+
+        $id = Siswa::query()->where('user_id', $user->id)->value('id')
+            ?? Siswa::query()->where('email', $user->email)->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    private function assertSiswaOwnsPayment(Request $request, Payment $payment): void
+    {
+        $siswaId = $this->siswaIdForAuthenticatedStudent($request);
+        abort_unless($siswaId !== null && (int) $payment->student_id === $siswaId, 403, 'Tagihan ini bukan milik Anda.');
+    }
+
+    private function siswaHasConfiguredManualDestinations(): bool
+    {
+        $banks = collect(config('payment_manual.banks', []))
+            ->contains(fn (array $b) => filled($b['account_number'] ?? null));
+        $ewallets = collect(config('payment_manual.ewallets', []))
+            ->contains(fn (array $e) => filled($e['account_id'] ?? null));
+        $qrisRelative = config('payment_manual.qris.public_path', 'images/payment/qris.svg');
+        $qrisOk = is_file(public_path($qrisRelative));
+
+        return $banks || $ewallets || $qrisOk;
     }
 }
