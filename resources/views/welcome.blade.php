@@ -20,12 +20,12 @@
                 <a href="{{ route('landing') }}" class="flex items-center gap-2">
                     <img src="{{ asset('image/logo-bimbel.png') }}" alt="Logo Bimbel" class="h-16 w-auto">
                 </a>
-                <nav class="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
-                    <a href="#hero" @click.prevent="scrollToSection('hero')" class="hover:text-blue-700">Beranda</a>
-                    <a href="#about" @click.prevent="scrollToSection('about')" class="hover:text-blue-700">Apa Itu Bimbel</a>
-                    <a href="#features" @click.prevent="scrollToSection('features')" class="hover:text-blue-700">Keunggulan</a>
-                    <a href="#services" @click.prevent="scrollToSection('services')" class="hover:text-blue-700">Layanan</a>
-                    <a href="#faq" @click.prevent="scrollToSection('faq')" class="hover:text-blue-700">FAQ</a>
+                <nav class="hidden items-center gap-1 text-sm font-semibold text-slate-600 md:flex" aria-label="Navigasi utama desktop">
+                    <a href="#hero" @click.prevent="scrollToSection('hero')" class="rounded-lg px-3 py-2 transition hover:bg-blue-50 hover:text-blue-800">Beranda</a>
+                    <a href="#about" @click.prevent="scrollToSection('about')" class="rounded-lg px-3 py-2 transition hover:bg-blue-50 hover:text-blue-800">Apa Itu Bimbel</a>
+                    <a href="#features" @click.prevent="scrollToSection('features')" class="rounded-lg px-3 py-2 transition hover:bg-blue-50 hover:text-blue-800">Keunggulan</a>
+                    <a href="#services" @click.prevent="scrollToSection('services')" class="rounded-lg px-3 py-2 transition hover:bg-blue-50 hover:text-blue-800">Layanan</a>
+                    <a href="#faq" @click.prevent="scrollToSection('faq')" class="rounded-lg px-3 py-2 transition hover:bg-blue-50 hover:text-blue-800">FAQ</a>
                 </nav>
                 <div class="hidden items-center gap-3 md:flex">
                     @auth
@@ -34,40 +34,153 @@
                         <a href="{{ route('login') }}" class="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">Login</a>
                     @endauth
                 </div>
-                <button @click="mobileMenu = true" class="rounded-lg border border-blue-100 p-2 text-blue-700 md:hidden">
-                    <span class="sr-only">Open menu</span>
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6h16M4 12h16M4 18h16"/></svg>
-                </button>
-            </div>
-            <div x-show="mobileMenu" x-cloak class="fixed inset-0 z-50 md:hidden">
-                <div x-show="mobileMenu" x-transition.opacity.duration.250ms class="absolute inset-0 bg-slate-900/40" @click="mobileMenu = false"></div>
-                <aside
-                    x-show="mobileMenu"
-                    x-transition:enter="transform transition ease-out duration-300"
-                    x-transition:enter-start="-translate-x-full"
-                    x-transition:enter-end="translate-x-0"
-                    x-transition:leave="transform transition ease-in duration-250"
-                    x-transition:leave-start="translate-x-0"
-                    x-transition:leave-end="-translate-x-full"
-                    class="absolute left-0 top-0 h-full w-[70vw] max-w-sm bg-white px-5 py-5 shadow-2xl"
+                <button
+                    type="button"
+                    @click="mobileMenu = true"
+                    :aria-expanded="mobileMenu"
+                    aria-controls="landing-mobile-drawer"
+                    aria-label="Buka menu navigasi"
+                    class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/80 hover:text-blue-800 md:hidden"
                 >
-                    <div class="mb-5 flex items-center justify-between">
-                        <img src="{{ asset('image/logo-bimbel.png') }}" alt="Logo Bimbel" class="h-9 w-auto">
-                        <button @click="mobileMenu = false" class="rounded-lg border border-blue-100 px-2 py-1 text-sm text-blue-700">Tutup</button>
-                    </div>
-                    <div class="flex flex-col gap-4 text-sm font-medium text-slate-700">
-                        <a @click.prevent="mobileMenu = false; scrollToSection('hero')" href="#hero">Beranda</a>
-                        <a @click.prevent="mobileMenu = false; scrollToSection('about')" href="#about">Apa Itu Bimbel</a>
-                        <a @click.prevent="mobileMenu = false; scrollToSection('features')" href="#features">Keunggulan</a>
-                        <a @click.prevent="mobileMenu = false; scrollToSection('services')" href="#services">Layanan</a>
-                        <a @click.prevent="mobileMenu = false; scrollToSection('faq')" href="#faq">FAQ</a>
-                    </div>
-                </aside>
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+                    </svg>
+                </button>
             </div>
         </header>
 
+        {{-- Drawer di luar <header>: backdrop-blur/sticky header membuat fixed anak terikat → tinggi tidak penuh --}}
+        <div
+            id="landing-mobile-drawer"
+            x-show="mobileMenu"
+            x-cloak
+            class="fixed inset-0 z-[100] md:hidden"
+            style="height: 100dvh; min-height: 100dvh;"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="landing-drawer-title"
+        >
+            <div
+                x-show="mobileMenu"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+                style="height: 100dvh; min-height: 100dvh;"
+                @click="mobileMenu = false"
+                aria-hidden="true"
+            ></div>
+
+            <aside
+                x-show="mobileMenu"
+                x-transition:enter="transform transition ease-out duration-300"
+                x-transition:enter-start="-translate-x-full"
+                x-transition:enter-end="translate-x-0"
+                x-transition:leave="transform transition ease-in duration-200"
+                x-transition:leave-start="translate-x-0"
+                x-transition:leave-end="-translate-x-full"
+                @click.stop
+                class="absolute left-0 top-0 flex w-[min(100%,19rem)] flex-col border-r border-white/10 bg-gradient-to-b from-blue-950 via-blue-900 to-slate-950 shadow-2xl shadow-black/40"
+                style="height: 100dvh; min-height: 100dvh; max-height: 100dvh;"
+            >
+                <div class="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
+                    <a href="{{ route('landing') }}" class="flex shrink-0 items-center rounded-lg bg-white px-2.5 py-1.5 shadow-md ring-1 ring-white/30" @click="mobileMenu = false">
+                        <img src="{{ asset('image/logo-bimbel.png') }}" alt="eBimbel" class="h-7 w-auto">
+                    </a>
+                    <button
+                        type="button"
+                        @click="mobileMenu = false"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20"
+                        aria-label="Tutup menu"
+                    >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <p id="landing-drawer-title" class="sr-only">Menu navigasi</p>
+                <nav class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4" aria-label="Navigasi utama">
+                    <p class="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.22em] text-blue-200/70">Menu</p>
+                    <ul class="flex flex-col gap-0.5">
+                        <li>
+                            <a
+                                href="#hero"
+                                @click.prevent="mobileMenu = false; scrollToSection('hero')"
+                                class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                            >
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/30 text-blue-100 ring-1 ring-white/10">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
+                                </span>
+                                Beranda
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="#about"
+                                @click.prevent="mobileMenu = false; scrollToSection('about')"
+                                class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-blue-50/95 transition hover:bg-white/10 hover:text-white"
+                            >
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-blue-100 ring-1 ring-white/5">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+                                </span>
+                                Apa Itu Bimbel
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="#features"
+                                @click.prevent="mobileMenu = false; scrollToSection('features')"
+                                class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-blue-50/95 transition hover:bg-white/10 hover:text-white"
+                            >
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-blue-100 ring-1 ring-white/5">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/></svg>
+                                </span>
+                                Keunggulan
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="#services"
+                                @click.prevent="mobileMenu = false; scrollToSection('services')"
+                                class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-blue-50/95 transition hover:bg-white/10 hover:text-white"
+                            >
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-blue-100 ring-1 ring-white/5">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.184 2.94-.335.787-.5 1.25-.5 1.858 0 .607.165 1.071.5 1.858.397.904 1.184 1.846 1.184 2.94v4.25M20.25 14.15c-1.5-.75-3.75-1.5-7.5-1.5s-6 1.5-7.5 1.5M20.25 14.15V9.75M3.75 14.15v4.25c0 1.094.787 2.036 1.184 2.94.335.787.5 1.25.5 1.858 0 .607-.165 1.071-.5 1.858-.397.904-1.184 1.846-1.184 2.94v4.25M3.75 14.15c1.5-.75 3.75-1.5 7.5-1.5s6 1.5 7.5 1.5M3.75 14.15V9.75"/></svg>
+                                </span>
+                                Layanan
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="#faq"
+                                @click.prevent="mobileMenu = false; scrollToSection('faq')"
+                                class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-blue-50/95 transition hover:bg-white/10 hover:text-white"
+                            >
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-blue-100 ring-1 ring-white/5">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg>
+                                </span>
+                                FAQ
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+
+                <div class="mt-auto shrink-0 border-t border-white/10 bg-black/25 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                    @auth
+                        <a href="{{ route('dashboard') }}" @click="mobileMenu = false" class="flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-bold text-blue-900 shadow-lg transition hover:bg-blue-50">Dashboard</a>
+                    @else
+                        <a href="{{ route('login') }}" @click="mobileMenu = false" class="flex w-full items-center justify-center rounded-xl bg-blue-500 px-4 py-3 text-sm font-bold text-white shadow-lg ring-1 ring-white/20 transition hover:bg-blue-400">Login</a>
+                    @endauth
+                </div>
+            </aside>
+        </div>
+
         <main>
-            <section id="hero" class="bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500">
+            <section id="hero" class="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-900">
                 <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 text-white sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-20">
                     <div class="space-y-6">
                         <p class="inline-flex rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide">Solusi Modern Mengelola Bimbel</p>
@@ -82,7 +195,6 @@
                         <img src="{{ asset('image/hero.png') }}" alt="Hero Bimbel" class="mx-auto w-full rounded-xl">
                     </div>
                 </div>
-            </div>
             </section>
 
             <section id="about" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
@@ -183,7 +295,7 @@
                 </div>
             </section>
 
-            <section class="bg-blue-900 py-14 text-white">
+            <section class="bg-gradient-to-br from-blue-800 to-blue-900 py-14 text-white">
                 <div class="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
                     <img src="{{ asset('image/logo-bimbel.png') }}" alt="Logo eBimbel" class="mx-auto mb-4 h-14 w-auto">
                     <h2 class="text-3xl font-bold">Satu aplikasi untuk semua kebutuhan bimbel Anda</h2>
@@ -192,25 +304,46 @@
             </section>
 
             <section id="faq" class="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8" x-data="{active: 0}">
-                <h2 class="text-center text-3xl font-bold text-blue-950">Hal-Hal yang Sering Ditanyakan</h2>
-                <div class="mt-8 space-y-3">
-                    @foreach ([
-                        ['q' => 'Apakah bisa dipakai multi cabang?', 'a' => 'Bisa. Data dan laporan dapat dipisah per cabang namun tetap terpusat.'],
-                        ['q' => 'Apakah ada notifikasi WhatsApp?', 'a' => 'Ya, sistem siap integrasi dengan Fonnte via queue.'],
-                        ['q' => 'Apakah dashboard responsif di mobile?', 'a' => 'Ya, layout dirancang mobile-first dan tetap nyaman di desktop.'],
-                    ] as $index => $faq)
-                        <div class="overflow-hidden rounded-xl border border-blue-100 bg-white">
-                            <button @click="active = active === {{ $index }} ? -1 : {{ $index }}" class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold text-blue-900">
-                                <span>{{ $faq['q'] }}</span>
-                                <span x-text="active === {{ $index }} ? '-' : '+'"></span>
-                            </button>
-                            <div x-show="active === {{ $index }}" x-transition class="border-t border-blue-50 px-5 py-4 text-sm text-slate-600">
-                                {{ $faq['a'] }}
-                            </div>
-                        </div>
-                    @endforeach
+    <h2 class="text-center text-3xl font-bold text-blue-950">Pertanyaan yang Sering Diajukan</h2>
+    <div class="mt-8 space-y-3">
+        @foreach ([
+            [
+                'q' => 'Apakah eBimbelPro mendukung multi cabang?',
+                'a' => 'Ya, eBimbelPro dirancang untuk mendukung banyak cabang dengan pengelolaan data terpisah namun tetap terintegrasi dalam satu sistem pusat.'
+            ],
+            [
+                'q' => 'Bagaimana sistem presensi dilakukan?',
+                'a' => 'Presensi dilakukan langsung oleh tutor berdasarkan jadwal kelas, sehingga data kehadiran siswa tercatat secara real-time dan akurat.'
+            ],
+            [
+                'q' => 'Apakah tersedia fitur pembayaran online?',
+                'a' => 'Ya, sistem terintegrasi dengan Midtrans sehingga siswa dapat melakukan pembayaran secara online dengan berbagai metode seperti transfer bank dan e-wallet.'
+            ],
+            [
+                'q' => 'Apakah sistem menyediakan notifikasi otomatis?',
+                'a' => 'Ya, eBimbelPro mendukung notifikasi otomatis melalui WhatsApp untuk pengingat jadwal, tagihan, dan konfirmasi pembayaran.'
+            ],
+            [
+                'q' => 'Apakah dashboard dapat diakses melalui perangkat mobile?',
+                'a' => 'Tentu, sistem dirancang responsif dan mobile-friendly sehingga dapat digunakan dengan nyaman melalui smartphone maupun desktop.'
+            ],
+            [
+                'q' => 'Siapa saja yang dapat menggunakan sistem ini?',
+                'a' => 'Sistem ini memiliki beberapa role seperti Super Admin, Admin Cabang, Tutor, dan Siswa yang masing-masing memiliki akses sesuai kebutuhan.'
+            ],
+        ] as $index => $faq)
+            <div class="overflow-hidden rounded-xl border border-blue-100 bg-white">
+                <button @click="active = active === {{ $index }} ? -1 : {{ $index }}" class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold text-blue-900">
+                    <span>{{ $faq['q'] }}</span>
+                    <span x-text="active === {{ $index }} ? '-' : '+'"></span>
+                </button>
+                <div x-show="active === {{ $index }}" x-transition class="border-t border-blue-50 px-5 py-4 text-sm text-slate-600">
+                    {{ $faq['a'] }}
                 </div>
-            </section>
+            </div>
+        @endforeach
+    </div>
+</section>
         </main>
 
         <footer class="bg-[#060b16] py-10 text-slate-300">

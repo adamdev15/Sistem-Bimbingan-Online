@@ -30,6 +30,7 @@ class Payment extends Model
     ];
 
     protected $casts = [
+        'nominal' => 'decimal:2',
         'tanggal_bayar' => 'date',
         'due_date' => 'date',
         'paid_at' => 'datetime',

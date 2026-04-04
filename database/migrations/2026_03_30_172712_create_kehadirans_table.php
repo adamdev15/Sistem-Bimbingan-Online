@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('student_id')->constrained('siswas');
             $table->foreignId('jadwal_id')->constrained('jadwals');
             $table->date('tanggal');
-            $table->enum('status', ['hadir', 'izin', 'alfa'])->default('hadir');
+            $table->enum('status', ['hadir', 'izin', 'alfa', 'sakit'])->default('hadir');
             $table->timestamps();
             $table->unique(['student_id', 'jadwal_id', 'tanggal']);
         });

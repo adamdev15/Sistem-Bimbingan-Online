@@ -3,9 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Siswa extends Model
@@ -43,5 +44,16 @@ class Siswa extends Model
     public function kehadirans(): HasMany
     {
         return $this->hasMany(Kehadiran::class, 'student_id');
+    }
+
+    /**
+     * Kelas / sesi (jadwal) yang diikuti siswa (pivot student_class).
+     *
+     * @return BelongsToMany<Jadwal, $this>
+     */
+    public function jadwals(): BelongsToMany
+    {
+        return $this->belongsToMany(Jadwal::class, 'student_class', 'student_id', 'jadwal_id')
+            ->withTimestamps();
     }
 }

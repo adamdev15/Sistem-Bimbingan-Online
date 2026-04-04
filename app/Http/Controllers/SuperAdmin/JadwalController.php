@@ -5,11 +5,13 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\Cabang;
 use App\Models\Jadwal;
+use App\Models\Siswa;
 use App\Services\Notifications\InAppBellNotifier;
 use App\Services\SuperAdmin\ManagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class JadwalController extends Controller
@@ -30,7 +32,10 @@ class JadwalController extends Controller
     public function store(Request $request): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
-            'tutor_id' => ['required', 'exists:tutors,id'],
+            'tutor_id' => [
+                'required',
+                Rule::exists('tutors', 'id')->where(fn ($q) => $q->where('cabang_id', $request->integer('cabang_id'))),
+            ],
             'cabang_id' => ['required', 'exists:cabangs,id'],
             'mata_pelajaran_id' => ['required', 'exists:mata_pelajarans,id'],
             'hari' => ['required', 'in:senin,selasa,rabu,kamis,jumat,sabtu,minggu'],
@@ -49,7 +54,10 @@ class JadwalController extends Controller
     {
         $this->guardCabangScope($jadwal->cabang_id);
         $data = $request->validate([
-            'tutor_id' => ['required', 'exists:tutors,id'],
+            'tutor_id' => [
+                'required',
+                Rule::exists('tutors', 'id')->where(fn ($q) => $q->where('cabang_id', $request->integer('cabang_id'))),
+            ],
             'cabang_id' => ['required', 'exists:cabangs,id'],
             'mata_pelajaran_id' => ['required', 'exists:mata_pelajarans,id'],
             'hari' => ['required', 'in:senin,selasa,rabu,kamis,jumat,sabtu,minggu'],
@@ -68,6 +76,51 @@ class JadwalController extends Controller
         $jadwal->delete();
 
         return $this->respondMutation($request, 'Jadwal berhasil dihapus.');
+    }
+
+    public function peserta(Jadwal $jadwal): View
+    {
+        $this->guardCabangScope($jadwal->cabang_id);
+        $jadwal->load(['cabang', 'mataPelajaran', 'tutor', 'siswas']);
+
+        $siswaCandidates = Siswa::query()
+            ->where('cabang_id', $jadwal->cabang_id)
+            ->where('status', 'aktif')
+            ->orderBy('nama')
+            ->get(['id', 'nama']);
+
+        return view('modules.jadwal.peserta', compact('jadwal', 'siswaCandidates'));
+    }
+
+    public function updatePeserta(Request $request, Jadwal $jadwal): RedirectResponse
+    {
+        $this->guardCabangScope($jadwal->cabang_id);
+
+        $data = $request->validate([
+            'student_ids' => ['nullable', 'array'],
+            'student_ids.*' => ['integer', 'exists:siswas,id'],
+        ]);
+
+        $ids = collect($data['student_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids !== []) {
+            $validCount = Siswa::query()
+                ->whereIn('id', $ids)
+                ->where('cabang_id', $jadwal->cabang_id)
+                ->count();
+
+            if ($validCount !== count($ids)) {
+                return back()->withErrors(['student_ids' => 'Semua siswa harus dari cabang yang sama dengan kelas.'])->withInput();
+            }
+        }
+
+        $jadwal->siswas()->sync($ids);
+
+        return back()->with('status', 'Peserta kelas diperbarui.');
     }
 
     private function respondMutation(Request $request, string $message, ?Jadwal $jadwal = null): RedirectResponse|JsonResponse

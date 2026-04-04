@@ -1,11 +1,267 @@
-<x-layouts.dashboard-shell title="Siswa — eBimbel">
-<div x-data="{createOpen:false,editOpen:false,deleteOpen:false,edit:{id:null,nama:'',email:'',jenis_kelamin:'laki_laki',nik:'',no_hp:'',alamat:'',cabang_id:'',status:'aktif'},removeId:null}">
-<x-module-page-header title="Data siswa" description="Pendaftaran, kelas, orang tua/wali, dan status akademik."><x-slot name="actions"><a href="{{ route('siswa.export.csv', request()->query()) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Ekspor CSV</a><button @click="createOpen=true" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700">Tambah siswa</button></x-slot></x-module-page-header>
-<form method="GET" class="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama / email / NIK" class="min-w-[220px] rounded-lg border border-slate-200 px-3 py-2 text-sm"><select name="cabang_id" class="rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Cabang — semua</option>@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}" @selected(($filters['cabang_id'] ?? null) == $cabang->id)>{{ $cabang->nama_cabang }}</option>@endforeach</select><button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Terapkan</button></form>
-<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm"><thead class="bg-slate-50"><tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-500"><th class="px-4 py-3">NIS</th><th class="px-4 py-3">Nama</th><th class="px-4 py-3">Cabang</th><th class="px-4 py-3">No HP</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-100">@forelse ($siswas as $siswa)<tr><td class="px-4 py-3 font-mono text-xs text-slate-600">SIS-{{ str_pad((string) $siswa->id, 4, '0', STR_PAD_LEFT) }}</td><td class="px-4 py-3 font-medium text-slate-900">{{ $siswa->nama }}</td><td class="px-4 py-3 text-slate-600">{{ optional($siswa->cabang)->nama_cabang }}</td><td class="px-4 py-3 text-slate-600">{{ $siswa->no_hp }}</td><td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $siswa->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800' }}">{{ ucfirst($siswa->status) }}</span></td><td class="px-4 py-3 text-right space-x-3"><a href="{{ route('siswa.show', $siswa) }}" class="text-blue-600 hover:underline">Profil</a><button @click="editOpen=true; edit={id:{{ $siswa->id }},nama:@js($siswa->nama),email:@js($siswa->email),jenis_kelamin:@js($siswa->jenis_kelamin),nik:@js($siswa->nik),no_hp:@js($siswa->no_hp),alamat:@js($siswa->alamat),cabang_id:'{{ $siswa->cabang_id }}',status:@js($siswa->status)}" type="button" class="text-blue-600 hover:underline">Edit</button><button @click="deleteOpen=true; removeId={{ $siswa->id }}" type="button" class="text-rose-600 hover:underline">Delete</button></td></tr>@empty<tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">Belum ada data siswa.</td></tr>@endforelse</tbody></table></div><div class="px-4 py-3">{{ $siswas->links() }}</div></div>
+<x-layouts.dashboard-shell title="Siswa - eBimbel">
+    <div
+        x-data="{
+            createOpen: false,
+            editOpen: false,
+            deleteOpen: false,
+            edit: {
+                id: null,
+                nama: '',
+                email: '',
+                jenis_kelamin: 'laki_laki',
+                nik: '',
+                no_hp: '',
+                alamat: '',
+                cabang_id: '',
+                status: 'aktif',
+            },
+            removeId: null,
+        }"
+        class="space-y-6"
+    >
+        <x-module-page-header title="Data siswa" description="Pendaftaran siswa, cabang, dan akun login portal siswa (email unik di sistem).">
+            <x-slot name="actions">
+                <a href="{{ route('siswa.export.csv', request()->query()) }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-900/5 transition hover:bg-slate-50">Ekspor CSV</a>
+                <button @click="createOpen = true" type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 transition hover:bg-blue-700">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    Tambah siswa
+                </button>
+            </x-slot>
+        </x-module-page-header>
 
-<div x-show="createOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="createOpen=false" class="w-full max-w-2xl rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Tambah Siswa</h3><form method="POST" action="{{ route('siswa.store') }}" class="mt-4 grid gap-3">@csrf<input name="nama" placeholder="Nama" class="rounded-lg border px-3 py-2"><input name="email" type="email" placeholder="Email" class="rounded-lg border px-3 py-2"><select name="jenis_kelamin" class="rounded-lg border px-3 py-2"><option value="laki_laki">Laki-laki</option><option value="perempuan">Perempuan</option></select><input name="nik" placeholder="NIK" class="rounded-lg border px-3 py-2"><input name="no_hp" placeholder="No HP" class="rounded-lg border px-3 py-2"><textarea name="alamat" placeholder="Alamat" class="rounded-lg border px-3 py-2"></textarea><select name="cabang_id" class="rounded-lg border px-3 py-2">@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>@endforeach</select><select name="status" class="rounded-lg border px-3 py-2"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select><div class="flex justify-end gap-2"><button type="button" @click="createOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-blue-600 px-3 py-2 text-white">Simpan</button></div></form></div></div>
-<div x-show="editOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="editOpen=false" class="w-full max-w-2xl rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Edit Siswa</h3><form method="POST" :action="`{{ url('/siswa') }}/${edit.id}`" class="mt-4 grid gap-3">@csrf @method('PUT')<input name="nama" x-model="edit.nama" class="rounded-lg border px-3 py-2"><input name="email" x-model="edit.email" class="rounded-lg border px-3 py-2"><select name="jenis_kelamin" x-model="edit.jenis_kelamin" class="rounded-lg border px-3 py-2"><option value="laki_laki">Laki-laki</option><option value="perempuan">Perempuan</option></select><input name="nik" x-model="edit.nik" class="rounded-lg border px-3 py-2"><input name="no_hp" x-model="edit.no_hp" class="rounded-lg border px-3 py-2"><textarea name="alamat" x-model="edit.alamat" class="rounded-lg border px-3 py-2"></textarea><select name="cabang_id" x-model="edit.cabang_id" class="rounded-lg border px-3 py-2">@foreach($cabangs as $cabang)<option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>@endforeach</select><select name="status" x-model="edit.status" class="rounded-lg border px-3 py-2"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select><div class="flex justify-end gap-2"><button type="button" @click="editOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-blue-600 px-3 py-2 text-white">Update</button></div></form></div></div>
-<div x-show="deleteOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"><div @click.outside="deleteOpen=false" class="w-full max-w-md rounded-xl bg-white p-6"><h3 class="text-lg font-semibold">Hapus Siswa</h3><form method="POST" :action="`{{ url('/siswa') }}/${removeId}`" class="mt-4 flex justify-end gap-2">@csrf @method('DELETE')<button type="button" @click="deleteOpen=false" class="rounded border px-3 py-2">Batal</button><button class="rounded bg-rose-600 px-3 py-2 text-white">Hapus</button></form></div></div>
-</div>
+        @if (session('status'))
+            <p class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</p>
+        @endif
+
+        <form method="GET" class="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cari</label>
+                <input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama / email / NIK" class="mt-1.5 min-w-[220px] rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cabang</label>
+                <select name="cabang_id" class="mt-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                    <option value="">Semua cabang</option>
+                    @foreach ($cabangs as $cabang)
+                        <option value="{{ $cabang->id }}" @selected(($filters['cabang_id'] ?? null) == $cabang->id)>{{ $cabang->nama_cabang }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">Terapkan</button>
+        </form>
+
+        <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50/90 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3.5">NIS</th>
+                            <th class="px-4 py-3.5">Nama</th>
+                            <th class="px-4 py-3.5">Cabang</th>
+                            <th class="px-4 py-3.5">No HP</th>
+                            <th class="px-4 py-3.5">Status</th>
+                            <th class="px-4 py-3.5 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-700">
+                        @forelse ($siswas as $siswa)
+                            <tr class="transition hover:bg-slate-50/80">
+                                <td class="px-4 py-3.5 font-mono text-xs text-slate-600">SIS-{{ str_pad((string) $siswa->id, 4, '0', STR_PAD_LEFT) }}</td>
+                                <td class="px-4 py-3.5 font-medium text-slate-900">{{ $siswa->nama }}</td>
+                                <td class="px-4 py-3.5 text-slate-600">{{ optional($siswa->cabang)->nama_cabang }}</td>
+                                <td class="px-4 py-3.5 text-slate-600">{{ $siswa->no_hp }}</td>
+                                <td class="px-4 py-3.5">
+                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $siswa->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800' }}">{{ ucfirst($siswa->status) }}</span>
+                                </td>
+                                <td class="px-4 py-3.5 text-right">
+                                    <div class="flex flex-wrap items-center justify-end gap-3">
+                                        <a href="{{ route('siswa.show', $siswa) }}" class="text-sm font-semibold text-slate-600 hover:text-slate-900">Profil</a>
+                                        <button
+                                            type="button"
+                                            @click="editOpen = true; edit = { id: {{ $siswa->id }}, nama: @js($siswa->nama), email: @js($siswa->email), jenis_kelamin: @js($siswa->jenis_kelamin), nik: @js($siswa->nik), no_hp: @js($siswa->no_hp), alamat: @js($siswa->alamat), cabang_id: '{{ $siswa->cabang_id }}', status: @js($siswa->status) }"
+                                            class="text-sm font-semibold text-blue-600 hover:text-blue-800"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button type="button" @click="deleteOpen = true; removeId = {{ $siswa->id }}" class="text-sm font-semibold text-rose-600 hover:text-rose-800">Hapus</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-4 py-12 text-center text-slate-500">Belum ada data siswa.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="border-t border-slate-100 bg-slate-50/50 px-4 py-3">{{ $siswas->links() }}</div>
+        </div>
+
+        {{-- Modal: create --}}
+        <div x-show="createOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
+            <div @click.outside="createOpen = false" @keydown.escape.window="createOpen = false" class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold tracking-tight text-slate-900">Tambah siswa</h3>
+                        <p class="mt-1 text-sm text-slate-500">Email dipakai untuk login portal siswa dan harus belum terdaftar di tabel pengguna.</p>
+                    </div>
+                    <button type="button" @click="createOpen = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <form method="POST" action="{{ route('siswa.store') }}" class="mt-6 space-y-5">
+                    @csrf
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Nama</label>
+                            <input name="nama" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Email (login)</label>
+                            <input name="email" type="email" required autocomplete="email" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Kata sandi</label>
+                            <input name="login_password" type="password" required autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Konfirmasi kata sandi</label>
+                            <input name="login_password_confirmation" type="password" required autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Jenis kelamin</label>
+                            <select name="jenis_kelamin" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                <option value="">Pilih jenis kelamin</option>
+                                <option value="laki_laki">Laki-laki</option>
+                                <option value="perempuan">Perempuan</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">NIK</label>
+                            <input name="nik" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">No HP</label>
+                            <input name="no_hp" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Cabang</label>
+                            <select name="cabang_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                @foreach ($cabangs as $cabang)
+                                    <option value="">Pilih cabang</option>
+                                    <option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Alamat</label>
+                            <textarea name="alamat" required rows="2" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Status</label>
+                            <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                <option value="">Pilih status</option>
+                            <option value="aktif">Aktif</option>
+                                <option value="nonaktif">Nonaktif</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
+                        <button type="button" @click="createOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+                        <button type="submit" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Modal: edit --}}
+        <div x-show="editOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
+            <div @click.outside="editOpen = false" @keydown.escape.window="editOpen = false" class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold tracking-tight text-slate-900">Edit siswa</h3>
+                        <p class="mt-1 text-sm text-slate-500">Perubahan email akan mengikuti akun login siswa. Kosongkan kata sandi jika tidak diubah.</p>
+                    </div>
+                    <button type="button" @click="editOpen = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <form method="POST" :action="`{{ url('/siswa') }}/${edit.id}`" class="mt-6 space-y-5">
+                    @csrf
+                    @method('PUT')
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Nama</label>
+                            <input name="nama" x-model="edit.nama" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Email (login)</label>
+                            <input name="email" type="email" x-model="edit.email" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Kata sandi baru (opsional)</label>
+                            <input name="login_password" type="password" autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Konfirmasi</label>
+                            <input name="login_password_confirmation" type="password" autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Jenis kelamin</label>
+                            <select name="jenis_kelamin" x-model="edit.jenis_kelamin" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                <option value="laki_laki">Laki-laki</option>
+                                <option value="perempuan">Perempuan</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">NIK</label>
+                            <input name="nik" x-model="edit.nik" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">No HP</label>
+                            <input name="no_hp" x-model="edit.no_hp" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Cabang</label>
+                            <select name="cabang_id" x-model="edit.cabang_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                @foreach ($cabangs as $cabang)
+                                    <option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Alamat</label>
+                            <textarea name="alamat" x-model="edit.alamat" required rows="2" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Status</label>
+                            <select name="status" x-model="edit.status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                <option value="aktif">Aktif</option>
+                                <option value="nonaktif">Nonaktif</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
+                        <button type="button" @click="editOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+                        <button type="submit" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">Perbarui</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Modal: delete --}}
+        <div x-show="deleteOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
+            <div @click.outside="deleteOpen = false" @keydown.escape.window="deleteOpen = false" class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
+                <h3 class="text-lg font-bold text-slate-900">Hapus siswa</h3>
+                <p class="mt-2 text-sm text-slate-600">Siswa dan akun login terkait akan dihapus.</p>
+                <form method="POST" :action="`{{ url('/siswa') }}/${removeId}`" class="mt-6 flex flex-wrap justify-end gap-2">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button" @click="deleteOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Hapus</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </x-layouts.dashboard-shell>

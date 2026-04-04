@@ -92,11 +92,20 @@ class MidtransService
         }
 
         $user = $siswa->user;
-        $email = $siswa->email ?: $user?->email ?: 'siswa@ebimbel.local';
-        $name = $siswa->nama ?: ($user?->name ?? 'Siswa');
+        $email = $siswa->email ?: $user?->email ?: 'siswa@example.com';
+        $name = trim((string) ($siswa->nama ?: ($user?->name ?? 'Siswa')));
+        if ($name === '') {
+            $name = 'Siswa';
+        }
+
+        $phone = preg_replace('/\D+/', '', (string) ($siswa->no_hp ?? ''));
+        if (strlen($phone) < 9) {
+            $phone = '081234567890';
+        }
 
         $itemName = $payment->fee?->nama_biaya ?? 'Pembayaran';
 
+        // Payload mengikuti contoh resmi Snap; hindari field non-standar (mis. callbacks) yang bisa ditolak API.
         $params = [
             'transaction_details' => [
                 'order_id' => $orderId,
@@ -104,7 +113,9 @@ class MidtransService
             ],
             'customer_details' => [
                 'first_name' => mb_substr($name, 0, 50),
+                'last_name' => '-',
                 'email' => $email,
+                'phone' => $phone,
             ],
             'item_details' => [
                 [
@@ -116,17 +127,14 @@ class MidtransService
             ],
         ];
 
-        $finish = url(config('midtrans.finish_redirect_path'));
-        $params['callbacks'] = [
-            'finish' => $finish,
-        ];
-
         try {
             $token = Snap::getSnapToken($params);
         } catch (\Throwable $e) {
             Log::error('Midtrans Snap gagal', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
 
-            throw new RuntimeException('Gagal membuat sesi pembayaran Midtrans. Coba lagi nanti.');
+            $hint = config('app.debug') ? ' '.$e->getMessage() : '';
+
+            throw new RuntimeException('Gagal menghubungi Midtrans (periksa Server Key sandbox/production dan koneksi).'.$hint);
         }
 
         return $token;
@@ -141,8 +149,12 @@ class MidtransService
     {
         $s = is_object($status) ? get_object_vars($status) : $status;
 
-        $transactionStatus = $s['transaction_status'] ?? null;
-        $fraud = $s['fraud_status'] ?? null;
+        $rawStatus = $s['transaction_status'] ?? null;
+        $transactionStatus = is_string($rawStatus) ? strtolower(trim($rawStatus)) : null;
+
+        $rawFraud = $s['fraud_status'] ?? null;
+        $fraud = is_string($rawFraud) ? strtolower(trim($rawFraud)) : null;
+
         $paymentType = $s['payment_type'] ?? null;
         $transactionId = $s['transaction_id'] ?? null;
 
@@ -153,12 +165,13 @@ class MidtransService
         $payment->forceFill([
             'midtrans_transaction_id' => is_string($transactionId) ? $transactionId : $payment->midtrans_transaction_id,
             'midtrans_payment_type' => is_string($paymentType) ? $paymentType : $payment->midtrans_payment_type,
-            'midtrans_transaction_status' => is_string($transactionStatus) ? $transactionStatus : $payment->midtrans_transaction_status,
+            'midtrans_transaction_status' => $transactionStatus ?? $payment->midtrans_transaction_status,
             'midtrans_payload' => $payload,
         ]);
 
         $shouldLunas = false;
 
+        // VA, QRIS, retail, dll. biasanya settlement; kartu kredit capture (bukan challenge).
         if ($transactionStatus === 'settlement') {
             $shouldLunas = true;
         } elseif ($transactionStatus === 'capture') {
@@ -170,8 +183,8 @@ class MidtransService
             $payment->paid_at = now();
         }
 
-        if (in_array($transactionStatus, ['expire', 'cancel', 'deny'], true)) {
-            $payment->midtrans_transaction_status = (string) $transactionStatus;
+        if ($transactionStatus !== null && in_array($transactionStatus, ['expire', 'cancel', 'deny'], true)) {
+            $payment->midtrans_transaction_status = $transactionStatus;
         }
 
         $payment->save();

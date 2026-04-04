@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -51,5 +52,16 @@ class Jadwal extends Model
     public function kehadirans(): HasMany
     {
         return $this->hasMany(Kehadiran::class);
+    }
+
+    /**
+     * Siswa terdaftar di kelas ini (pivot student_class).
+     *
+     * @return BelongsToMany<Siswa, $this>
+     */
+    public function siswas(): BelongsToMany
+    {
+        return $this->belongsToMany(Siswa::class, 'student_class', 'jadwal_id', 'student_id')
+            ->withTimestamps();
     }
 }

@@ -16,6 +16,7 @@ class Kehadiran extends Model
         'tutor_id',
         'tanggal',
         'status',
+        'created_by',
     ];
 
     protected $casts = [
@@ -35,5 +36,10 @@ class Kehadiran extends Model
     public function tutor(): BelongsTo
     {
         return $this->belongsTo(Tutor::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

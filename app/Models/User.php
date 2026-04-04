@@ -25,6 +25,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'email_verified_at',
     ];
 
     /**
@@ -78,5 +79,13 @@ class User extends Authenticatable
     public function bellNotifications(): HasMany
     {
         return $this->hasMany(UserNotification::class, 'user_id')->latest();
+    }
+
+    /**
+     * @return HasMany<Kehadiran, $this>
+     */
+    public function kehadiransCreated(): HasMany
+    {
+        return $this->hasMany(Kehadiran::class, 'created_by');
     }
 }

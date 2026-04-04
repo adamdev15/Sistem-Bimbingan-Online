@@ -11,7 +11,9 @@ use App\Models\Payment;
 use App\Models\Salary;
 use App\Models\Siswa;
 use App\Models\Tutor;
+use App\Models\User;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -289,7 +291,7 @@ class ManagementService
 
         $siswaBimbingan = (int) Siswa::query()
             ->where('status', 'aktif')
-            ->whereHas('kehadirans', fn ($k) => $k->whereHas('jadwal', fn ($j) => $j->where('tutor_id', $tutorId)))
+            ->whereHas('jadwals', fn ($j) => $j->where('tutor_id', $tutorId))
             ->count();
 
         $alfaHariIni = (int) Kehadiran::query()
@@ -331,8 +333,8 @@ class ManagementService
             ]);
 
         $jkRows = DB::table('siswas')
-            ->join('kehadirans', 'kehadirans.student_id', '=', 'siswas.id')
-            ->join('jadwals', 'jadwals.id', '=', 'kehadirans.jadwal_id')
+            ->join('student_class', 'student_class.student_id', '=', 'siswas.id')
+            ->join('jadwals', 'jadwals.id', '=', 'student_class.jadwal_id')
             ->where('jadwals.tutor_id', $tutorId)
             ->where('siswas.status', 'aktif')
             ->select('siswas.jenis_kelamin', DB::raw('COUNT(DISTINCT siswas.id) as c'))
@@ -405,7 +407,7 @@ class ManagementService
         return Siswa::query()
             ->with('cabang:id,nama_cabang')
             ->when($tutorId, function ($q) use ($tutorId) {
-                $q->whereHas('kehadirans', fn ($k) => $k->whereHas('jadwal', fn ($j) => $j->where('tutor_id', $tutorId)));
+                $q->whereHas('jadwals', fn ($j) => $j->where('tutor_id', $tutorId));
             }, fn ($q) => $q->whereRaw('1 = 0'))
             ->when($request->string('search')->toString(), function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -467,14 +469,12 @@ class ManagementService
             ->whereBetween('tanggal', [$startWeek->toDateString(), $endWeek->toDateString()])
             ->count();
 
-        $mapelDiikuti = (int) Jadwal::query()
-            ->whereHas('kehadirans', fn ($k) => $k->where('student_id', $siswaId))
-            ->count();
+        $mapelDiikuti = (int) (Siswa::query()->find($siswaId)?->jadwals()->count() ?? 0);
 
         $hariBesok = self::jadwalHariFromCarbon(Carbon::tomorrow());
         $jadwalBesok = Jadwal::query()
             ->where('hari', $hariBesok)
-            ->whereHas('kehadirans', fn ($k) => $k->where('student_id', $siswaId))
+            ->whereHas('siswas', fn ($s) => $s->where('siswas.id', $siswaId))
             ->with(['tutor:id,nama', 'cabang:id,nama_cabang', 'mataPelajaran:id,nama'])
             ->orderBy('jam_mulai')
             ->get();
@@ -546,13 +546,89 @@ class ManagementService
             return collect();
         }
 
-        return Jadwal::query()
+        $siswa = Siswa::query()->find($siswaId);
+        if (! $siswa) {
+            return collect();
+        }
+
+        return $siswa->jadwals()
             ->with('mataPelajaran:id,nama')
-            ->whereHas('kehadirans', fn ($k) => $k->where('student_id', $siswaId))
             ->join('mata_pelajarans as _mp', '_mp.id', '=', 'jadwals.mata_pelajaran_id')
             ->orderBy('_mp.nama')
             ->select('jadwals.*')
             ->get();
+    }
+
+    /**
+     * Opsi filter kelas untuk rekap presensi (super admin / admin cabang).
+     *
+     * @return SupportCollection<int, Jadwal>
+     */
+    public function presensiJadwalFilterOptionsForRekap(): SupportCollection
+    {
+        $cabangId = $this->actorCabangId();
+        $tutorId = $this->actorTutorId();
+
+        return Jadwal::query()
+            ->with(['mataPelajaran:id,nama', 'cabang:id,nama_cabang'])
+            ->when($tutorId, fn ($q) => $q->where('tutor_id', $tutorId))
+            ->when($cabangId && ! $tutorId, fn ($q) => $q->where('cabang_id', $cabangId))
+            ->orderByRaw("CASE hari WHEN 'senin' THEN 1 WHEN 'selasa' THEN 2 WHEN 'rabu' THEN 3 WHEN 'kamis' THEN 4 WHEN 'jumat' THEN 5 WHEN 'sabtu' THEN 6 WHEN 'minggu' THEN 7 ELSE 8 END")
+            ->orderBy('jam_mulai')
+            ->get();
+    }
+
+    /**
+     * Konteks form presensi tutor: kelas + tanggal + daftar peserta.
+     *
+     * @return array{jadwal: Jadwal, tanggal: CarbonInterface, rows: SupportCollection<int, array{siswa: Siswa, status_saat_ini: string}>, peserta_kosong: bool, ada_data_presensi: bool}|null
+     */
+    public function presensiTutorKelasContext(Request $request): ?array
+    {
+        if (! $request->filled('kelas_jadwal_id') || ! $request->filled('kelas_tanggal')) {
+            return null;
+        }
+
+        $jadwalId = $request->integer('kelas_jadwal_id');
+        $tanggal = $request->date('kelas_tanggal');
+
+        $jadwal = Jadwal::query()
+            ->with(['mataPelajaran', 'cabang', 'tutor'])
+            ->find($jadwalId);
+
+        if (! $jadwal) {
+            return null;
+        }
+
+        $tutorRecordId = $this->actorTutorId();
+        if ($tutorRecordId && (int) $jadwal->tutor_id !== (int) $tutorRecordId) {
+            return null;
+        }
+
+        $enrolled = $jadwal->siswas()->orderBy('nama')->get(['siswas.id', 'siswas.nama']);
+
+        $existing = Kehadiran::query()
+            ->where('jadwal_id', $jadwal->id)
+            ->whereDate('tanggal', $tanggal)
+            ->get()
+            ->keyBy('student_id');
+
+        $rows = $enrolled->map(function (Siswa $s) use ($existing) {
+            $k = $existing->get($s->id);
+
+            return [
+                'siswa' => $s,
+                'status_saat_ini' => $k?->status ?? 'hadir',
+            ];
+        });
+
+        return [
+            'jadwal' => $jadwal,
+            'tanggal' => $tanggal,
+            'rows' => $rows,
+            'peserta_kosong' => $enrolled->isEmpty(),
+            'ada_data_presensi' => $existing->isNotEmpty(),
+        ];
     }
 
     public function cabangIndex(Request $request): LengthAwarePaginator
@@ -560,6 +636,7 @@ class ManagementService
         $cabangId = $this->actorCabangId();
 
         return Cabang::query()
+            ->with('user:id,name,email')
             ->when($cabangId && ! Auth::user()?->hasRole('super_admin'), fn ($q) => $q->where('id', $cabangId))
             ->when($request->string('search')->toString(), function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -603,11 +680,17 @@ class ManagementService
         $tutorId = $this->actorTutorId();
 
         return Tutor::query()
-            ->with('cabang:id,nama_cabang')
+            ->with(['cabang:id,nama_cabang', 'user:id,name,email'])
             ->withCount('jadwals')
             ->when($tutorId, fn ($q) => $q->where('id', $tutorId))
             ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
-            ->when($request->string('search')->toString(), fn ($q, $s) => $q->where('nama', 'like', "%{$s}%"))
+            ->when($request->string('search')->toString(), function ($q, $s) {
+                $like = "%{$s}%";
+                $q->where(function ($w) use ($like) {
+                    $w->where('nama', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+                });
+            })
             ->when($request->filled('cabang_id'), fn ($q) => $q->where('cabang_id', $request->integer('cabang_id')))
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
             ->latest('id')
@@ -622,8 +705,12 @@ class ManagementService
         $siswaId = $this->actorSiswaId();
 
         return Jadwal::query()
-            ->with(['tutor:id,nama', 'cabang:id,nama_cabang', 'mataPelajaran:id,nama'])
-            ->when($siswaId, fn ($q) => $q->whereHas('kehadirans', fn ($k) => $k->where('student_id', $siswaId)))
+            ->with(['tutor:id,nama', 'cabang:id,nama_cabang', 'mataPelajaran:id,nama,kode'])
+            ->withCount('siswas')
+            ->when($tutorId, fn ($q) => $q->with([
+                'siswas' => fn ($s) => $s->orderBy('nama')->select('siswas.id', 'siswas.nama'),
+            ]))
+            ->when($siswaId, fn ($q) => $q->whereHas('siswas', fn ($s) => $s->where('siswas.id', $siswaId)))
             ->when($cabangId && ! $siswaId, fn ($q) => $q->where('cabang_id', $cabangId))
             ->when($tutorId, fn ($q) => $q->where('tutor_id', $tutorId))
             ->when($request->filled('cabang_id'), fn ($q) => $q->where('cabang_id', $request->integer('cabang_id')))
@@ -644,17 +731,24 @@ class ManagementService
             ->with([
                 'siswa:id,nama',
                 'tutor:id,nama',
-                'jadwal:id,mata_pelajaran_id,tutor_id,cabang_id',
+                'creator:id,name',
+                'jadwal:id,mata_pelajaran_id,tutor_id,cabang_id,hari,jam_mulai,jam_selesai',
                 'jadwal.mataPelajaran:id,nama',
                 'jadwal.tutor:id,nama',
                 'jadwal.cabang:id,nama_cabang',
             ])
-            ->when($tutorId, fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('tutor_id', $tutorId)))
+            ->when($tutorId, function ($q) use ($request, $tutorId) {
+                $q->whereHas('jadwal', fn ($j) => $j->where('tutor_id', $tutorId));
+                if ($request->filled('kelas_jadwal_id') && $request->filled('kelas_tanggal')) {
+                    $q->where('jadwal_id', $request->integer('kelas_jadwal_id'))
+                        ->whereDate('tanggal', $request->date('kelas_tanggal'));
+                }
+            })
             ->when($cabangId && ! $tutorId && ! $siswaId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
             ->when($siswaId, fn ($q) => $q->where('student_id', $siswaId))
-            ->when($request->filled('tanggal'), fn ($q) => $q->whereDate('tanggal', $request->date('tanggal')))
-            ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->filled('jadwal_id'), fn ($q) => $q->where('jadwal_id', $request->integer('jadwal_id')))
+            ->when(! $tutorId && $request->filled('tanggal'), fn ($q) => $q->whereDate('tanggal', $request->date('tanggal')))
+            ->when(! $tutorId && $request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
+            ->when(! $tutorId && $request->filled('jadwal_id'), fn ($q) => $q->where('jadwal_id', $request->integer('jadwal_id')))
             ->latest('tanggal')
             ->paginate(15)
             ->withQueryString();
@@ -673,7 +767,8 @@ class ManagementService
         $base = Kehadiran::query()
             ->when($tutorId, fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('tutor_id', $tutorId)))
             ->when($cabangId && ! $tutorId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
-            ->when($request->filled('tanggal'), fn ($q) => $q->whereDate('tanggal', $request->date('tanggal')));
+            ->when($request->filled('tanggal'), fn ($q) => $q->whereDate('tanggal', $request->date('tanggal')))
+            ->when($request->filled('jadwal_id'), fn ($q) => $q->where('jadwal_id', $request->integer('jadwal_id')));
 
         return [
             'hadir' => (clone $base)->where('status', 'hadir')->count(),
@@ -725,7 +820,13 @@ class ManagementService
         $siswaId = $this->actorSiswaId();
 
         return Payment::query()
-            ->with(['siswa:id,nama', 'fee:id,nama_biaya'])
+            ->with([
+                'siswa:id,nama,email,no_hp,nik,alamat,jenis_kelamin,cabang_id,user_id',
+                'siswa.cabang:id,nama_cabang',
+                'siswa.user:id,name,email',
+                'fee:id,nama_biaya,nominal,tipe',
+                'creator:id,name,email',
+            ])
             ->when($cabangId && ! $siswaId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
             ->when($siswaId, fn ($q) => $q->where('student_id', $siswaId))
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
@@ -870,7 +971,13 @@ class ManagementService
 
     public function tutorsForSelect(): Collection
     {
-        return Tutor::query()->select('id', 'nama')->orderBy('nama')->get();
+        $cabangId = $this->actorCabangId();
+
+        return Tutor::query()
+            ->select('id', 'nama', 'cabang_id')
+            ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
+            ->orderBy('nama')
+            ->get();
     }
 
     public function cabangForSelect(): Collection
@@ -903,6 +1010,37 @@ class ManagementService
             ->when($request->filled('tutor_id'), fn ($q) => $q->where('tutor_id', $request->integer('tutor_id')))
             ->latest('id')
             ->paginate(12)
+            ->withQueryString();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function assignableRoleNames(): array
+    {
+        return ['super_admin', 'admin_cabang', 'tutor', 'siswa'];
+    }
+
+    public function adminUserIndex(Request $request): LengthAwarePaginator
+    {
+        $search = $request->string('search')->toString();
+        $role = $request->string('role')->toString();
+        $verified = $request->string('verified')->toString();
+
+        return User::query()
+            ->with('roles:name')
+            ->when($search !== '', function ($q) use ($search) {
+                $like = '%'.$search.'%';
+                $q->where(function ($w) use ($like) {
+                    $w->where('name', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+                });
+            })
+            ->when($role !== '', fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $role)))
+            ->when($verified === '1', fn ($q) => $q->whereNotNull('email_verified_at'))
+            ->when($verified === '0', fn ($q) => $q->whereNull('email_verified_at'))
+            ->latest('id')
+            ->paginate(15)
             ->withQueryString();
     }
 }

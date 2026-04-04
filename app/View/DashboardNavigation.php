@@ -29,6 +29,7 @@ final class DashboardNavigation
                 'roles' => ['super_admin'],
                 'patterns' => ['cabang.*'],
             ],
+
             [
                 'label' => 'Siswa',
                 'route' => 'siswa.index',
@@ -78,17 +79,25 @@ final class DashboardNavigation
                 'patterns' => ['pembayaran.*'],
             ],
             [
+                'label' => 'Pengguna',
+                'route' => 'users.index',
+                'roles' => ['super_admin'],
+                'patterns' => ['users.*'],
+            ],
+            [
                 'label' => 'Laporan',
                 'route' => 'laporan.index',
                 'roles' => ['super_admin', 'admin_cabang'],
                 'patterns' => ['laporan.*'],
             ],
+
             [
                 'label' => 'Profil',
                 'route' => 'profile.edit',
                 'roles' => ['super_admin', 'admin_cabang', 'tutor', 'siswa'],
                 'patterns' => ['profile.*'],
             ],
+
         ];
 
         $items = [];

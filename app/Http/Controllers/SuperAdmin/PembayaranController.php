@@ -61,17 +61,27 @@ class PembayaranController extends Controller
     public function snapToken(Request $request, Payment $payment): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user && $user->hasRole('siswa'), 403);
+        if (! $user || ! $user->hasRole('siswa')) {
+            return response()->json(['message' => 'Hanya akun siswa yang dapat membayar tagihan ini.'], 403);
+        }
 
         $siswaId = Siswa::query()->where('user_id', $user->id)->value('id')
             ?? Siswa::query()->where('email', $user->email)->value('id');
 
-        abort_unless($siswaId && (int) $payment->student_id === (int) $siswaId, 403);
-        abort_if($payment->isLunas(), 422, 'Tagihan sudah lunas.');
-        abort_unless($payment->grossAmountIdr() >= 1, 422, 'Nominal tidak valid.');
+        if (! $siswaId || (int) $payment->student_id !== (int) $siswaId) {
+            return response()->json(['message' => 'Tagihan ini bukan milik Anda. Pastikan profil siswa terhubung ke akun (user_id / email).'], 403);
+        }
+
+        if ($payment->isLunas()) {
+            return response()->json(['message' => 'Tagihan sudah lunas.'], 422);
+        }
+
+        if ($payment->grossAmountIdr() < 1) {
+            return response()->json(['message' => 'Nominal tagihan tidak valid (minimal Rp 1).'], 422);
+        }
 
         try {
-            $token = $this->midtrans->createSnapToken($payment);
+            $token = $this->midtrans->createSnapToken($payment->fresh());
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -79,6 +89,53 @@ class PembayaranController extends Controller
         return response()->json([
             'token' => $token,
             'client_key' => config('midtrans.client_key'),
+        ]);
+    }
+
+    /**
+     * Tarik status terbaru dari API Midtrans (Server Key) dan update tagihan.
+     * Wajib dipanggil setelah Snap selesai di localhost / tanpa webhook publik.
+     */
+    public function syncMidtrans(Request $request, Payment $payment): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || ! $user->hasRole('siswa')) {
+            return response()->json(['message' => 'Tidak diizinkan.'], 403);
+        }
+
+        $siswaId = Siswa::query()->where('user_id', $user->id)->value('id')
+            ?? Siswa::query()->where('email', $user->email)->value('id');
+
+        if (! $siswaId || (int) $payment->student_id !== (int) $siswaId) {
+            return response()->json(['message' => 'Tagihan ini bukan milik Anda.'], 403);
+        }
+
+        $payment->refresh();
+        if (! is_string($payment->order_id) || $payment->order_id === '') {
+            return response()->json(['message' => 'Belum ada sesi pembayaran Midtrans. Klik Bayar terlebih dahulu.'], 422);
+        }
+
+        try {
+            $remote = $this->midtrans->fetchTransactionStatus($payment->order_id);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Gagal mengambil status dari Midtrans.',
+                'detail' => config('app.debug') ? $e->getMessage() : null,
+            ], 502);
+        }
+
+        $beforeLunas = $payment->isLunas();
+        $this->midtrans->syncPaymentFromMidtransStatus($payment, $remote);
+        $payment->refresh();
+
+        if (! $beforeLunas && $payment->isLunas()) {
+            $this->bell->paymentSettled($payment);
+        }
+
+        return response()->json([
+            'payment_status' => $payment->status,
+            'midtrans_transaction_status' => $payment->midtrans_transaction_status,
+            'is_lunas' => $payment->isLunas(),
         ]);
     }
 

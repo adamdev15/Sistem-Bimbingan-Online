@@ -9,12 +9,14 @@ class KehadiranObserver
 {
     public function creating(Kehadiran $kehadiran): void
     {
-        if ($kehadiran->tutor_id) {
-            return;
+        if ($kehadiran->jadwal_id) {
+            if (! $kehadiran->tutor_id) {
+                $kehadiran->tutor_id = Jadwal::query()->whereKey($kehadiran->jadwal_id)->value('tutor_id');
+            }
         }
 
-        if ($kehadiran->jadwal_id) {
-            $kehadiran->tutor_id = Jadwal::query()->whereKey($kehadiran->jadwal_id)->value('tutor_id');
+        if ($kehadiran->created_by === null && auth()->check()) {
+            $kehadiran->created_by = auth()->id();
         }
     }
 

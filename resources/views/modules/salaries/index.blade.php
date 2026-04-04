@@ -8,7 +8,6 @@
             title="Gaji tutor"
             description="Rekap periode, nominal, status alur (pending → dibayar → diterima), dan pencatat entri (created_by)."
         >
-            @if (auth()->user()->hasRole('super_admin'))
             <x-slot name="actions">
                 <button
                     type="button"
@@ -20,7 +19,6 @@
                     Gaji Tutor
                 </button>
             </x-slot>
-            @endif
         </x-module-page-header>
 
         @if (session('status'))

@@ -12,6 +12,7 @@ use App\Http\Controllers\SuperAdmin\PresensiController;
 use App\Http\Controllers\SuperAdmin\SalaryController;
 use App\Http\Controllers\SuperAdmin\SiswaController;
 use App\Http\Controllers\SuperAdmin\TutorController;
+use App\Http\Controllers\SuperAdmin\UserManagementController;
 use App\Http\Controllers\Tutor\DashboardController as TutorDashboardController;
 use App\Http\Controllers\Tutor\SiswaController as TutorSiswaController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/cabang', [CabangController::class, 'store'])->name('cabang.store');
         Route::put('/cabang/{cabang}', [CabangController::class, 'update'])->name('cabang.update');
         Route::delete('/cabang/{cabang}', [CabangController::class, 'destroy'])->name('cabang.destroy');
+
+        Route::get('/pengguna', [UserManagementController::class, 'index'])->name('users.index');
+        Route::post('/pengguna', [UserManagementController::class, 'store'])->name('users.store');
+        Route::put('/pengguna/{user}', [UserManagementController::class, 'update'])->name('users.update');
+        Route::delete('/pengguna/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
     });
 
     Route::middleware('role:super_admin|admin_cabang')->group(function () {
@@ -71,9 +77,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/jadwal', [JadwalController::class, 'store'])->name('jadwal.store');
             Route::put('/jadwal/{jadwal}', [JadwalController::class, 'update'])->name('jadwal.update');
             Route::delete('/jadwal/{jadwal}', [JadwalController::class, 'destroy'])->name('jadwal.destroy');
+            Route::get('/jadwal/{jadwal}/peserta', [JadwalController::class, 'peserta'])->name('jadwal.peserta');
+            Route::put('/jadwal/{jadwal}/peserta', [JadwalController::class, 'updatePeserta'])->name('jadwal.peserta.update');
         });
 
         Route::get('/presensi', [PresensiController::class, 'index'])->name('presensi.index');
+        Route::post('/presensi/sesi', [PresensiController::class, 'storeSesi'])
+            ->middleware('role:tutor')
+            ->name('presensi.store-sesi');
         Route::get('/presensi/export', [PresensiController::class, 'export'])->name('presensi.export');
 
         Route::get('/bimbingan-siswa', [TutorSiswaController::class, 'index'])
@@ -85,6 +96,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/pembayaran', [PembayaranController::class, 'index'])->name('pembayaran.index');
         Route::middleware('role:siswa')->group(function () {
             Route::post('/pembayaran/{payment}/snap-token', [PembayaranController::class, 'snapToken'])->name('pembayaran.snap-token');
+            Route::post('/pembayaran/{payment}/sync-midtrans', [PembayaranController::class, 'syncMidtrans'])->name('pembayaran.sync-midtrans');
         });
         Route::middleware('role:super_admin|admin_cabang')->group(function () {
             Route::post('/pembayaran/massal', [PembayaranController::class, 'massStore'])->name('pembayaran.mass.store');

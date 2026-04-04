@@ -3,12 +3,22 @@
     $isAdmin = auth()->user()->hasAnyRole(['super_admin', 'admin_cabang']);
     $canSnap = $isSiswa && filled(config('midtrans.client_key')) && filled(config('midtrans.server_key'));
 @endphp
-<x-layouts.dashboard-shell title="Pembayaran ? eBimbel">
+<x-layouts.dashboard-shell title="Pembayaran - eBimbel">
     <div
         x-data="{
             massOpen: false,
             pendingOpen: false,
             payLoading: null,
+            detailOpen: false,
+            detail: null,
+            openPaymentDetail(payload) {
+                this.detail = payload;
+                this.detailOpen = true;
+            },
+            closePaymentDetail() {
+                this.detailOpen = false;
+                this.detail = null;
+            },
             async pay(id) {
                 if (! window.snap || ! window.payWithMidtrans) return;
                 this.payLoading = id;
@@ -24,7 +34,7 @@
         <x-module-page-header
             title="Pembayaran & tagihan"
             :description="$isSiswa
-                ? 'Tagihan biaya (pendaftaran, SPP, dll.) ? bayar aman lewat Midtrans Snap.'
+                ? 'Tagihan biaya (pendaftaran, SPP, dll.)  bayar aman lewat Midtrans Snap.'
                 : ($isAdmin
                     ? (auth()->user()->hasRole('admin_cabang')
                         ? 'Kelola tagihan siswa cabang Anda. Kirim pengingat jatuh tempo dan tandai lunas bila perlu.'
@@ -159,7 +169,7 @@
                                 @endif
                                 <td class="px-4 py-3.5">{{ optional($pay->fee)->nama_biaya }}</td>
                                 <td class="px-4 py-3.5">{{ optional($pay->tanggal_bayar)->translatedFormat('d M Y') }}</td>
-                                <td class="px-4 py-3.5">{{ $pay->due_date ? $pay->due_date->translatedFormat('d M Y') : '?' }}</td>
+                                <td class="px-4 py-3.5">{{ $pay->due_date ? $pay->due_date->translatedFormat('d M Y') : '—' }}</td>
                                 <td class="px-4 py-3.5 font-medium">Rp {{ number_format((int) $pay->nominal, 0, ',', '.') }}</td>
                                 <td class="px-4 py-3.5">
                                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $pay->status === 'lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
@@ -167,12 +177,12 @@
                                     </span>
                                 </td>
                                 @if (! $isSiswa)
-                                    <td class="px-4 py-3.5 text-xs text-slate-600">{{ $pay->midtrans_transaction_status ?? '?' }}</td>
+                                    <td class="px-4 py-3.5 text-xs text-slate-600">{{ $pay->midtrans_transaction_status ?? 'Belum dibayar' }}</td>
                                 @endif
                                 <td class="px-4 py-3.5 text-right">
                                     @if ($isSiswa)
                                         @if ($pay->status === 'lunas')
-                                            <span class="text-xs text-slate-500">Selesai{{ $pay->paid_at ? ' ? '.$pay->paid_at->translatedFormat('d M Y H:i') : '' }}</span>
+                                            <span class="text-xs text-slate-500">Selesai{{ $pay->paid_at ? ' · '.$pay->paid_at->timezone(config('app.timezone'))->translatedFormat('d M Y H:i') : '' }}</span>
                                         @elseif ($canSnap)
                                             <button type="button" @click="pay({{ $pay->id }})" :disabled="payLoading === {{ $pay->id }}" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">
                                                 <span x-show="payLoading !== {{ $pay->id }}">Bayar</span>
@@ -183,7 +193,47 @@
                                         @endif
                                     @else
                                         @if ($pay->status === 'lunas')
-                                            <span class="text-xs text-slate-500">?</span>
+                                            @php
+                                                $s = $pay->siswa;
+                                                $detailPayload = [
+                                                    'referensi' => 'INV-'.str_pad((string) $pay->id, 5, '0', STR_PAD_LEFT),
+                                                    'invoice_period' => $pay->invoice_period,
+                                                    'item_biaya' => $pay->fee?->nama_biaya,
+                                                    'fee_tipe' => $pay->fee?->tipe,
+                                                    'fee_master_nominal' => $pay->fee ? (int) $pay->fee->nominal : null,
+                                                    'nominal_dibayar' => (int) round((float) $pay->nominal),
+                                                    'tanggal_terbit_fmt' => optional($pay->tanggal_bayar)?->translatedFormat('l, d M Y'),
+                                                    'due_date_fmt' => $pay->due_date?->translatedFormat('l, d M Y'),
+                                                    'paid_at_fmt' => $pay->paid_at
+                                                        ? $pay->paid_at->timezone(config('app.timezone'))->translatedFormat('l, d M Y — H:i:s').' ('.config('app.timezone').')'
+                                                        : null,
+                                                    'order_id' => $pay->order_id,
+                                                    'midtrans_txn_id' => $pay->midtrans_transaction_id,
+                                                    'midtrans_status' => $pay->midtrans_transaction_status,
+                                                    'midtrans_payment_type' => $pay->midtrans_payment_type,
+                                                    'siswa' => [
+                                                        'nama' => $s?->nama,
+                                                        'email' => $s?->email,
+                                                        'no_hp' => $s?->no_hp,
+                                                        'nik' => $s?->nik,
+                                                        'jenis_kelamin' => $s?->jenis_kelamin,
+                                                        'alamat' => $s?->alamat,
+                                                        'cabang' => $s?->cabang?->nama_cabang,
+                                                        'akun_nama' => $s?->user?->name,
+                                                        'akun_email' => $s?->user?->email,
+                                                    ],
+                                                    'dicatat_oleh' => $pay->creator
+                                                        ? ['nama' => $pay->creator->name, 'email' => $pay->creator->email]
+                                                        : null,
+                                                ];
+                                            @endphp
+                                            <button
+                                                type="button"
+                                                class="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                                                @click="openPaymentDetail({{ \Illuminate\Support\Js::from($detailPayload) }})"
+                                            >
+                                                Detail
+                                            </button>
                                         @else
                                             <form method="POST" action="{{ route('pembayaran.mark-lunas', $pay) }}" class="inline" onsubmit="return confirm('Tandai tagihan ini lunas? Siswa akan menerima notifikasi.');">
                                                 @csrf
@@ -240,7 +290,7 @@
                                 <label class="text-xs font-semibold uppercase text-slate-500">Jenis biaya</label>
                                 <select name="biaya_id" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-500/15">
                                     @foreach ($fees as $fee)
-                                        <option value="{{ $fee->id }}">{{ $fee->nama_biaya }} ? Rp {{ number_format((int) $fee->nominal, 0, ',', '.') }} ({{ $fee->tipe }})</option>
+                                        <option value="{{ $fee->id }}">{{ $fee->nama_biaya }} - Rp {{ number_format((int) $fee->nominal, 0, ',', '.') }} ({{ $fee->tipe }})</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -283,6 +333,145 @@
                     </form>
                 </div>
             </div>
+
+            {{-- Modal: detail transaksi lunas (admin / cabang) --}}
+            <div
+                x-show="detailOpen"
+                x-cloak
+                x-transition.opacity
+                class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="pay-detail-title"
+                @keydown.escape.window="closePaymentDetail()"
+            >
+                <div
+                    @click.outside="closePaymentDetail()"
+                    class="max-h-[min(92vh,720px)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5"
+                >
+                    <div class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-6 py-4">
+                        <div>
+                            <h3 id="pay-detail-title" class="text-lg font-bold tracking-tight text-slate-900">Detail pembayaran lunas</h3>
+                            <p class="mt-0.5 text-sm text-slate-500">Ringkasan transaksi Midtrans &amp; data siswa.</p>
+                        </div>
+                        <button type="button" @click="closePaymentDetail()" class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="space-y-6 p-6" x-show="detail">
+                        <section class="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                            <h4 class="text-xs font-bold uppercase tracking-wide text-blue-900">Transaksi</h4>
+                            <dl class="mt-3 grid gap-3 sm:grid-cols-2">
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">No. referensi</dt>
+                                    <dd class="mt-0.5 font-mono text-sm font-semibold text-slate-900" x-text="detail?.referensi || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Order ID Midtrans</dt>
+                                    <dd class="mt-0.5 break-all font-mono text-xs text-slate-800" x-text="detail?.order_id || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Waktu lunas</dt>
+                                    <dd class="mt-0.5 text-sm font-semibold text-emerald-800" x-text="detail?.paid_at_fmt || '— (belum tercatat / manual)'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Nominal dibayar</dt>
+                                    <dd class="mt-0.5 text-sm font-bold text-slate-900" x-text="detail?.nominal_dibayar != null ? 'Rp ' + Number(detail.nominal_dibayar).toLocaleString('id-ID') : '—'"></dd>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Item biaya</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-900">
+                                        <span x-text="detail?.item_biaya || '—'"></span>
+                                        <span class="text-slate-500" x-show="detail?.fee_tipe"> · <span x-text="detail?.fee_tipe"></span></span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Periode invoice</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.invoice_period || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Master fee (referensi)</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.fee_master_nominal != null ? 'Rp ' + Number(detail.fee_master_nominal).toLocaleString('id-ID') : '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Tanggal terbit tagihan</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.tanggal_terbit_fmt || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Jatuh tempo</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.due_date_fmt || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Status Midtrans</dt>
+                                    <dd class="mt-0.5 text-sm font-medium text-slate-800" x-text="detail?.midtrans_status || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Metode / tipe</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.midtrans_payment_type || '—'"></dd>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Transaction ID Midtrans</dt>
+                                    <dd class="mt-0.5 break-all font-mono text-xs text-slate-700" x-text="detail?.midtrans_txn_id || '—'"></dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <section class="rounded-xl border border-slate-200 bg-slate-50/40 p-4">
+                            <h4 class="text-xs font-bold uppercase tracking-wide text-slate-800">Data siswa</h4>
+                            <dl class="mt-3 grid gap-3 sm:grid-cols-2">
+                                <div class="sm:col-span-2">
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Nama</dt>
+                                    <dd class="mt-0.5 text-sm font-semibold text-slate-900" x-text="detail?.siswa?.nama || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Email (data siswa)</dt>
+                                    <dd class="mt-0.5 break-all text-sm text-slate-800" x-text="detail?.siswa?.email || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">No. HP</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.siswa?.no_hp || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">NIK</dt>
+                                    <dd class="mt-0.5 font-mono text-sm text-slate-800" x-text="detail?.siswa?.nik || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Jenis kelamin</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.siswa?.jenis_kelamin || '—'"></dd>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Alamat</dt>
+                                    <dd class="mt-0.5 text-sm leading-relaxed text-slate-800" x-text="detail?.siswa?.alamat || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Cabang</dt>
+                                    <dd class="mt-0.5 text-sm font-medium text-slate-800" x-text="detail?.siswa?.cabang || '—'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] font-semibold uppercase text-slate-500">Akun login</dt>
+                                    <dd class="mt-0.5 text-sm text-slate-800">
+                                        <span x-text="detail?.siswa?.akun_nama || '—'"></span>
+                                        <span class="block break-all text-xs text-slate-500" x-text="detail?.siswa?.akun_email ? '(' + detail.siswa.akun_email + ')' : ''"></span>
+                                    </dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <section x-show="detail?.dicatat_oleh" class="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3">
+                            <h4 class="text-xs font-bold uppercase tracking-wide text-amber-900">Tagihan dibuat oleh</h4>
+                            <p class="mt-1 text-sm text-amber-950">
+                                <span x-text="detail?.dicatat_oleh?.nama"></span>
+                                <span class="block break-all text-xs text-amber-800/90" x-text="detail?.dicatat_oleh?.email"></span>
+                            </p>
+                        </section>
+
+                        <div class="flex justify-end border-t border-slate-100 pt-4">
+                            <button type="button" @click="closePaymentDetail()" class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">Tutup</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @endif
     </div>
 
@@ -301,18 +490,59 @@
                             'X-Requested-With': 'XMLHttpRequest',
                         },
                     });
-                    const data = await res.json().catch(() => ({}));
+                    let data = {};
+                    try {
+                        const text = await res.text();
+                        data = text ? JSON.parse(text) : {};
+                    } catch (e) {
+                        data = {};
+                    }
                     if (!res.ok) {
-                        alert(data.message || 'Gagal memulai pembayaran.');
+                        const msg = data.message || (data.error ? String(data.error) : '') || 'Gagal memulai pembayaran (' + res.status + ').';
+                        alert(msg);
                         return;
                     }
                     if (typeof snap === 'undefined' || !data.token) {
                         alert('Midtrans Snap belum termuat.');
                         return;
                     }
+                    const syncMidtrans = async function () {
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        const url = '{{ url('/pembayaran') }}/' + paymentId + '/sync-midtrans';
+                        for (let attempt = 0; attempt < 6; attempt++) {
+                            try {
+                                const sr = await fetch(url, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': csrf,
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                    },
+                                });
+                                const body = await sr.json().catch(() => ({}));
+                                if (body.is_lunas) {
+                                    return;
+                                }
+                                if (body.midtrans_transaction_status === 'settlement' || body.payment_status === 'lunas') {
+                                    return;
+                                }
+                            } catch (e) { /* lanjut retry */ }
+                            await new Promise(function (r) { setTimeout(r, 800); });
+                        }
+                    };
                     snap.pay(data.token, {
-                        onSuccess: function () { window.location.reload(); },
-                        onPending: function () { window.location.reload(); },
+                        onSuccess: async function () {
+                            await syncMidtrans();
+                            window.location.reload();
+                        },
+                        onPending: async function () {
+                            await syncMidtrans();
+                            window.location.reload();
+                        },
+                        onError: async function () {
+                            await syncMidtrans();
+                            window.location.reload();
+                        },
                         onClose: function () {},
                     });
                 };
