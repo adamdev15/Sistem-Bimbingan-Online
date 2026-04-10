@@ -12,15 +12,21 @@ class Kehadiran extends Model
 
     protected $fillable = [
         'student_id',
-        'jadwal_id',
         'tutor_id',
+        'materi_les_id',
+        'cabang_id',
         'tanggal',
+        'jam_mulai',
+        'jam_selesai',
         'status',
+        'catatan',
         'created_by',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
+        'jam_mulai' => 'datetime:H:i:s',
+        'jam_selesai' => 'datetime:H:i:s',
     ];
 
     public function siswa(): BelongsTo
@@ -28,9 +34,14 @@ class Kehadiran extends Model
         return $this->belongsTo(Siswa::class, 'student_id');
     }
 
-    public function jadwal(): BelongsTo
+    public function materiLes(): BelongsTo
     {
-        return $this->belongsTo(Jadwal::class);
+        return $this->belongsTo(MateriLes::class, 'materi_les_id');
+    }
+
+    public function cabang(): BelongsTo
+    {
+        return $this->belongsTo(Cabang::class);
     }
 
     public function tutor(): BelongsTo

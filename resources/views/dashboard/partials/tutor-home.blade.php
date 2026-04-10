@@ -13,7 +13,7 @@
     $presensiSeries = $dashboardData['presensi_series'] ?? ['7d' => [], '1m' => [], '1y' => []];
     $presensiRange = $dashboardData['presensi_range'] ?? '7d';
     $presensiActive = collect($presensiSeries[$presensiRange] ?? []);
-    $jadwalMengajar = collect($dashboardData['jadwal_mengajar'] ?? []);
+    $riwayatSesi = collect($dashboardData['riwayat_sesi'] ?? []);
     $siswaPerhatian = collect($dashboardData['siswa_perhatian'] ?? []);
 @endphp
 
@@ -160,22 +160,31 @@
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-900/5">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-lg font-semibold text-slate-900">Jadwal mengajar</h2>
-                <a href="{{ route('jadwal.index') }}" class="text-sm font-medium text-blue-600 hover:text-blue-800">Lihat semua jadwal</a>
+                <h2 class="text-lg font-semibold text-slate-900">Riwayat Sesi Terbaru</h2>
+                <a href="{{ route('presensi.index') }}" class="text-sm font-medium text-blue-600 hover:text-blue-800">Lihat riwayat lengkap</a>
             </div>
             <ul class="divide-y divide-slate-100">
-                @forelse ($jadwalMengajar as $j)
+                @forelse ($riwayatSesi as $s)
                     <li class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                        <div>
-                            <p class="font-semibold text-slate-900">{{ $j->mapel }}</p>
-                            <p class="text-slate-500">{{ ucfirst($j->hari) }} · {{ optional($j->cabang)->nama_cabang ?? '—' }}</p>
+                        <div class="flex items-center gap-3">
+                            <div class="flex flex-col items-center justify-center rounded-lg bg-slate-50 border border-slate-100 p-2 min-w-[50px]">
+                                <span class="text-[10px] uppercase font-bold text-slate-400">{{ $s['tanggal']->translatedFormat('M') }}</span>
+                                <span class="text-lg font-black text-slate-800">{{ $s['tanggal']->translatedFormat('d') }}</span>
+                            </div>
+                            <div>
+                                <p class="font-bold text-slate-900">{{ $s['materi'] }}</p>
+                                <p class="text-xs text-slate-500">{{ $s['jam_mulai'] }} – {{ $s['jam_selesai'] }} · {{ $s['cabang'] }}</p>
+                            </div>
                         </div>
-                        <span class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 ring-1 ring-blue-100">
-                            {{ substr($j->jam_mulai, 0, 5) }}–{{ substr($j->jam_selesai, 0, 5) }}
-                        </span>
+                        <div class="text-right">
+                            <p class="text-xs font-semibold text-slate-700">{{ $s['total_siswa'] }} Siswa</p>
+                            <span class="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+                                {{ $s['hadir'] }} Hadir
+                            </span>
+                        </div>
                     </li>
                 @empty
-                    <li class="py-6 text-center text-sm text-slate-500">Belum ada jadwal yang ditugaskan kepada Anda.</li>
+                    <li class="py-6 text-center text-sm text-slate-500">Belum ada riwayat sesi yang tercatat.</li>
                 @endforelse
             </ul>
         </section>

@@ -20,15 +20,6 @@
     <p class="muted">
         Dicetak {{ $generated_at->timezone(config('app.timezone'))->format('d/m/Y H:i') }} · {{ $filter_label }}
     </p>
-    <div class="summary">
-        <strong>Total baris:</strong> {{ $total_tagihan }} ·
-        <strong>Total nominal:</strong> Rp {{ number_format($total_nominal, 0, ',', '.') }} ·
-        <strong>Tagihan lewat jatuh tempo:</strong> {{ $jumlah_telat }}
-    </div>
-    <div class="insight">
-        <strong>Risiko cashflow</strong><br>{{ $insight_cashflow }}<br><br>
-        <strong>Reminder / otomasi WA</strong><br>{{ $insight_wa }}
-    </div>
     <table>
         <thead>
             <tr>

@@ -6,7 +6,9 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    $settings = \App\Models\Setting::pluck('value', 'setting_key')->toArray();
+    $programs = \App\Models\MateriLes::all();
+    return view('welcome', compact('settings', 'programs'));
 })->name('landing');
 
 Route::post('/midtrans/notification', [MidtransWebhookController::class, 'handle'])

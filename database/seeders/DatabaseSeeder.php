@@ -15,6 +15,11 @@ class DatabaseSeeder extends Seeder
         // Jalankan RoleSeeder dulu
         $this->call(RoleSeeder::class);
 
+        if (Schema::hasTable('settings')) {
+            $this->call(WhatsappSettingsSeeder::class);
+            $this->call(SettingSeeder::class);
+        }
+
         if (Schema::hasTable('mata_pelajarans')) {
             foreach (
                 [

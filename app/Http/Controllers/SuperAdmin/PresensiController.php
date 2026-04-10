@@ -3,90 +3,151 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Jadwal;
+use App\Models\Cabang;
 use App\Models\Kehadiran;
+use App\Models\MateriLes;
+use App\Models\Siswa;
 use App\Models\Tutor;
-use App\Services\SuperAdmin\ManagementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use App\Models\Payment;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PresensiController extends Controller
 {
-    public function __construct(private readonly ManagementService $service) {}
+    private function actorCabangId(Request $request): ?int
+    {
+        $user = $request->user();
+        if ($user->hasRole('admin_cabang')) {
+            return Cabang::query()->where('user_id', $user->id)->value('id') ?: 0;
+        }
+        return null;
+    }
 
     public function index(Request $request): View
     {
         $user = $request->user();
+        $isSiswa = $user->hasRole('siswa');
+        
+        $query = Kehadiran::query()
+            ->with(['siswa', 'tutor', 'materiLes', 'creator', 'cabang'])
+            ->latest('tanggal')
+            ->latest('jam_mulai');
+
+        if ($isSiswa) {
+            $siswaId = Siswa::where('user_id', $user->id)->value('id');
+            $query->where('student_id', $siswaId);
+        } else {
+            $cabangId = $this->actorCabangId($request);
+            if ($user->hasRole('super_admin') && $request->filled('cabang_id')) {
+                $cabangId = $request->integer('cabang_id');
+            }
+
+            if ($cabangId) {
+                $query->where('cabang_id', $cabangId);
+            }
+
+            if ($request->filled('tanggal')) {
+                $query->whereDate('tanggal', $request->date('tanggal'));
+            }
+
+            if ($request->filled('month')) {
+                $m = \Carbon\Carbon::parse($request->month);
+                $query->whereMonth('tanggal', $m->month)
+                      ->whereYear('tanggal', $m->year);
+            } elseif ($request->filled('bulan') && $request->filled('tahun')) {
+                $query->whereMonth('tanggal', $request->integer('bulan'))
+                      ->whereYear('tanggal', $request->integer('tahun'));
+            }
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+            if ($request->filled('tutor_id')) {
+                $query->where('tutor_id', $request->tutor_id);
+            }
+        }
+
+        $presensis = $query->paginate(15)->withQueryString();
+
+        $tutors = collect();
+        $cabangs = collect();
+        if (!$isSiswa) {
+            $actorCabangId = $this->actorCabangId($request);
+            if ($user->hasRole('super_admin')) {
+                $cabangs = Cabang::all();
+                $activeCabangId = $request->integer('cabang_id');
+                if ($activeCabangId) {
+                    $tutors = Tutor::where('status', 'aktif')->where('cabang_id', $activeCabangId)->get();
+                }
+            } else {
+                $tutors = Tutor::where('status', 'aktif')
+                    ->where('cabang_id', $actorCabangId)
+                    ->get();
+            }
+        }
 
         return view('modules.presensi.index', [
-            'presensis' => $this->service->presensiIndex($request),
-            'summary' => $this->service->presensiSummary($request),
-            'presensi_jadwals' => $user?->hasRole('siswa')
-                ? $this->service->presensiJadwalFilterOptionsForSiswa()
-                : collect(),
-            'presensi_jadwal_rekap' => $user?->hasAnyRole(['super_admin', 'admin_cabang'])
-                ? $this->service->presensiJadwalFilterOptionsForRekap()
-                : collect(),
-            'kelas_context' => $user?->hasRole('tutor')
-                ? $this->service->presensiTutorKelasContext($request)
-                : null,
-            'tutor_jadwal_choices' => $user?->hasRole('tutor')
-                ? $this->service->presensiJadwalFilterOptionsForRekap()
-                : collect(),
-            'filters' => $request->only(['tanggal', 'status', 'jadwal_id', 'kelas_jadwal_id', 'kelas_tanggal']),
+            'presensis' => $presensis,
+            'isSiswa' => $isSiswa,
+            'tutors' => $tutors,
+            'cabangs' => $cabangs,
+            'filters' => $request->only(['tanggal', 'status', 'tutor_id', 'bulan', 'tahun', 'cabang_id', 'month'])
+        ]);
+    }
+
+    public function create(Request $request): View
+    {
+        $user = $request->user();
+        abort_unless($user->hasAnyRole(['super_admin', 'admin_cabang']), 403);
+        
+        $cabangId = $this->actorCabangId($request);
+
+        $tutors = Tutor::where('status', 'aktif')->when($cabangId, fn($q) => $q->where('cabang_id', $cabangId))->get();
+        $materis = MateriLes::all();
+        $siswas = Siswa::where('status', 'aktif')->when($cabangId, fn($q) => $q->where('cabang_id', $cabangId))->orderBy('nama')->get();
+
+        return view('modules.presensi.create', [
+            'tutors' => $tutors,
+            'materis' => $materis,
+            'siswas' => $siswas,
+            'cabangId' => $cabangId,
         ]);
     }
 
     public function storeSesi(Request $request): RedirectResponse
     {
-        $user = $request->user();
-        abort_unless($user && $user->hasRole('tutor'), 403);
-
         $validated = $request->validate([
-            'jadwal_id' => ['required', 'exists:jadwals,id'],
-            'tanggal' => ['required', 'date'],
-            'statuses' => ['required', 'array'],
-            'statuses.*' => ['required', 'in:hadir,izin,alfa,sakit'],
+            'tutor_id' => 'required|exists:tutors,id',
+            'materi_les_id' => 'required|exists:materi_les,id',
+            'tanggal' => 'required|date',
+            'jam_mulai' => 'required',
+            'jam_selesai' => 'required',
+            'statuses' => 'required|array',
+            'statuses.*' => 'required|in:hadir,izin,alfa,sakit',
         ]);
 
-        $jadwal = Jadwal::query()->findOrFail($validated['jadwal_id']);
-        $tutorId = Tutor::query()->where('user_id', $user->id)->value('id');
-        abort_if(! $tutorId || (int) $jadwal->tutor_id !== (int) $tutorId, 403);
+        $user = $request->user();
+        $cabangId = $this->actorCabangId($request);
 
-        $enrolledIds = $jadwal->siswas()->pluck('siswas.id')->map(fn ($id) => (int) $id)->sort()->values()->all();
-        $submittedIds = collect(array_keys($validated['statuses']))->map(fn ($id) => (int) $id)->sort()->values()->all();
+        $tutor = Tutor::find($validated['tutor_id']);
+        $cabangToUse = $cabangId ?: $tutor->cabang_id;
 
-        if ($enrolledIds === []) {
-            return back()
-                ->withErrors(['statuses' => 'Belum ada siswa terdaftar di kelas ini. Hubungi admin untuk menambah peserta di menu Jadwal.'])
-                ->withInput()
-                ->with('open_presensi_modal', true);
-        }
-
-        if ($enrolledIds !== $submittedIds) {
-            return back()
-                ->withErrors(['statuses' => 'Kirim presensi untuk seluruh peserta terdaftar.'])
-                ->withInput()
-                ->with('open_presensi_modal', true);
-        }
-
-        $sudahAdaData = Kehadiran::query()
-            ->where('jadwal_id', $jadwal->id)
-            ->whereDate('tanggal', $validated['tanggal'])
-            ->exists();
-
-        DB::transaction(function () use ($validated, $jadwal, $user): void {
+        DB::transaction(function () use ($validated, $user, $cabangToUse) {
             foreach ($validated['statuses'] as $studentId => $status) {
-                Kehadiran::query()->updateOrCreate(
+                Kehadiran::updateOrCreate(
                     [
                         'student_id' => (int) $studentId,
-                        'jadwal_id' => $jadwal->id,
+                        'tutor_id' => $validated['tutor_id'],
+                        'materi_les_id' => $validated['materi_les_id'],
                         'tanggal' => $validated['tanggal'],
+                        'jam_mulai' => $validated['jam_mulai'],
+                        'jam_selesai' => $validated['jam_selesai'],
                     ],
                     [
+                        'cabang_id' => $cabangToUse,
                         'status' => $status,
                         'created_by' => $user->id,
                     ]
@@ -94,32 +155,86 @@ class PresensiController extends Controller
             }
         });
 
-        return redirect()->route('presensi.index', [
-            'kelas_jadwal_id' => $jadwal->id,
-            'kelas_tanggal' => $validated['tanggal'],
-        ])->with('status', $sudahAdaData
-            ? 'Kehadiran peserta diperbarui.'
-            : 'Presensi kelas berhasil dicatat.');
+        return redirect()->route('presensi.index')->with('status', 'Presensi kelas berhasil dicatat.');
     }
 
     public function export(Request $request): StreamedResponse
     {
-        $rows = $this->service->presensiIndex($request)->getCollection();
+        $cabangId = $this->actorCabangId($request);
+        
+        $rows = Kehadiran::query()
+            ->with(['siswa', 'tutor', 'materiLes', 'creator', 'cabang'])
+            ->when($cabangId, fn($q) => $q->where('cabang_id', $cabangId))
+            ->when($request->filled('tanggal'), fn($q) => $q->whereDate('tanggal', $request->date('tanggal')))
+            ->latest('tanggal')
+            ->get();
 
         return response()->streamDownload(function () use ($rows): void {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Tanggal', 'Nama', 'Sesi', 'Tutor', 'Status', 'Dicatat oleh']);
+            fputcsv($handle, ['Tanggal', 'Jam', 'Nama Siswa', 'Materi', 'Tutor', 'Status', 'Dicatat oleh']);
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     optional($row->tanggal)->format('Y-m-d'),
+                    substr($row->jam_mulai, 0, 5) . '-' . substr($row->jam_selesai, 0, 5),
                     optional($row->siswa)->nama,
-                    optional($row->jadwal)->mapel,
-                    optional($row->tutor)->nama ?? optional(optional($row->jadwal)->tutor)->nama ?? '',
+                    optional($row->materiLes)->nama_materi,
+                    optional($row->tutor)->nama,
                     $row->status,
                     optional($row->creator)->name ?? '',
                 ]);
             }
             fclose($handle);
         }, 'rekap-presensi.csv', ['Content-Type' => 'text/csv']);
+    }
+    public function getTutorsByCabang(Cabang $cabang)
+    {
+        return response()->json(
+            Tutor::where('cabang_id', $cabang->id)
+                ->where('status', 'aktif')
+                ->select('id', 'nama')
+                ->get()
+        );
+    }
+
+    public function printCard(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:siswas,id',
+            'bulan' => 'required|integer|min:1|max:12',
+            'tahun' => 'required|integer',
+        ]);
+
+        $siswa = Siswa::with(['cabang', 'materiLes'])->findOrFail($request->student_id);
+        
+        // Logic for Jatuh Tempo from created_at
+        $jatuhTempoTgl = $siswa->created_at?->day ?? 1;
+
+        // Fetch attendance for the selected month
+        $kehadirans = Kehadiran::where('student_id', $siswa->id)
+            ->whereYear('tanggal', $request->tahun)
+            ->whereMonth('tanggal', $request->bulan)
+            ->where('status', 'hadir')
+            ->get();
+
+        // Map presence to days
+        $presenceDays = $kehadirans->pluck('tanggal')->map(fn($d) => $d->day)->toArray();
+
+        // Get SPP payment for the selected month
+        $payment = Payment::where('student_id', $siswa->id)
+            ->whereYear('tanggal_bayar', $request->tahun)
+            ->whereMonth('tanggal_bayar', $request->bulan)
+            ->orderByDesc('id')
+            ->first();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.kartu-absensi', [
+            'siswa' => $siswa,
+            'bulan' => $request->bulan,
+            'tahun' => $request->tahun,
+            'jatuhTempoTgl' => $jatuhTempoTgl,
+            'presenceDays' => $presenceDays,
+            'payment' => $payment,
+        ]);
+
+        return $pdf->stream("Kartu-Absensi-{$siswa->nama}.pdf");
     }
 }

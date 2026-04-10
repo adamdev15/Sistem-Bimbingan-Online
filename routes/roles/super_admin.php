@@ -4,15 +4,17 @@ use App\Http\Controllers\AdminCabang\DashboardController as AdminCabangDashboard
 use App\Http\Controllers\Siswa\DashboardController as SiswaDashboardController;
 use App\Http\Controllers\SuperAdmin\CabangController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
-use App\Http\Controllers\SuperAdmin\JadwalController;
-use App\Http\Controllers\SuperAdmin\LaporanController;
-use App\Http\Controllers\SuperAdmin\MataPelajaranController;
+use App\Http\Controllers\SuperAdmin\LaporanKeuanganController;
+use App\Http\Controllers\SuperAdmin\MateriLesController;
+use App\Http\Controllers\SuperAdmin\PengeluaranController;
 use App\Http\Controllers\SuperAdmin\PembayaranController;
 use App\Http\Controllers\SuperAdmin\PresensiController;
 use App\Http\Controllers\SuperAdmin\SalaryController;
 use App\Http\Controllers\SuperAdmin\SiswaController;
 use App\Http\Controllers\SuperAdmin\TutorController;
 use App\Http\Controllers\SuperAdmin\UserManagementController;
+use App\Http\Controllers\SuperAdmin\WhatsappSettingsController;
+use App\Http\Controllers\SuperAdmin\SettingController;
 use App\Http\Controllers\Tutor\DashboardController as TutorDashboardController;
 use App\Http\Controllers\Tutor\SiswaController as TutorSiswaController;
 use Illuminate\Support\Facades\Route;
@@ -43,14 +45,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/pengguna', [UserManagementController::class, 'store'])->name('users.store');
         Route::put('/pengguna/{user}', [UserManagementController::class, 'update'])->name('users.update');
         Route::delete('/pengguna/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+
+        Route::get('/pengaturan/whatsapp', [WhatsappSettingsController::class, 'edit'])->name('whatsapp-settings.edit');
+        Route::put('/pengaturan/whatsapp', [WhatsappSettingsController::class, 'update'])->name('whatsapp-settings.update');
+
+        Route::get('/pengaturan/website', [\App\Http\Controllers\SuperAdmin\SettingController::class, 'index'])->name('settings.website');
+        Route::put('/pengaturan/website', [\App\Http\Controllers\SuperAdmin\SettingController::class, 'update'])->name('settings.website.update');
     });
 
     Route::middleware('role:super_admin|admin_cabang')->group(function () {
-        Route::get('/mata-pelajaran', [MataPelajaranController::class, 'index'])->name('mata-pelajaran.index');
+        Route::get('/materi-les', [\App\Http\Controllers\SuperAdmin\MateriLesController::class, 'index'])->name('materi-les.index');
         Route::middleware('role:super_admin')->group(function () {
-            Route::post('/mata-pelajaran', [MataPelajaranController::class, 'store'])->name('mata-pelajaran.store');
-            Route::put('/mata-pelajaran/{mataPelajaran}', [MataPelajaranController::class, 'update'])->name('mata-pelajaran.update');
-            Route::delete('/mata-pelajaran/{mataPelajaran}', [MataPelajaranController::class, 'destroy'])->name('mata-pelajaran.destroy');
+            Route::post('/materi-les', [\App\Http\Controllers\SuperAdmin\MateriLesController::class, 'store'])->name('materi-les.store');
+            Route::put('/materi-les/{materiLes}', [\App\Http\Controllers\SuperAdmin\MateriLesController::class, 'update'])->name('materi-les.update');
+            Route::delete('/materi-les/{materiLes}', [\App\Http\Controllers\SuperAdmin\MateriLesController::class, 'destroy'])->name('materi-les.destroy');
         });
 
         Route::get('/gaji-tutor', [SalaryController::class, 'index'])->name('salaries.index');
@@ -58,6 +66,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/gaji-tutor/export/excel', [SalaryController::class, 'exportExcel'])->name('salaries.export.excel');
         Route::post('/gaji-tutor', [SalaryController::class, 'store'])->name('salaries.store');
         Route::patch('/gaji-tutor/{salary}', [SalaryController::class, 'update'])->name('salaries.update');
+        Route::get('/api/salaries/attendance-count', [SalaryController::class, 'getAttendanceCount'])->name('api.salaries.attendance-count');
 
         Route::get('/siswa', [SiswaController::class, 'index'])->name('siswa.index');
         Route::get('/siswa/export/csv', [SiswaController::class, 'exportCsv'])->name('siswa.export.csv');
@@ -74,20 +83,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::middleware('role:super_admin|admin_cabang|tutor|siswa')->group(function () {
-        Route::get('/jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
-        Route::middleware('role:super_admin|admin_cabang')->group(function () {
-            Route::post('/jadwal', [JadwalController::class, 'store'])->name('jadwal.store');
-            Route::put('/jadwal/{jadwal}', [JadwalController::class, 'update'])->name('jadwal.update');
-            Route::delete('/jadwal/{jadwal}', [JadwalController::class, 'destroy'])->name('jadwal.destroy');
-            Route::get('/jadwal/{jadwal}/peserta', [JadwalController::class, 'peserta'])->name('jadwal.peserta');
-            Route::put('/jadwal/{jadwal}/peserta', [JadwalController::class, 'updatePeserta'])->name('jadwal.peserta.update');
-        });
+        // Obsolete jadwal routes removed
 
         Route::get('/presensi', [PresensiController::class, 'index'])->name('presensi.index');
+        Route::get('/presensi/input', [PresensiController::class, 'create'])->name('presensi.create');
         Route::post('/presensi/sesi', [PresensiController::class, 'storeSesi'])
-            ->middleware('role:tutor')
+            ->middleware('role:super_admin|admin_cabang')
             ->name('presensi.store-sesi');
         Route::get('/presensi/export', [PresensiController::class, 'export'])->name('presensi.export');
+        Route::get('/presensi/generate-kartu', [PresensiController::class, 'printCard'])->name('presensi.print-card');
+        Route::get('/api/cabang/{cabang}/tutors', [PresensiController::class, 'getTutorsByCabang'])->name('api.cabang.tutors');
+
+        // PENGELUARAN
+        Route::get('/pengeluaran', [PengeluaranController::class, 'index'])->name('pengeluaran.index');
+        Route::get('/pengeluaran/print', [PengeluaranController::class, 'printReport'])->name('pengeluaran.print');
+        Route::post('/pengeluaran', [PengeluaranController::class, 'store'])->name('pengeluaran.store');
+        Route::put('/pengeluaran/{pengeluaran}', [PengeluaranController::class, 'update'])->name('pengeluaran.update');
+        Route::delete('/pengeluaran/{pengeluaran}', [PengeluaranController::class, 'destroy'])->name('pengeluaran.destroy');
+
+        // LAPORAN KEUANGAN
+        Route::get('/laporan-keuangan', [LaporanKeuanganController::class, 'index'])->name('laporan-keuangan.index');
+        Route::get('/laporan-keuangan/harian', [LaporanKeuanganController::class, 'harian'])->name('laporan-keuangan.harian');
+        Route::get('/laporan-keuangan/bulanan', [LaporanKeuanganController::class, 'bulanan'])->name('laporan-keuangan.bulanan');
+        Route::get('/laporan-keuangan/rekap-bulanan', [LaporanKeuanganController::class, 'rekapBulanan'])->name('laporan-keuangan.rekap-bulanan');
+        Route::get('/laporan-keuangan/export/excel', [LaporanKeuanganController::class, 'exportExcel'])->name('laporan-keuangan.export.excel');
+        Route::get('/laporan-keuangan/export/pdf', [LaporanKeuanganController::class, 'exportPdf'])->name('laporan-keuangan.export.pdf');
+
 
         Route::get('/bimbingan-siswa', [TutorSiswaController::class, 'index'])
             ->middleware('role:tutor')

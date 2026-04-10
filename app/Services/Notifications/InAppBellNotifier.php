@@ -6,9 +6,14 @@ use App\Models\Jadwal;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Services\WhatsApp\WhatsAppNotifier;
 
 class InAppBellNotifier
 {
+    public function __construct(
+        private readonly WhatsAppNotifier $whatsapp,
+    ) {}
+
     public function paymentInvoiceCreated(Payment $payment, ?User $sender): void
     {
         $payment->loadMissing(['siswa.user', 'fee']);
@@ -32,6 +37,8 @@ class InAppBellNotifier
             'action_route' => 'pembayaran.index',
             'action_params' => [],
         ]);
+
+        $this->whatsapp->notifySiswaInvoiceCreated($payment);
     }
 
     /**
@@ -95,6 +102,9 @@ class InAppBellNotifier
             'action_route' => 'pembayaran.index',
             'action_params' => [],
         ]);
+
+        $this->whatsapp->notifySiswaPaymentSuccess($payment);
+        $this->whatsapp->notifyAdminPaymentReceived($payment);
     }
 
     public function jadwalCreated(Jadwal $jadwal): void
@@ -119,5 +129,7 @@ class InAppBellNotifier
             'action_route' => 'jadwal.index',
             'action_params' => [],
         ]);
+
+        $this->whatsapp->notifyTutorJadwalCreated($jadwal);
     }
 }

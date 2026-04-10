@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('no_hp', 25);
             $table->text('alamat');
             $table->foreignId('cabang_id')->constrained('cabangs');
-            $table->enum('status', ['aktif', 'nonaktif'])->default('aktif');
+            $table->enum('status', ['aktif', 'nonaktif','cuti'])->default('aktif');
             $table->timestamps();
             $table->softDeletes();
         });

@@ -19,81 +19,140 @@
         class="space-y-6"
     >
         <x-module-page-header title="Master cabang" description="Kelola lokasi cabang, status operasional, dan akun admin cabang untuk akses dashboard.">
-            <x-slot name="actions">
-                <button @click="createOpen = true" type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 transition hover:bg-blue-700">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                    Tambah cabang
-                </button>
-            </x-slot>
+            
         </x-module-page-header>
 
         @if (session('status'))
             <p class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</p>
         @endif
 
-        <form method="GET" class="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cari</label>
-                <input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama / kota cabang" class="mt-1.5 min-w-[200px] rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Kota</label>
-                <input name="kota" value="{{ $filters['kota'] ?? '' }}" type="text" placeholder="Kota" class="mt-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-            </div>
-            <label class="flex items-center gap-2 pt-6 text-sm text-slate-600">
-                <input name="active_only" value="1" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" {{ ! empty($filters['active_only']) ? 'checked' : '' }}>
-                Hanya aktif
-            </label>
-            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">Terapkan</button>
-        </form>
+        <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5 p-5">
 
-        <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">
+            {{-- FILTER + ACTION --}}
+            <div class="flex flex-wrap items-end gap-3 p-4 border-b border-slate-100 mb-4">
+
+                <form method="GET" class="flex flex-wrap items-end gap-3 flex-1">
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cari</label>
+                        <input name="search" value="{{ $filters['search'] ?? '' }}" type="search"
+                            placeholder="Nama / kota cabang"
+                            class="mt-1.5 min-w-[200px] rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Kota</label>
+                        <input name="kota" value="{{ $filters['kota'] ?? '' }}" type="text"
+                            placeholder="Kota"
+                            class="mt-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
+                        <select name="active_only"
+                            class="mt-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            <option value="">Semua</option>
+                            <option value="1" {{ ($filters['active_only'] ?? '') === '1' ? 'selected' : '' }}>Aktif</option>
+                            <option value="0" {{ ($filters['active_only'] ?? '') === '0' ? 'selected' : '' }}>Tidak Aktif</option>
+                        </select>
+                    </div>
+
+                    <button type="submit"
+                        class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+                        Filter
+                    </button>
+
+                </form>
+
+                {{-- BUTTON RIGHT --}}
+                <div class="ml-auto">
+                    <button type="button" @click="createOpen = true"
+                        class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+                        + Tambah Cabang
+                    </button>
+                </div>
+            </div>
+
+            {{-- TABLE --}}
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50/90 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
-                            <th class="px-4 py-3.5">Kode</th>
+                            <th class="px-4 py-3.5">No</th>
                             <th class="px-4 py-3.5">Nama cabang</th>
                             <th class="px-4 py-3.5">Kota</th>
                             <th class="px-4 py-3.5">(email)</th>
+                            <th class="px-4 py-3.5">Alamat</th>
                             <th class="px-4 py-3.5">Telepon</th>
                             <th class="px-4 py-3.5">Status</th>
                             <th class="px-4 py-3.5 text-right">Aksi</th>
                         </tr>
                     </thead>
+
                     <tbody class="divide-y divide-slate-100 text-slate-700">
                         @forelse ($cabangs as $cabang)
                             <tr class="transition hover:bg-slate-50/80">
-                                <td class="px-4 py-3.5 font-mono text-xs">CBG-{{ str_pad((string) $cabang->id, 4, '0', STR_PAD_LEFT) }}</td>
-                                <td class="px-4 py-3.5 font-medium text-slate-900">{{ $cabang->nama_cabang }}</td>
-                                <td class="px-4 py-3.5">{{ $cabang->kota }}</td>
-                                <td class="px-4 py-3.5 text-slate-600">{{ optional($cabang->user)->email ?? '—' }}</td>
-                                <td class="px-4 py-3.5">{{ $cabang->telepon ?: '—' }}</td>
-                                <td class="px-4 py-3.5">
-                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $cabang->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">{{ ucfirst($cabang->status) }}</span>
+                                <td class="px-4 py-3.5 font-mono text-xs">
+                                    {{ $loop->iteration }}
                                 </td>
+
+                                <td class="px-4 py-3.5 font-medium text-slate-900">
+                                    {{ $cabang->nama_cabang }}
+                                </td>
+
+                                <td class="px-4 py-3.5">{{ $cabang->kota }}</td>
+
+                                <td class="px-4 py-3.5 text-slate-600">
+                                    {{ optional($cabang->user)->email ?? '—' }}
+                                </td>
+                                <td class="px-4 py-3.5 text-slate-600">
+                                    {{ $cabang->alamat ?: '—' }}
+                                </td>
+
+                                <td class="px-4 py-3.5">
+                                    {{ $cabang->telepon ?: '—' }}
+                                </td>
+
+                                <td class="px-4 py-3.5">
+                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold 
+                                        {{ $cabang->status === 'aktif' 
+                                            ? 'bg-emerald-100 text-emerald-800' 
+                                            : 'bg-amber-100 text-amber-800' }}">
+                                        {{ ucfirst($cabang->status) }}
+                                    </span>
+                                </td>
+
                                 <td class="px-4 py-3.5 text-right">
-                                    <div class="flex flex-wrap items-center justify-end gap-3">
-                                        <button
-                                            type="button"
+                                    <div class="flex items-center justify-end gap-3">
+                                        <button type="button"
                                             @click="editOpen = true; edit = { id: {{ $cabang->id }}, nama_cabang: @js($cabang->nama_cabang), alamat: @js($cabang->alamat), kota: @js($cabang->kota), telepon: @js($cabang->telepon), status: @js($cabang->status), admin_name: @js(optional($cabang->user)->name ?? ''), admin_email: @js(optional($cabang->user)->email ?? '') }"
-                                            class="text-sm font-semibold text-blue-600 hover:text-blue-800"
-                                        >
-                                            Edit
+                                            class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
-                                        <button type="button" @click="deleteOpen = true; removeId = {{ $cabang->id }}" class="text-sm font-semibold text-rose-600 hover:text-rose-800">Hapus</button>
+
+                                        <button type="button"
+                                            @click="deleteOpen = true; removeId = {{ $cabang->id }}"
+                                            class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-12 text-center text-slate-500">Belum ada data cabang.</td>
+                                <td colspan="7" class="px-4 py-12 text-center text-slate-500">
+                                    Belum ada data cabang.
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-            <div class="border-t border-slate-100 bg-slate-50/50 px-4 py-3">{{ $cabangs->links() }}</div>
+
+            {{-- PAGINATION --}}
+            <div class="border-t border-slate-100 bg-slate-50/50 px-4 py-3">
+                {{ $cabangs->links() }}
+            </div>
         </div>
 
         {{-- Modal: create --}}

@@ -1,3 +1,6 @@
+@php
+    $settings = \App\Models\Setting::pluck('value', 'setting_key')->toArray();
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -5,8 +8,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>BimbelPro Login</title>
-        <link rel="icon" href="{{ asset('image/logo-bimbel.png') }}" type="image/png">
+        <title>{{ $settings['hero_title'] ?? 'Bimbel Jarimatrik Login' }}</title>
+        <link rel="icon" href="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" type="image/x-icon">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -21,13 +24,12 @@
                 <section class="hidden flex-col justify-between bg-blue-900 p-10 text-white lg:flex">
                     <div>
                         <a href="{{ route('landing') }}" class="inline-flex items-center gap-3">
-                            <img src="{{ asset('image/logo-bimbel.png') }}" alt="Logo Bimbel" class="h-12 w-auto">
+                            <img src="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" alt="Logo Bimbel" class="h-12 w-auto">
                         </a>
-                        <h1 class="mt-8 text-4xl font-extrabold leading-tight">Selamat datang di Bimbel Management System</h1>
-                        <p class="mt-4 max-w-md text-blue-100">Kelola operasional bimbel multi-cabang lebih cepat, rapi, dan profesional dalam satu platform.</p>
+                        <h1 class="mt-1 mb-2 text-4xl font-extrabold leading-tight">Selamat datang di Bimbel Jarimatik TEGAL</h1>
                     </div>
-                    <div class="rounded-2xl bg-white/10 p-4">
-                        <img src="{{ asset('image/hero.png') }}" alt="Ilustrasi Dashboard" class="w-full rounded-xl">
+                    <div class="rounded-2xl">
+                        <img src="{{ isset($settings['hero_filename']) ? asset('image/' . $settings['hero_filename']) : asset('image/hero.png') }}" alt="Ilustrasi" class="mx-auto w-80 rounded-xl">
                     </div>
                 </section>
 
@@ -35,7 +37,7 @@
                     <div class="w-full max-w-md">
                         <div class="mb-6 text-center lg:text-left">
                             <a href="{{ route('landing') }}" class="inline-flex items-center justify-center lg:justify-start">
-                                <img src="{{ asset('image/logo-bimbel.png') }}" alt="Logo Bimbel" class="h-12 w-auto">
+                                <img src="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" alt="Logo Bimbel" class="h-12 w-auto">
                             </a>
                         </div>
                         {{ $slot }}

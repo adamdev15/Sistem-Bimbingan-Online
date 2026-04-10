@@ -20,6 +20,9 @@ class Cabang extends Model
         'kota',
         'telepon',
         'status',
+        'sistem_hasil',
+        'profit_share_investor',
+        'profit_share_pusat',
     ];
 
     public function user(): BelongsTo
@@ -37,9 +40,9 @@ class Cabang extends Model
         return $this->hasMany(Tutor::class);
     }
 
-    public function jadwals(): HasMany
+    public function pengeluarans(): HasMany
     {
-        return $this->hasMany(Jadwal::class);
+        return $this->hasMany(Pengeluaran::class);
     }
 
 }

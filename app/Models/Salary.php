@@ -15,9 +15,10 @@ class Salary extends Model
         'tutor_id',
         'periode',
         'status',
-        'total_jam',
+        'total_kehadiran',
         'total_gaji',
         'created_by',
+        'catatan',
     ];
 
     protected function casts(): array

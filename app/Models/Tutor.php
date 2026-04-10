@@ -34,9 +34,9 @@ class Tutor extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function jadwals(): HasMany
+    public function kehadirans(): HasMany
     {
-        return $this->hasMany(Jadwal::class);
+        return $this->hasMany(Kehadiran::class);
     }
 
     public function salaries(): HasMany

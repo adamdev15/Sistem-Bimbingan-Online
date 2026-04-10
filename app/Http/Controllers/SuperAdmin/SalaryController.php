@@ -4,12 +4,15 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Exports\GajiTutorLaporanExport;
 use App\Http\Controllers\Controller;
+use App\Models\Kehadiran;
 use App\Models\Cabang;
 use App\Models\Salary;
 use App\Models\Tutor;
 use App\Services\SuperAdmin\ManagementService;
+use App\Services\WhatsApp\WhatsAppNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,7 +22,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SalaryController extends Controller
 {
-    public function __construct(private readonly ManagementService $service) {}
+    public function __construct(
+        private readonly ManagementService $service,
+        private readonly WhatsAppNotifier $whatsapp,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -38,7 +44,7 @@ class SalaryController extends Controller
 
         return Pdf::loadView('exports.gaji-tutor-laporan-pdf', $payload)
             ->setPaper('a4', 'landscape')
-            ->download($name);
+            ->stream($name);
     }
 
     public function exportExcel(Request $request): BinaryFileResponse
@@ -61,9 +67,10 @@ class SalaryController extends Controller
         $data = $request->validate([
             'tutor_id' => ['required', 'exists:tutors,id'],
             'periode' => ['required', 'string', 'max:64'],
-            'total_jam' => ['required', 'integer', 'min:0'],
+            'total_kehadiran' => ['required', 'integer', 'min:0'],
             'total_gaji' => ['required', 'numeric', 'min:0'],
             'status' => ['nullable', 'in:pending,dibayar,diterima'],
+            'catatan' => ['nullable', 'string'],
         ]);
 
         $this->guardTutorCabang((int) $data['tutor_id']);
@@ -71,13 +78,35 @@ class SalaryController extends Controller
         Salary::query()->create([
             'tutor_id' => $data['tutor_id'],
             'periode' => $data['periode'],
-            'total_jam' => $data['total_jam'],
+            'total_kehadiran' => $data['total_kehadiran'],
             'total_gaji' => $data['total_gaji'],
             'status' => $data['status'] ?? 'pending',
+            'catatan' => $data['catatan'],
             'created_by' => $request->user()?->id,
         ]);
 
         return back()->with('status', 'Data gaji disimpan.');
+    }
+
+    public function getAttendanceCount(Request $request): JsonResponse
+    {
+        $tutorId = $request->integer('tutor_id');
+        $periode = $request->string('periode')->toString(); // Expecting YYYY-MM
+
+        if (!$tutorId || !preg_match('/^\d{4}-\d{2}$/', $periode)) {
+            return response()->json(['count' => 0]);
+        }
+
+        [$year, $month] = explode('-', $periode);
+
+        $count = Kehadiran::query()
+            ->where('tutor_id', $tutorId)
+            ->whereYear('tanggal', (int) $year)
+            ->whereMonth('tanggal', (int) $month)
+            ->where('status', 'hadir')
+            ->count();
+
+        return response()->json(['count' => $count]);
     }
 
     public function update(Request $request, Salary $salary): RedirectResponse
@@ -88,7 +117,13 @@ class SalaryController extends Controller
             'status' => ['required', 'in:pending,dibayar,diterima'],
         ]);
 
+        $before = $salary->status;
         $salary->update($data);
+        $salary->refresh();
+
+        if ($before !== 'dibayar' && $salary->status === 'dibayar') {
+            $this->whatsapp->notifyTutorSalaryPaid($salary);
+        }
 
         return back()->with('status', 'Status gaji diperbarui.');
     }

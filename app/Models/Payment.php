@@ -27,6 +27,8 @@ class Payment extends Model
         'midtrans_transaction_status',
         'midtrans_payload',
         'created_by',
+        'tanggal_jatuh_tempo',
+        'catatan',
     ];
 
     protected $casts = [

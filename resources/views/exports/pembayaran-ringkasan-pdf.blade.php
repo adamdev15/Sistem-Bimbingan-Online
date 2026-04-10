@@ -28,17 +28,9 @@
     <table>
         <tr><th colspan="2">Ringkasan agregat (sesuai filter)</th></tr>
         <tr><td>Total pemasukan tercatat (nominal terbit)</td><td class="num">Rp {{ number_format((int) ($s['total'] ?? 0), 0, ',', '.') }}</td></tr>
-        <tr><td>Sudah lunas</td><td class="num">Rp {{ number_format((int) ($s['paid'] ?? 0), 0, ',', '.') }}</td></tr>
-        <tr><td>Outstanding / belum lunas</td><td class="num">Rp {{ number_format((int) ($s['outstanding'] ?? 0), 0, ',', '.') }}</td></tr>
-        <tr><td>Jumlah transaksi lunas</td><td class="num">{{ (int) ($s['lunas_count'] ?? 0) }}</td></tr>
-        <tr><td>Jumlah transaksi belum lunas</td><td class="num">{{ (int) ($s['belum_count'] ?? 0) }}</td></tr>
+        <tr><td>Pembayaran lunas</td><td class="num">Rp {{ number_format((int) ($s['paid'] ?? 0), 0, ',', '.') }}</td></tr>
+        <tr><td>Pembayaran belum lunas</td><td class="num">Rp {{ number_format((int) ($s['outstanding'] ?? 0), 0, ',', '.') }}</td></tr>
     </table>
-
-    <div class="insight">
-        <strong>Insight</strong><br>
-        {{ $insight_cabang }}<br>
-        {{ $insight_siswa }}
-    </div>
 
     <table class="grid-2"><tr>
         <td>

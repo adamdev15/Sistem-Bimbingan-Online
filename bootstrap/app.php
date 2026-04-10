@@ -27,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('payments:issue-spp-monthly')->monthlyOn(1, '6:00');
+        $schedule->command('whatsapp:payment-due-reminder')->dailyAt('08:00');
+        $schedule->command('whatsapp:class-reminder')->dailyAt('19:00');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -33,7 +33,7 @@ class GajiTutorLaporanExport implements WithMultipleSheets
             ['Filter', $this->payload['filter_label']],
             [],
             ['Total entri', (int) ($this->payload['entri_count'] ?? 0)],
-            ['Total jam mengajar (jumlah)', (int) ($this->payload['total_jam'] ?? 0)],
+            ['Total kehadiran (jumlah sesi)', (int) ($this->payload['total_kehadiran'] ?? 0)],
             ['Total nominal gaji (Rp)', (int) round((float) ($this->payload['total_gaji'] ?? 0))],
             [],
             ['Insight'],
@@ -51,22 +51,22 @@ class GajiTutorLaporanExport implements WithMultipleSheets
     {
         $isSuper = (bool) ($this->payload['is_super_admin'] ?? false);
         $head = $isSuper
-            ? ['Tutor', 'Cabang', 'Total jam', 'Total gaji (Rp)', 'Jumlah entri']
-            : ['Tutor', 'Total jam', 'Total gaji (Rp)', 'Jumlah entri'];
+            ? ['Tutor', 'Cabang', 'Total kehadiran', 'Total gaji (Rp)', 'Jumlah entri']
+            : ['Tutor', 'Total kehadiran', 'Total gaji (Rp)', 'Jumlah entri'];
         $rows = [$head];
         foreach ($this->payload['per_tutor'] as $row) {
             if ($isSuper) {
                 $rows[] = [
                     $row->tutor_nama,
                     $row->nama_cabang ?? '—',
-                    (int) $row->total_jam,
+                    (int) $row->total_kehadiran,
                     (int) round((float) $row->total_gaji),
                     (int) $row->entri_count,
                 ];
             } else {
                 $rows[] = [
                     $row->tutor_nama,
-                    (int) $row->total_jam,
+                    (int) $row->total_kehadiran,
                     (int) round((float) $row->total_gaji),
                     (int) $row->entri_count,
                 ];
@@ -78,11 +78,11 @@ class GajiTutorLaporanExport implements WithMultipleSheets
 
     private function sheetPerPeriode(): array
     {
-        $rows = [['Periode', 'Total jam', 'Total gaji (Rp)', 'Jumlah entri']];
+        $rows = [['Periode', 'Total kehadiran', 'Total gaji (Rp)', 'Jumlah entri']];
         foreach ($this->payload['per_periode'] as $row) {
             $rows[] = [
                 $row->periode,
-                (int) $row->total_jam,
+                (int) $row->total_kehadiran,
                 (int) round((float) $row->total_gaji),
                 (int) $row->entri_count,
             ];
@@ -95,8 +95,8 @@ class GajiTutorLaporanExport implements WithMultipleSheets
     {
         $isSuper = (bool) ($this->payload['is_super_admin'] ?? false);
         $head = $isSuper
-            ? ['ID', 'Periode', 'Tutor', 'Cabang', 'Jam', 'Gaji (Rp)', 'Status', 'Dicatat oleh']
-            : ['ID', 'Periode', 'Tutor', 'Jam', 'Gaji (Rp)', 'Status', 'Dicatat oleh'];
+            ? ['ID', 'Periode', 'Tutor', 'Cabang', 'Kehadiran', 'Gaji (Rp)', 'Status', 'Dicatat oleh']
+            : ['ID', 'Periode', 'Tutor', 'Kehadiran', 'Gaji (Rp)', 'Status', 'Dicatat oleh'];
         $rows = [$head];
         foreach ($this->payload['detail_rows'] as $s) {
             $tutor = $s->tutor;
@@ -109,7 +109,7 @@ class GajiTutorLaporanExport implements WithMultipleSheets
             if ($isSuper) {
                 $base[] = $cab;
             }
-            $base[] = (int) $s->total_jam;
+            $base[] = (int) $s->total_kehadiran;
             $base[] = (int) round((float) $s->total_gaji);
             $base[] = $s->status;
             $base[] = $s->creator?->name ?? '—';

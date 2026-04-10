@@ -24,7 +24,28 @@ class Siswa extends Model
         'alamat',
         'cabang_id',
         'status',
+        'tempat_lahir',
+        'tanggal_lahir',
+        'asal_sekolah',
+        'nis',
+        'materi_les_id',
+        'nama_ayah',
+        'tempat_lahir_ayah',
+        'tanggal_lahir_ayah',
+        'pekerjaan_ayah',
+        'nama_ibu',
+        'tempat_lahir_ibu',
+        'tanggal_lahir_ibu',
+        'pekerjaan_ibu',
+        'no_hp_orang_tua',
+        'tanggal_cuti',
+        'tanggal_selesai_cuti',
     ];
+
+    public function materiLes(): BelongsTo
+    {
+        return $this->belongsTo(MateriLes::class, 'materi_les_id');
+    }
 
     public function cabang(): BelongsTo
     {
@@ -44,16 +65,5 @@ class Siswa extends Model
     public function kehadirans(): HasMany
     {
         return $this->hasMany(Kehadiran::class, 'student_id');
-    }
-
-    /**
-     * Kelas / sesi (jadwal) yang diikuti siswa (pivot student_class).
-     *
-     * @return BelongsToMany<Jadwal, $this>
-     */
-    public function jadwals(): BelongsToMany
-    {
-        return $this->belongsToMany(Jadwal::class, 'student_class', 'student_id', 'jadwal_id')
-            ->withTimestamps();
     }
 }

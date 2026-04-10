@@ -1,7 +1,11 @@
 @php
     $isSuper = auth()->user()->hasRole('super_admin');
-    $moduleCards = $dashboardData['module_cards'] ?? ['siswa' => 0, 'jadwal' => 0, 'tagihan' => 0];
+    $moduleCards = $dashboardData['module_cards'] ?? ['siswa' => 0, 'materi_les' => 0, 'tagihan' => 0, 'saldo_tahun_ini' => 0];
     $monthlyRevenue = collect($dashboardData['monthly_revenue'] ?? []);
+    $kpi = $dashboardData['kpi'] ?? ['presensi' => ['month' => 0, 'year' => 0], 'pembayaran' => ['month' => 0, 'year' => 0], 'pengeluaran' => ['month_val' => 0, 'year_val' => 0, 'month_pct' => 0]];
+    $dist = collect($dashboardData['distribution'] ?? []);
+    $comparison = $dashboardData['income_vs_expense'] ?? ['income_month' => 0, 'expense_month' => 0, 'income_year' => 0, 'expense_year' => 0];
+    $notifications = $dashboardData['notifications'] ?? ['wa_reminder' => 0, 'lunas_today' => 0, 'active_cabang' => 0];
 @endphp
 {{-- Page intro --}}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -23,12 +27,12 @@
     </div>
 </div>
 
-<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
     @foreach ([
         ['title' => 'Total Siswa Aktif', 'value' => number_format($dashboardData['total_siswa'] ?? 0), 'delta' => '+2,4%', 'tone' => 'text-emerald-600', 'icon' => 'users'],
-        ['title' => 'Tutor Terdaftar', 'value' => number_format($dashboardData['total_tutor'] ?? 0), 'delta' => '+3', 'tone' => 'text-emerald-600', 'icon' => 'academic'],
-        ['title' => 'Pembayaran Bulan Ini', 'value' => 'Rp '.number_format((int) ($dashboardData['pembayaran_bulan'] ?? 0), 0, ',', '.'), 'delta' => 'Lunas berjalan', 'tone' => 'text-blue-600', 'icon' => 'cash'],
-        ['title' => 'Sesi Kelas Hari Ini', 'value' => number_format($dashboardData['sesi_hari_ini'] ?? 0), 'delta' => $isSuper ? 'Semua cabang' : 'Cabang ini', 'tone' => 'text-slate-600', 'icon' => 'calendar'],
+        ['title' => 'Total Tutor Terdaftar', 'value' => number_format($dashboardData['total_tutor'] ?? 0), 'delta' => '+3', 'tone' => 'text-emerald-600', 'icon' => 'academic'],
+        ['title' => 'Pembayaran Bulan Ini', 'value' => 'Rp '.number_format((int) ($dashboardData['pembayaran_bulan'] ?? 0), 0, ',', '.'), 'delta' => 'Sedang berjalan', 'tone' => 'text-blue-600', 'icon' => 'cash'],
+        ['title' => 'Saldo Total '.now()->year, 'value' => 'Rp '.number_format((int) ($moduleCards['saldo_tahun_ini'] ?? 0), 0, ',', '.'), 'delta' => 'Pendapatan Pusat', 'tone' => 'text-emerald-600', 'icon' => 'chart'],
     ] as $card)
         <article class="relative overflow-hidden rounded-xl border border-blue-100/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/5">
             <div class="flex items-start justify-between gap-3">
@@ -39,11 +43,21 @@
                 </div>
                 <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
                     @if ($card['icon'] === 'users')
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z"/></svg>
+                        <div class="p-2 bg-emerald-50 rounded-lg">
+                            <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        </div>
                     @elseif ($card['icon'] === 'academic')
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 004.3 2.2c1.82.88 3.77 1.34 5.76 1.34 1.99 0 3.94-.46 5.76-1.34a59.96 59.96 0 004.3-2.2M12 21l-8.5-4.5v-9L12 3l8.5 4.5v9L12 21z"/></svg>
+                        <div class="p-2 bg-blue-50 rounded-lg">
+                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"/></svg>
+                        </div>
                     @elseif ($card['icon'] === 'cash')
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 5.25h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25"/></svg>
+                        <div class="p-2 bg-blue-50 rounded-lg">
+                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        </div>
+                    @elseif ($card['icon'] === 'chart')
+                        <div class="p-2 bg-emerald-50 rounded-lg">
+                            <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        </div>
                     @else
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25"/></svg>
                     @endif
@@ -62,14 +76,20 @@
             </div>
             <div class="grid gap-4 sm:grid-cols-3">
                 @foreach ([
-                    ['label' => 'Data Siswa', 'href' => route('siswa.index'), 'files' => number_format($moduleCards['siswa']).' aktif', 'date' => 'Update hari ini', 'bg' => 'from-sky-50 to-blue-50', 'border' => 'border-blue-100'],
-                    ['label' => 'Jadwal & Kelas', 'href' => route('jadwal.index'), 'files' => number_format($moduleCards['jadwal']).' sesi', 'date' => 'Minggu ini', 'bg' => 'from-blue-700 to-blue-900', 'border' => 'border-blue-800', 'dark' => true],
-                    ['label' => 'Pembayaran', 'href' => route('pembayaran.index'), 'files' => number_format($moduleCards['tagihan']).' tagihan', 'date' => 'Bulan berjalan', 'bg' => 'from-blue-50 to-indigo-50', 'border' => 'border-indigo-100'],
+                    ['label' => 'Data Siswa', 'href' => route('siswa.index'), 'files' => number_format($moduleCards['siswa'] ?? 0).' aktif', 'date' => 'Update hari ini', 'bg' => 'from-sky-50 to-blue-50', 'border' => 'border-blue-100'],
+                    ['label' => 'Saldo Tahun Ini', 'href' => route('laporan-keuangan.index'), 'files' => 'Rp '.number_format($moduleCards['saldo_tahun_ini'] ?? 0, 0, ',', '.'), 'date' => 'Laba bersih '.now()->year, 'bg' => 'from-blue-700 to-blue-900', 'border' => 'border-blue-800', 'dark' => true],
+                    ['label' => 'Pembayaran', 'href' => route('pembayaran.index'), 'files' => number_format($moduleCards['tagihan'] ?? 0).' tagihan', 'date' => 'Belum lunas', 'bg' => 'from-blue-50 to-indigo-50', 'border' => 'border-indigo-100'],
                 ] as $mod)
                     <a href="{{ $mod['href'] }}" class="group flex flex-col rounded-xl border {{ $mod['border'] }} bg-gradient-to-br {{ $mod['bg'] }} p-4 transition hover:shadow-md {{ !empty($mod['dark']) ? 'text-white' : '' }}">
                         <div class="flex items-center justify-between">
-                            <span class="rounded-lg {{ !empty($mod['dark']) ? 'bg-white/15' : 'bg-white/80' }} p-2">
-                                <svg class="h-5 w-5 {{ !empty($mod['dark']) ? 'text-white' : 'text-blue-700' }}" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.25-2.25h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008z"/></svg>
+                            <span class="rounded-lg {{ !empty($mod['dark']) ? 'bg-white/10 ring-1 ring-white/20' : 'bg-white/80 ring-1 ring-black/5' }} p-2.5">
+                                @if($mod['label'] === 'Data Siswa')
+                                    <svg class="h-6 w-6 {{ !empty($mod['dark']) ? 'text-white' : 'text-blue-600' }}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                @elseif($mod['label'] === 'Saldo Tahun Ini')
+                                    <svg class="h-6 w-6 {{ !empty($mod['dark']) ? 'text-white' : 'text-blue-600' }}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                @else
+                                    <svg class="h-6 w-6 {{ !empty($mod['dark']) ? 'text-white' : 'text-blue-600' }}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                @endif
                             </span>
                             <span class="flex -space-x-2">
                                 @foreach (range(1, 3) as $i)
@@ -83,19 +103,6 @@
                     </a>
                 @endforeach
             </div>
-            @if ($isSuper)
-                <div class="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
-                    <a href="{{ route('cabang.index') }}" class="rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50">Kelola cabang</a>
-                    <a href="{{ route('tutors.index') }}" class="rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50">Data tutor</a>
-                    <a href="{{ route('presensi.index') }}" class="rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50">Presensi</a>
-                </div>
-            @else
-                <div class="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
-                    <a href="{{ route('tutors.index') }}" class="rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50">Tutor cabang</a>
-                    <a href="{{ route('presensi.index') }}" class="rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50">Presensi</a>
-                    <a href="{{ route('cabang.index') }}" class="rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50">Profil cabang</a>
-                </div>
-            @endif
         </section>
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -145,44 +152,63 @@
             </div>
         </section>
 
-        <div class="grid gap-6 lg:grid-cols-2">
+        <div class="grid gap-6 lg:grid-cols-2" x-data="{ kpiPeriod: 'month' }">
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-semibold text-slate-900">Capaian operasional</h2>
-                <p class="text-sm text-slate-500">KPI (placeholder)</p>
-                <ul class="mt-4 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-slate-900">Capaian operasional</h2>
+                    <div class="flex p-1 bg-slate-100 rounded-lg">
+                        <button @click="kpiPeriod = 'month'" :class="kpiPeriod === 'month' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'" class="px-3 py-1 text-xs font-bold rounded-md transition-all">Bulan</button>
+                        <button @click="kpiPeriod = 'year'" :class="kpiPeriod === 'year' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'" class="px-3 py-1 text-xs font-bold rounded-md transition-all">Tahun</button>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-500 mt-1">Progress performa berdasarkan filter</p>
+                <div class="mt-6 space-y-6">
                     @foreach ([
-                        ['label' => 'Presensi siswa', 'pct' => 78],
-                        ['label' => 'Kelengkapan pembayaran', 'pct' => 64],
-                        ['label' => 'Utilisasi tutor', 'pct' => 52],
+                        ['label' => 'Presensi Siswa', 'month' => $kpi['presensi']['month'], 'year' => $kpi['presensi']['year'], 'color' => 'from-blue-600 to-sky-400'],
+                        ['label' => 'Pembayaran Lunas', 'month' => $kpi['pembayaran']['month'], 'year' => $kpi['pembayaran']['year'], 'color' => 'from-emerald-600 to-teal-400'],
+                        ['label' => 'Pengeluaran', 'month' => $kpi['pengeluaran']['month_pct'], 'year' => 100, 'color' => 'from-rose-600 to-orange-400', 'sub' => 'Nominal: Rp '.number_format($kpi['pengeluaran']['month_val'], 0, ',', '.')],
                     ] as $row)
-                        <li>
-                            <div class="flex justify-between text-sm">
-                                <span class="font-medium text-slate-700">{{ $row['label'] }}</span>
-                                <span class="text-blue-700">{{ $row['pct'] }}%</span>
+                        <div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-bold text-slate-800">{{ $row['label'] }}</span>
+                                <span class="text-blue-700 font-bold" x-text="kpiPeriod === 'month' ? '{{ $row['month'] }}%' : '{{ $row['year'] }}%'"></span>
                             </div>
-                            <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                                <div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-sky-400" style="width: {{ $row['pct'] }}%"></div>
+                            <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100 flex">
+                                <div class="h-full rounded-full bg-gradient-to-r {{ $row['color'] }} shadow-sm transition-all duration-500" 
+                                     :style="'width: ' + (kpiPeriod === 'month' ? '{{ $row['month'] }}%' : '{{ $row['year'] }}%')"></div>
                             </div>
-                        </li>
+                            @if(isset($row['sub']))
+                                <p class="mt-1 text-[10px] text-slate-400 font-semibold" x-show="kpiPeriod === 'month'">{{ $row['sub'] }}</p>
+                            @endif
+                        </div>
                     @endforeach
-                </ul>
+                </div>
             </section>
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-semibold text-slate-900">Target vs realisasi</h2>
-                <p class="text-sm text-slate-500">Periode berjalan</p>
-                <div class="mt-6 flex items-center justify-around gap-4">
-                    @foreach ([['label' => '2025', 'pct' => 65], ['label' => '2026', 'pct' => 75]] as $donut)
-                        <div class="text-center">
-                            <div class="relative mx-auto h-28 w-28">
-                                <svg class="-rotate-90" viewBox="0 0 36 36" aria-hidden="true">
-                                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgb(241 245 249)" stroke-width="4" />
-                                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgb(37 99 235)" stroke-width="4" stroke-dasharray="{{ $donut['pct'] }}, 100" stroke-linecap="round" />
-                                </svg>
-                                <span class="absolute inset-0 flex flex-col items-center justify-center text-slate-800">
-                                    <span class="text-xl font-bold">{{ $donut['pct'] }}%</span>
-                                </span>
+                <h2 class="text-lg font-semibold text-slate-900">Pemasukan VS Pengeluaran</h2>
+                <p class="text-sm text-slate-500">Perbandingan realisasi finansial</p>
+                <div class="mt-6 space-y-6">
+                    @foreach ([['label' => 'Bulan Ini', 'income' => $comparison['income_month'], 'expense' => $comparison['expense_month']], ['label' => 'Tahun Ini', 'income' => $comparison['income_year'], 'expense' => $comparison['expense_year']]] as $comp)
+                        @php
+                            $total = max($comp['income'] + $comp['expense'], 1);
+                            $incPct = round(($comp['income'] / $total) * 100);
+                            $expPct = round(($comp['expense'] / $total) * 100);
+                        @endphp
+                        <div>
+                            <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                                <span>{{ $comp['label'] }}</span>
                             </div>
-                            <p class="mt-2 text-sm font-medium text-slate-600">{{ $donut['label'] }}</p>
+                            <div class="flex items-center gap-2">
+                                <div class="h-4 flex-1 overflow-hidden rounded-lg bg-slate-100 flex">
+                                    <div class="h-full bg-blue-600 transition-all" style="width: {{ $incPct }}%" title="Income"></div>
+                                    <div class="h-full bg-rose-500 transition-all" style="width: {{ $expPct }}%" title="Expense"></div>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-700">{{ $incPct }}% / {{ $expPct }}%</span>
+                            </div>
+                            <div class="mt-1 flex justify-between text-[10px]">
+                                <span class="text-blue-600">In: Rp {{ number_format($comp['income'], 0, ',', '.') }}</span>
+                                <span class="text-rose-600">Out: Rp {{ number_format($comp['expense'], 0, ',', '.') }}</span>
+                            </div>
                         </div>
                     @endforeach
                 </div>
@@ -224,47 +250,81 @@
     </div>
 
     <aside class="space-y-6 xl:col-span-4">
-        <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-sky-400 to-blue-600 p-5 text-white shadow-md">
-            <div class="flex items-center gap-3">
-                <span class="rounded-xl bg-white/20 p-2">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 6m-4.5-6v11.25"/></svg>
-                </span>
-                <div>
-                    <p class="font-semibold">Impor data</p>
-                    <p class="text-sm text-sky-100">CSV siswa, jadwal, atau ekspor laporan</p>
-                </div>
-            </div>
-            <button type="button" class="mt-4 w-full rounded-xl bg-white py-3 text-sm font-bold text-blue-700 shadow hover:bg-sky-50">
-                Unggah berkas
-            </button>
-        </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-semibold text-slate-900">Distribusi pendapatan</h2>
-            <p class="text-sm text-slate-500">Per kategori (prototipe)</p>
-            <div class="relative mx-auto mt-6 h-44 w-44">
-                <div class="absolute inset-0 rounded-full" style="background: conic-gradient(rgb(37 99 235) 0deg 120deg, rgb(14 165 233) 120deg 210deg, rgb(30 64 175) 210deg 300deg, rgb(186 230 253) 300deg 360deg);"></div>
-                <div class="absolute inset-[18%] flex items-center justify-center rounded-full bg-white shadow-inner">
-                    <svg class="h-10 w-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5"/></svg>
+        <div class="grid gap-6 lg:grid-cols-2">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-semibold text-slate-900">Distribusi pendapatan</h2>
+                <p class="text-sm text-slate-500">Berdasarkan kategori biaya</p>
+                <div class="relative mx-auto mt-6 h-44 w-44 rounded-full">
+                    @php
+                        $totalDist = $dist->sum('value') ?: 1;
+                        $dashArray = 0;
+                        $colors = ['#2563eb', '#0ea5e9', '#1e40af', '#bae6fd', '#3b82f6'];
+                    @endphp
+                    <svg class="-rotate-90" viewBox="0 0 36 36">
+                        <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f1f5f9" stroke-width="5" />
+                        @foreach($dist as $idx => $item)
+                            @php
+                                $pct = ($item['value'] / $totalDist) * 100;
+                                $offset = 100 - $dashArray;
+                                $dashArray += $pct;
+                                $angle = ($dashArray - ($pct / 2)) * 3.6; // In degrees
+                                $rad = deg2rad($angle);
+                                $labelR = 12;
+                                $lx = 18 + $labelR * cos($rad);
+                                $ly = 18 + $labelR * sin($rad);
+                            @endphp
+                            <circle cx="18" cy="18" r="15.915" fill="none" stroke="{{ $colors[$idx % count($colors)] }}" stroke-width="5" stroke-dasharray="{{ $pct }} {{ 100 - $pct }}" stroke-dashoffset="{{ $offset }}" stroke-linecap="butt" />
+                            @if($pct > 5)
+                                <text x="{{ $lx }}" y="{{ $ly }}" transform="rotate(90 {{ $lx }} {{ $ly }})" fill="black" font-size="2.2" font-weight="bold" text-anchor="middle" dominant-baseline="middle">{{ round($pct) }}%</text>
+                            @endif
+                        @endforeach
+                    </svg>
+                    <div class="absolute inset-[18%] flex items-center justify-center rounded-full bg-white shadow-inner">
+                        <svg class="h-10 w-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5"/></svg>
+                    </div>
                 </div>
+                <ul class="mt-4 space-y-1.5 text-xs text-slate-600">
+                    @foreach($dist as $idx => $item)
+                        <li class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="h-2 w-2 rounded-full" style="background: {{ $colors[$idx % count($colors)] }}"></span>
+                                <span class="truncate max-w-[100px]">{{ $item['label'] }}</span>
+                            </div>
+                            <span class="font-bold">Rp {{ number_format($item['value'], 0, ',', '.') }}</span>
+                        </li>
+                    @endforeach
+                    @if($dist->isEmpty())
+                        <li class="text-center text-slate-400 py-4 italic">Belum ada data distribusi</li>
+                    @endif
+                </ul>
             </div>
-            <ul class="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-600">
-                <li class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-blue-600"></span> SPP</li>
-                <li class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-sky-500"></span> Registrasi</li>
-                <li class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-blue-900"></span> Modul</li>
-                <li class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-sky-200"></span> Lainnya</li>
-            </ul>
+            
+            <div>
+            @foreach ([
+                ['title' => 'Reminder WA', 'body' => $notifications['wa_reminder'] . ' tagihan jatuh tempo besok. Antrian pengiriman siap.', 'from' => 'from-blue-950', 'to' => 'to-blue-800', 'icon' => 'bell'],
+                ['title' => 'Pembayaran Lunas', 'body' => $notifications['lunas_today'] . ' Siswa Lunas Pembayaran di hari ini.', 'from' => 'from-blue-800', 'to' => 'to-blue-600', 'icon' => 'check'],
+                ['title' => $isSuper ? 'Cabang aktif' : 'Sinkronisasi', 'body' => ($isSuper ? ($notifications['active_cabang'] . ' cabang online.') : 'Data cabang Anda sinkron.'), 'from' => 'from-sky-500', 'to' => 'to-blue-500', 'icon' => 'cloud'],
+            ] as $card)
+                <div class="group relative rounded-2xl bg-gradient-to-br {{ $card['from'] }} {{ $card['to'] }} p-5 text-white shadow-md mb-2 overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-2">
+                             @if($card['icon'] === 'bell')
+                                <svg class="h-4 w-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                             @elseif($card['icon'] === 'check')
+                                <svg class="h-4 w-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                             @else
+                                <svg class="h-4 w-4 text-sky-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                             @endif
+                            <p class="font-bold text-xs uppercase tracking-widest opacity-80">{{ $card['title'] }}</p>
+                        </div>
+                        <p class="text-sm leading-relaxed text-blue-50/95 font-medium">{{ $card['body'] }}</p>
+                    </div>
+                    {{-- Abstract Pattern --}}
+                    <div class="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-white/10 blur-2xl group-hover:bg-white/20 transition-all"></div>
+                </div>
+            @endforeach
+            </div>
         </div>
-
-        @foreach ([
-            ['title' => 'Reminder WA', 'body' => '3 tagihan jatuh tempo besok. Antrian pengiriman siap.', 'from' => 'from-blue-950', 'to' => 'to-blue-800'],
-            ['title' => 'Presensi tutor', 'body' => '2 tutor belum konfirmasi sesi malam.', 'from' => 'from-blue-800', 'to' => 'to-blue-600'],
-            ['title' => $isSuper ? 'Cabang aktif' : 'Sinkronisasi', 'body' => $isSuper ? '8 cabang online.' : 'Data cabang Anda sinkron.', 'from' => 'from-sky-500', 'to' => 'to-blue-500'],
-        ] as $card)
-            <div class="rounded-2xl bg-gradient-to-br {{ $card['from'] }} {{ $card['to'] }} p-5 text-white shadow-md">
-                <p class="font-semibold">{{ $card['title'] }}</p>
-                <p class="mt-2 text-sm leading-relaxed text-blue-50/95">{{ $card['body'] }}</p>
-            </div>
-        @endforeach
     </aside>
 </div>

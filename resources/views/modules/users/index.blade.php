@@ -32,16 +32,6 @@
             title="Manajemen pengguna"
             description="Kelola akun login, peran akses, dan verifikasi email untuk seluruh sistem."
         >
-            <x-slot name="actions">
-                <button
-                    type="button"
-                    @click="createOpen = true"
-                    class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 transition hover:bg-blue-700"
-                >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                    Tambah pengguna
-                </button>
-            </x-slot>
         </x-module-page-header>
 
         @if (session('status'))
@@ -52,39 +42,57 @@
             <p class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{{ $errors->first('user') }}</p>
         @endif
 
-        <form method="GET" action="{{ route('users.index') }}" class="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
-            <div class="min-w-[200px] flex-1">
-                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cari</label>
-                <input
-                    name="search"
-                    value="{{ $filters['search'] ?? '' }}"
-                    type="search"
-                    placeholder="Nama atau email"
-                    class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none ring-blue-500/0 transition focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15"
-                >
-            </div>
-            <div class="min-w-[160px]">
-                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Peran</label>
-                <select name="role" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                    <option value="">Semua peran</option>
-                    @foreach ($roleOptions as $r)
-                        <option value="{{ $r }}" @selected(($filters['role'] ?? '') === $r)>{{ $roleLabels[$r] ?? $r }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="min-w-[160px]">
-                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Email</label>
-                <select name="verified" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                    <option value="">Semua</option>
-                    <option value="1" @selected(($filters['verified'] ?? '') === '1' || ($filters['verified'] ?? '') === 1)>Terverifikasi</option>
-                    <option value="0" @selected(($filters['verified'] ?? '') === '0' || ($filters['verified'] ?? '') === 0)>Belum verifikasi</option>
-                </select>
-            </div>
-            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">Terapkan</button>
-            <a href="{{ route('users.index') }}" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reset</a>
-        </form>
+        <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5 p-5">
 
-        <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">
+            {{-- FILTER + ACTION --}}
+            <div class="flex flex-wrap items-end gap-3 p-4 border-b border-slate-100 mb-6">
+
+                <form method="GET" action="{{ route('users.index') }}" class="flex flex-wrap items-end gap-3 flex-1">
+                    <div class="min-w-[100px] flex-1">
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cari</label>
+                        <input
+                            name="search"
+                            value="{{ $filters['search'] ?? '' }}"
+                            type="search"
+                            placeholder="Nama atau email..."
+                            class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none ring-blue-500/0 transition focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15"
+                        >
+                    </div>
+                    <div class="min-w-[160px]">
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Peran</label>
+                        <select name="role" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            <option value="">Semua peran</option>
+                            @foreach ($roleOptions as $r)
+                                <option value="{{ $r }}" @selected(($filters['role'] ?? '') === $r)>{{ $roleLabels[$r] ?? $r }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="min-w-[160px]">
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Email</label>
+                        <select name="verified" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            <option value="">Semua</option>
+                            <option value="1" @selected(($filters['verified'] ?? '') === '1' || ($filters['verified'] ?? '') === 1)>Terverifikasi</option>
+                            <option value="0" @selected(($filters['verified'] ?? '') === '0' || ($filters['verified'] ?? '') === 0)>Belum verifikasi</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-all">Filter</button>
+                    <a href="{{ route('users.index') }}" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all">Reset</a>
+                </form>
+
+                {{-- BUTTON RIGHT --}}
+                <div class="flex flex-wrap items-center gap-2 ml-auto">
+                    <button
+                        type="button"
+                        @click="createOpen = true"
+                        class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 transition-all hover:bg-blue-700"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        Tambah pengguna
+                    </button>
+                </div>
+            </div>
+
+            {{-- TABLE --}}
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50/90 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -119,9 +127,8 @@
                                         <button
                                             type="button"
                                             @click="edit.id = {{ $u->id }}; edit.name = @js($u->name); edit.email = @js($u->email); edit.role = @js($rname ?? 'siswa'); edit.emailVerified = @json((bool) $u->email_verified_at); editOpen = true"
-                                            class="text-sm font-semibold text-blue-600 hover:text-blue-800"
-                                        >
-                                            Edit
+                                            class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
                                         @if ($u->is(auth()->user()))
                                             <span class="text-xs text-slate-400" title="Akun sedang dipakai">Anda</span>
@@ -129,9 +136,8 @@
                                             <button
                                                 type="button"
                                                 @click="deleteOpen = true; removeId = {{ $u->id }}; removeName = @js($u->name)"
-                                                class="text-sm font-semibold text-rose-600 hover:text-rose-800"
-                                            >
-                                                Hapus
+                                                class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                             </button>
                                         @endif
                                     </div>

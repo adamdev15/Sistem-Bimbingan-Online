@@ -30,7 +30,7 @@ class TutorController extends Controller
     public function show(Tutor $tutor): View
     {
         $this->guardCabangScope($tutor->cabang_id);
-        $tutor->load(['cabang', 'jadwals.mataPelajaran']);
+        $tutor->load(['cabang']);
 
         return view('modules.tutor.show', compact('tutor'));
     }

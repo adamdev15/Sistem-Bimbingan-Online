@@ -1,6 +1,6 @@
 @php
     $cards = $dashboardData['siswa_cards'] ?? [];
-    $jadwalBesok = collect($dashboardData['jadwal_besok'] ?? []);
+    $programDiikuti = collect($dashboardData['program_diikuti'] ?? []);
     $pembRincian = collect($dashboardData['pembayaran_rincian'] ?? []);
     $aktivitas = collect($dashboardData['aktivitas_terkini'] ?? []);
     $alert = $dashboardData['pembayaran_alert'] ?? ['ada_tagihan' => false, 'outstanding' => 0, 'pesan' => ''];
@@ -28,7 +28,7 @@
         ['title' => 'Kehadiran bulan ini', 'value' => ($cards['pct_kehadiran_bulan'] ?? 0).'%', 'sub' => $cards['kehadiran_sub'] ?? '—', 'tone' => 'text-emerald-600'],
         ['title' => 'Tagihan belum lunas', 'value' => number_format($cards['tagihan_belum'] ?? 0), 'sub' => $cards['tagihan_sub'] ?? '—', 'tone' => 'text-amber-600'],
         ['title' => 'Presensi minggu ini', 'value' => number_format($cards['sesi_minggu_ini'] ?? 0), 'sub' => 'Catatan kehadiran tercatat', 'tone' => 'text-blue-600'],
-        ['title' => 'Sesi / mapel diikuti', 'value' => number_format($cards['mapel_diikuti'] ?? 0), 'sub' => 'Berdasarkan jadwal Anda', 'tone' => 'text-slate-600'],
+        ['title' => 'Program Materi Les', 'value' => number_format($cards['materi_aktif'] ?? 0), 'sub' => 'Program aktif diikuti', 'tone' => 'text-slate-600'],
     ] as $k)
         <article class="rounded-xl border border-blue-100/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/5">
             <p class="text-sm font-medium text-slate-500">{{ $k['title'] }}</p>
@@ -42,22 +42,35 @@
     <div class="space-y-6 lg:col-span-7">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-900/5">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-lg font-semibold text-slate-900">Jadwal besok</h2>
-                <a href="{{ route('jadwal.index') }}" class="text-sm font-medium text-blue-600 hover:text-blue-800">Semua jadwal saya</a>
+                <h2 class="text-lg font-semibold text-slate-900">Program yang diikuti</h2>
             </div>
             <ul class="divide-y divide-slate-100">
-                @forelse ($jadwalBesok as $j)
-                    <li class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                        <div>
-                            <p class="font-semibold text-slate-900">{{ $j->mapel }}</p>
-                            <p class="text-slate-500">{{ optional($j->tutor)->nama ?? '—' }} · {{ optional($j->cabang)->nama_cabang ?? '—' }}</p>
+                @forelse ($programDiikuti as $m)
+                    <li class="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
+                        <div class="flex items-center gap-4">
+                            <div class="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 border border-slate-200">
+                                @if ($m->foto)
+                                    <img src="{{ Storage::url($m->foto) }}" class="h-full w-full object-cover">
+                                @else
+                                    <div class="flex h-full w-full items-center justify-center text-slate-400">
+                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.25c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                    </div>
+                                @endif
+                            </div>
+                            <div>
+                                <p class="font-bold text-slate-900">{{ $m->nama_materi }}</p>
+                                <p class="text-xs text-slate-500">{{ $m->pertemuan_per_minggu }}x Pertemuan / Minggu · {{ $m->biaya_pendaftaran > 0 ? 'Berbayar' : 'Free' }}</p>
+                            </div>
                         </div>
-                        <span class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 ring-1 ring-blue-100">
-                            {{ substr($j->jam_mulai, 0, 5) }}–{{ substr($j->jam_selesai, 0, 5) }}
+                        <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
+                            Aktif
                         </span>
                     </li>
                 @empty
-                    <li class="py-6 text-center text-sm text-slate-500">Tidak ada jadwal tercatat untuk hari besok.</li>
+                    <li class="py-10 text-center">
+                        <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.25c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                        <p class="mt-2 text-sm text-slate-500">Anda belum mengikuti program apapun.</p>
+                    </li>
                 @endforelse
             </ul>
         </section>

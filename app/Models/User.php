@@ -88,4 +88,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(Kehadiran::class, 'created_by');
     }
+
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordCustom($token));
+    }
 }
