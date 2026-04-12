@@ -118,6 +118,7 @@
                             @endif
                             <th class="px-4 py-3">Keterangan</th>
                             <th class="px-4 py-3">Nominal</th>
+                            <th class="px-4 py-3">Created By</th>
                             <th class="px-4 py-3 text-right">Aksi</th>
                         </tr>
                     </thead>
@@ -135,6 +136,7 @@
                                 @endif
                                 <td class="px-4 py-4">{{ $p->keterangan }}</td>
                                 <td class="px-4 py-4 font-bold">Rp {{ number_format((float) $p->nominal, 0, ',', '.') }}</td>
+                                <td class="px-4 py-4 text-xs">{{ $p->creator->name ?? '—' }}</td>
                                 <td class="px-4 py-4 text-right">
                                     <div class="flex justify-end gap-2">
                                         <button @click="$dispatch('edit-expense', { 

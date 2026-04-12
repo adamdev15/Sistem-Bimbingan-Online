@@ -6,12 +6,25 @@
 
 <x-layouts.dashboard-shell title="Pembayaran - eBimbel">
     <div
-        x-data="{
+        x-data='{
             massOpen: false,
             pendingOpen: false,
             payLoading: null,
             detailOpen: false,
             detail: null,
+            
+            // Searchable Student State (from Cetak Kartu)
+            selectedStudentId: "",
+            selectedStudentName: "Pilih Siswa",
+            showStudentList: false,
+            studentSearch: "",
+            allStudents: @json($students),
+            
+            get filteredStudents() {
+                if (!this.studentSearch) return this.allStudents;
+                return this.allStudents.filter(s => s.nama.toLowerCase().includes(this.studentSearch.toLowerCase()));
+            },
+
             openPaymentDetail(payload) {
                 this.detail = payload;
                 this.detailOpen = true;
@@ -29,7 +42,7 @@
                     this.payLoading = null;
                 }
             }
-        }"
+        }'
         class="space-y-6"
     >
         <x-module-page-header
@@ -90,12 +103,12 @@
                 <form method="GET" class="flex flex-wrap items-center gap-3">
                     @if ($isSiswa || $isAdmin)
                         <div class="min-w-[140px]">
-                            <label class="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">Periode</label>
+                            <label class="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-700">Periode</label>
                             <input type="month" name="bulan" value="{{ $filters['bulan'] ?? '' }}" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
                         </div>
                     @endif
                     <div class="min-w-[140px]">
-                        <label class="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">Status</label>
+                        <label class="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-700">Status</label>
                         <select name="status" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
                             <option value="">Semua Status</option>
                             <option value="lunas" @selected(($filters['status'] ?? '') === 'lunas')>Lunas</option>
@@ -132,9 +145,10 @@
 
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-100 text-sm">
-                    <thead class="bg-slate-50/50">
-                        <tr class="text-left text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            <th class="px-6 py-4">Invoice</th>
+                    <thead class="bg-slate-50">
+                        <tr class="text-left text-[10px] font-black uppercase tracking-widest text-slate-700">
+                            <th class="px-6 py-4">Order ID</th>
+                            <th class="px-6 py-4">Periode</th>
                             @if (! $isSiswa) <th class="px-6 py-4">Siswa</th> @endif
                             <th class="px-6 py-4">Biaya</th>
                             <th class="px-6 py-4">Jatuh Tempo</th>
@@ -147,10 +161,10 @@
                         @forelse ($payments as $pay)
                             <tr class="group transition hover:bg-slate-50/60">
                                 <td class="px-6 py-4">
-                                    <span class="font-mono text-xs font-bold text-slate-500">#{{ str_pad((string) $pay->id, 5, "0", STR_PAD_LEFT) }}</span>
-                                    @if ($pay->invoice_period)
-                                        <span class="block text-[10px] text-blue-500 font-bold uppercase">{{ $pay->invoice_period }}</span>
-                                    @endif
+                                    <span class="font-mono text-sm font-bold text-slate-800">{{ $pay->order_id }}</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="block text-xs text-blue-500 font-bold uppercase">{{ $pay->invoice_period }}</span>
                                 </td>
                                 @if (! $isSiswa)
                                     <td class="px-6 py-4 font-bold text-slate-900">{{ optional($pay->siswa)->nama }}</td>
@@ -172,12 +186,18 @@
                                     Rp {{ number_format((int) $pay->nominal, 0, ",", ".") }}
                                 </td>
                                 <td class="px-6 py-4 text-center">
+                                    @php $isLunas = $pay->status === 'lunas'; @endphp
                                     <span @class([
-                                        "inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
-                                        "bg-emerald-100 text-emerald-700" => $pay->status === "lunas",
-                                        "bg-amber-100 text-amber-700 shadow-sm" => $pay->status !== "lunas",
+                                        "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border",
+                                        "bg-emerald-50 text-emerald-700 border-emerald-100" => $isLunas,
+                                        "bg-amber-50 text-amber-700 border-amber-100 shadow-sm" => ! $isLunas,
                                     ])>
-                                        {{ $pay->status === "lunas" ? "LUNAS" : "PENDING" }}
+                                        <span @class([
+                                            "h-1.5 w-1.5 rounded-full",
+                                            "bg-emerald-500" => $isLunas,
+                                            "bg-amber-500" => ! $isLunas,
+                                        ])></span>
+                                        {{ $isLunas ? "LUNAS" : "PENDING" }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
@@ -199,21 +219,17 @@
                                                 @php
                                                     $s = $pay->siswa;
                                                     $detailPayload = [
-                                                        'referensi' => 'INV-'.str_pad((string) $pay->id, 5, '0', STR_PAD_LEFT),
-                                                        'invoice_period' => $pay->invoice_period,
+                                                        'referensi' => $pay->order_id,
+                                                        'invoice_period_fmt' => $pay->invoice_period ?: '—',
                                                         'item_biaya' => $pay->fee?->nama_biaya,
                                                         'fee_tipe' => $pay->fee?->tipe,
-                                                        'fee_master_nominal' => $pay->fee ? (int) $pay->fee->nominal : null,
                                                         'nominal_dibayar' => (int) round((float) $pay->nominal),
-                                                        'tanggal_terbit_fmt' => optional($pay->tanggal_bayar)?->translatedFormat('l, d M Y'),
-                                                        'due_date_fmt' => $pay->due_date?->translatedFormat('l, d M Y'),
+                                                        'created_at_fmt' => optional($pay->tanggal_bayar)?->translatedFormat('d F Y'),
+                                                        'due_date_fmt' => $pay->due_date?->translatedFormat('d F Y') ?: '—',
                                                         'paid_at_fmt' => $pay->paid_at
-                                                            ? $pay->paid_at->timezone(config('app.timezone'))->translatedFormat('l, d M Y — H:i:s').' ('.config('app.timezone').')'
+                                                            ? $pay->paid_at->timezone(config('app.timezone'))->translatedFormat('d F Y — H:i')
                                                             : null,
-                                                        'order_id' => $pay->order_id,
-                                                        'midtrans_txn_id' => $pay->midtrans_transaction_id,
-                                                        'midtrans_status' => $pay->midtrans_transaction_status,
-                                                        'midtrans_payment_type' => $pay->midtrans_payment_type,
+                                                        'status' => ucfirst($pay->status) == 'Lunas' ? 'LUNAS' : 'PENDING',
                                                         'siswa' => [
                                                             'nama' => $s?->nama,
                                                             'email' => $s?->email,
@@ -279,66 +295,81 @@
                     @csrf
                     <div class="grid gap-6 sm:grid-cols-2">
                         <div class="sm:col-span-2">
-                            <label class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">Jenis Biaya</label>
-                            <select name="biaya_id" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+                            <label class="mb-2 block text-sm font-bold text-slate-700">Jenis Biaya</label>
+                            <select name="biaya_id" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm bg-slate-50/50">
                                 @foreach ($fees as $fee)
                                     <option value="{{ $fee->id }}">{{ $fee->nama_biaya }} (Rp {{ number_format((int)$fee->nominal,0,",",".") }})</option>
                                 @endforeach
                             </select>
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">Jumlah Nominal</label>
-                            <input name="nominal" type="number" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+                            <label class="mb-2 block text-sm font-bold text-slate-700">Jumlah Nominal</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</span>
+                                <input name="nominal" type="number" required class="w-full rounded-xl border border-slate-200 pl-11 pr-4 py-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm">
+                            </div>
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">Pilih Periode</label>
-                            <input name="invoice_period" type="month" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+                            <label class="mb-2 block text-sm font-bold text-slate-700">Pilih Periode</label>
+                            <input name="invoice_period" type="month" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-bold text-slate-700">Tanggal Terbit</label>
+                            <input name="tanggal_bayar" type="date" required value="{{ date('Y-m-d') }}" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-bold text-slate-700">Jatuh Tempo (Opsional)</label>
+                            <input name="due_date" type="date" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm">
                         </div>
                     </div>
-                    <div x-data="{ studentSearch: '' }" class="space-y-3">
-                         <div class="flex items-center justify-between">
-                             <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400">Pilih Siswa</label>
-                             <span class="text-[10px] font-bold text-blue-500 uppercase">Multi-select Aktif</span>
-                         </div>
-                         
-                         {{-- Search Input --}}
-                         <div class="relative">
-                             <input 
-                                x-model="studentSearch"
-                                type="text" 
-                                placeholder="Cari nama siswa..." 
-                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-2.5 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition"
-                             >
-                             <svg class="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                             <button x-show="studentSearch" @click="studentSearch = ''" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                             </button>
-                         </div>
 
-                         <div class="max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 divide-y divide-slate-50">
-                            @foreach ($students as $student)
-                                <label 
-                                    x-show="!studentSearch || '{{ strtolower($student->nama) }}'.includes(studentSearch.toLowerCase())"
-                                    class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-blue-50 cursor-pointer group"
-                                >
-                                    <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" class="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20">
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-slate-700 group-hover:text-blue-700 transition">{{ $student->nama }}</p>
-                                        <p class="text-[10px] font-medium text-slate-400 uppercase tracking-tight">{{ optional($student->cabang)->nama_cabang }}</p>
-                                    </div>
-                                </label>
-                            @endforeach
-                            
-                            {{-- No Results --}}
-                            <div x-show="studentSearch && !([...$el.parentElement.children].some(child => child.style.display !== 'none'))" x-cloak class="py-10 text-center">
-                                <svg class="mx-auto h-8 w-8 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Siswa tidak ditemukan</p>
-                            </div>
+                    <div class="space-y-2">
+                         <label class="block text-sm font-bold text-slate-700">Pilih Siswa</label>
+                         <input type="hidden" name="student_ids[]" :value="selectedStudentId">
+                         
+                         <div class="relative">
+                             <button type="button" 
+                                     @click="showStudentList = !showStudentList"
+                                     class="w-full flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none shadow-sm bg-white text-left transition-all">
+                                 <span x-text="selectedStudentName" :class="selectedStudentId ? 'text-slate-900' : 'text-slate-400'">Pilih Siswa</span>
+                                 <svg class="h-4 w-4 text-slate-400 transition-transform" :class="showStudentList ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+                             </button>
+
+                             <div x-show="showStudentList" 
+                                  @click.outside="showStudentList = false"
+                                  x-transition
+                                  class="absolute z-[110] mt-2 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200">
+                                 <div class="mb-2 p-1">
+                                     <div class="relative">
+                                         <input type="text" x-model="studentSearch" placeholder="Cari nama siswa..." class="w-full rounded-xl border border-slate-100 bg-slate-50 pl-9 pr-4 py-2.5 text-xs font-semibold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 outline-none transition-all">
+                                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                     </div>
+                                 </div>
+                                 <div class="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
+                                     <template x-for="s in filteredStudents" :key="s.id">
+                                         <button type="button" 
+                                                 @click="selectedStudentId = s.id; selectedStudentName = s.nama; showStudentList = false; studentSearch = ''"
+                                                 class="w-full px-4 py-3 text-left rounded-xl hover:bg-blue-50 transition group"
+                                                 :class="selectedStudentId == s.id ? 'bg-blue-600 text-white' : 'text-slate-700'">
+                                             <div class="flex flex-col">
+                                                 <span x-text="s.nama" class="text-sm font-bold"></span>
+                                                 <span class="text-[10px] opacity-70 uppercase tracking-tight font-medium" x-text="s.cabang?.nama_cabang || 'Cabang tidak diketahui'"></span>
+                                             </div>
+                                         </button>
+                                     </template>
+                                     <template x-if="filteredStudents.length === 0">
+                                         <div class="py-10 text-center">
+                                             <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Siswa tidak ditemukan</p>
+                                         </div>
+                                     </template>
+                                 </div>
+                             </div>
                          </div>
                     </div>
+
                     <div class="flex justify-end gap-3 pt-4">
-                            <button type="button" @click="massOpen = false" class="rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Batal</button>
-                        <button type="submit" class="rounded-xl bg-blue-600 px-8 py-3 text-sm font-black tracking-[0.1em] text-white shadow-lg shadow-blue-200 hover:bg-blue-700 transition active:scale-95">Buat Tagihan</button>
+                        <button type="button" @click="massOpen = false" class="rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Batal</button>
+                        <button type="submit" :disabled="!selectedStudentId" class="rounded-xl bg-blue-600 px-8 py-3 text-sm font-black tracking-widest text-white shadow-lg shadow-blue-200 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Buat Tagihan</button>
                     </div>
                 </form>
             </div>
@@ -360,8 +391,8 @@
             >
                 <div class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-6 py-4">
                     <div>
-                        <h2 id="pay-detail-title" class="text-lg font-bold tracking-tight text-slate-900">Detail pembayaran lunas</h2>
-                        <p class="mt-0.5 text-sm text-slate-500">Ringkasan transaksi Midtrans &amp; data siswa.</p>
+                        <h2 id="pay-detail-title" class="text-lg font-bold tracking-tight text-slate-900">Detail pembayaran</h2>
+                        <p class="mt-0.5 text-sm text-slate-500">Ringkasan pembayaran &amp; tagihan siswa.</p>
                     </div>
                     <button type="button" @click="closePaymentDetail()" class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -377,8 +408,11 @@
                                 <dd class="mt-0.5 font-mono text-sm font-semibold text-slate-900" x-text="detail?.referensi || '—'"></dd>
                             </div>
                             <div>
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Order ID Midtrans</dt>
-                                <dd class="mt-0.5 break-all font-mono text-xs text-slate-800" x-text="detail?.order_id || '—'"></dd>
+                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Item biaya</dt>
+                                <dd class="mt-0.5 text-sm text-slate-900">
+                                    <span x-text="detail?.item_biaya || '—'"></span>
+                                    <span class="text-slate-500" x-show="detail?.fee_tipe"> · <span x-text="detail?.fee_tipe"></span></span>
+                                </dd>
                             </div>
                             <div>
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Waktu lunas</dt>
@@ -388,40 +422,23 @@
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Nominal dibayar</dt>
                                 <dd class="mt-0.5 text-sm font-bold text-slate-900" x-text="detail?.nominal_dibayar != null ? 'Rp ' + Number(detail.nominal_dibayar).toLocaleString('id-ID') : '—'"></dd>
                             </div>
-                            <div class="sm:col-span-2">
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Item biaya</dt>
-                                <dd class="mt-0.5 text-sm text-slate-900">
-                                    <span x-text="detail?.item_biaya || '—'"></span>
-                                    <span class="text-slate-500" x-show="detail?.fee_tipe"> · <span x-text="detail?.fee_tipe"></span></span>
-                                </dd>
-                            </div>
+                            
                             <div>
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Periode invoice</dt>
-                                <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.invoice_period || '—'"></dd>
+                                <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.invoice_period_fmt || '—'"></dd>
                             </div>
-                            <div>
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Master fee (referensi)</dt>
-                                <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.fee_master_nominal != null ? 'Rp ' + Number(detail.fee_master_nominal).toLocaleString('id-ID') : '—'"></dd>
-                            </div>
+                            
                             <div>
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Tanggal terbit tagihan</dt>
-                                <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.tanggal_terbit_fmt || '—'"></dd>
+                                <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.created_at_fmt || '—'"></dd>
                             </div>
                             <div>
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Jatuh tempo</dt>
                                 <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.due_date_fmt || '—'"></dd>
                             </div>
                             <div>
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Status Midtrans</dt>
-                                <dd class="mt-0.5 text-sm font-medium text-slate-800" x-text="detail?.midtrans_status || '—'"></dd>
-                            </div>
-                            <div>
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Metode / tipe</dt>
-                                <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.midtrans_payment_type || '—'"></dd>
-                            </div>
-                            <div class="sm:col-span-2">
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Transaction ID Midtrans</dt>
-                                <dd class="mt-0.5 break-all font-mono text-xs text-slate-700" x-text="detail?.midtrans_txn_id || '—'"></dd>
+                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Status</dt>
+                                <dd class="mt-0.5 text-sm font-medium italic text-slate-800" x-text="detail?.status || '—'"></dd>
                             </div>
                         </dl>
                     </section>
@@ -429,9 +446,13 @@
                     <section class="rounded-xl border border-slate-200 bg-slate-50/40 p-4">
                         <h4 class="text-xs font-bold uppercase tracking-wide text-slate-800">Data siswa</h4>
                         <dl class="mt-3 grid gap-3 sm:grid-cols-2">
-                            <div class="sm:col-span-2">
+                            <div>
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Nama</dt>
                                 <dd class="mt-0.5 text-sm font-semibold text-slate-900" x-text="detail?.siswa?.nama || '—'"></dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Alamat</dt>
+                                <dd class="mt-0.5 text-sm leading-relaxed text-slate-800" x-text="detail?.siswa?.alamat || '—'"></dd>
                             </div>
                             <div>
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Email (data siswa)</dt>
@@ -449,10 +470,7 @@
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Jenis kelamin</dt>
                                 <dd class="mt-0.5 text-sm text-slate-800" x-text="detail?.siswa?.jenis_kelamin || '—'"></dd>
                             </div>
-                            <div class="sm:col-span-2">
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Alamat</dt>
-                                <dd class="mt-0.5 text-sm leading-relaxed text-slate-800" x-text="detail?.siswa?.alamat || '—'"></dd>
-                            </div>
+                            
                             <div>
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Cabang</dt>
                                 <dd class="mt-0.5 text-sm font-medium text-slate-800" x-text="detail?.siswa?.cabang || '—'"></dd>

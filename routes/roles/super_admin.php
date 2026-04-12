@@ -36,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->middleware('role:super_admin|admin_cabang|tutor|siswa')->name('dashboard');
 
     Route::middleware('role:super_admin')->group(function () {
+        Route::get('/api/dashboard/keuangan-chart', [SuperAdminDashboardController::class, 'keuanganChart'])->name('api.dashboard.keuangan-chart');
         Route::get('/cabang', [CabangController::class, 'index'])->name('cabang.index');
         Route::post('/cabang', [CabangController::class, 'store'])->name('cabang.store');
         Route::put('/cabang/{cabang}', [CabangController::class, 'update'])->name('cabang.update');
@@ -93,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/presensi/export', [PresensiController::class, 'export'])->name('presensi.export');
         Route::get('/presensi/generate-kartu', [PresensiController::class, 'printCard'])->name('presensi.print-card');
         Route::get('/api/cabang/{cabang}/tutors', [PresensiController::class, 'getTutorsByCabang'])->name('api.cabang.tutors');
+        Route::get('/api/cabang/{cabang}/students', [PresensiController::class, 'getStudentsByCabang'])->name('api.cabang.students');
 
         // PENGELUARAN
         Route::get('/pengeluaran', [PengeluaranController::class, 'index'])->name('pengeluaran.index');

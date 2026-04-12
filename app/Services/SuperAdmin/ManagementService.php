@@ -129,12 +129,23 @@ class ManagementService
         $pembayaranYear = $this->calculatePembayaranRate(null, now()->year, $cabangId);
 
         // KPI: Pengeluaran (Month & Year)
-        $pengeluaranMonthVal = (float) Pengeluaran::query()
+        $operasionalMonth = (float) Pengeluaran::query()
             ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
             ->where('tipe', 'pengeluaran')
             ->whereMonth('tanggal', now()->month)
             ->whereYear('tanggal', now()->year)
             ->sum('nominal');
+
+        $salaryMonth = (float) Salary::query()
+            ->when($cabangId, fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId)))
+            ->whereIn('status', ['diterima', 'dibayar'])
+            ->where('periode', now()->format('Y-m'))
+            ->sum('total_gaji');
+
+        $pengeluaranMonthVal = $operasionalMonth + $salaryMonth;
+
+        $expenseMonthTotal = $pengeluaranMonthVal;
+        $expenseYearTotal = $expenseYear + $salaryYear;
 
         // Revenue Distribution
         $distribution = Payment::query()
@@ -152,6 +163,21 @@ class ManagementService
                 ];
             });
 
+        // monthly trend for chart distribution
+        $monthlyRevenue = collect(range(7, 0))->map(function ($offset) use ($cabangId) {
+            $date = now()->subMonths($offset);
+            $value = Payment::query()
+                ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
+                ->whereYear('tanggal_bayar', $date->year)
+                ->whereMonth('tanggal_bayar', $date->month)
+                ->sum('nominal');
+
+            return [
+                'label' => $date->isoFormat('MMM'),
+                'value' => (int) $value,
+            ];
+        })->values();
+
         // Income vs Expense Comparison
         $incomeMonth = (float) Payment::query()
             ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
@@ -160,19 +186,22 @@ class ManagementService
             ->whereYear('tanggal_bayar', now()->year)
             ->sum('nominal');
 
-        $expenseMonthTotal = $pengeluaranMonthVal + (float) Salary::query()
-            ->when($cabangId, fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId)))
-            ->whereIn('status', ['diterima', 'dibayar'])
-            ->where('periode', now()->format('Y-m'))
-            ->sum('total_gaji');
-
-        $expenseYearTotal = $expenseYear + $salaryYear;
+        $siswaMateriLes = Siswa::query()
+            ->where('status', 'aktif')
+            ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
+            ->join('materi_les', 'siswas.materi_les_id', '=', 'materi_les.id')
+            ->selectRaw('materi_les.nama_materi as label, COUNT(*) as c')
+            ->groupBy('materi_les.nama_materi')
+            ->pluck('c', 'label')
+            ->toArray();
 
         return [
             'total_siswa' => Siswa::query()->where('status', 'aktif')->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))->count(),
             'total_tutor' => Tutor::query()->where('status', 'aktif')->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))->count(),
+            'total_cabang' => Cabang::query()->where('status', 'aktif')->count(),
             'pembayaran_bulan' => $incomeMonth,
             'sesi_hari_ini' => $moduleMateriLes,
+            'saldo_tahun_ini' => $saldoTahunIni,
             'pembayaran_terbaru' => Payment::query()
                 ->with(['siswa:id,nama', 'fee:id,nama_biaya'])
                 ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
@@ -194,13 +223,19 @@ class ManagementService
             ],
             'kpi' => [
                 'presensi' => ['month' => $presensiMonth, 'year' => $presensiYear],
-                'pembayaran' => ['month' => $pembayaranMonth, 'year' => $pembayaranYear],
+                'pembayaran' => [
+                    'month' => $pembayaranMonth, 
+                    'year' => $pembayaranYear,
+                    'month_val' => $incomeMonth,
+                    'year_val' => $incomeYear,
+                ],
                 'pengeluaran' => [
                     'month_val' => $pengeluaranMonthVal,
-                    'year_val' => $expenseYear,
+                    'year_val' => $expenseYearTotal,
                     'month_pct' => min(100, (int) (($pengeluaranMonthVal / 5000000) * 100)), // Base 5jt placeholder
                 ],
             ],
+            'siswa_materi_les' => $siswaMateriLes,
             'distribution' => $distribution,
             'notifications' => [
                 'wa_reminder' => Payment::query()
@@ -208,13 +243,108 @@ class ManagementService
                     ->where('status', 'belum')
                     ->whereDate('due_date', now()->addDay())
                     ->count(),
-                'lunas_today' => Payment::query()
+                'lunas_month' => Payment::query()
                     ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
                     ->where('status', 'lunas')
-                    ->whereDate('tanggal_bayar', now())
+                    ->whereMonth('tanggal_bayar', now()->month)
+                    ->whereYear('tanggal_bayar', now()->year)
                     ->count(),
-                'active_cabang' => Auth::user()->hasRole('super_admin') ? Cabang::query()->where('status', 'aktif')->count() : 1,
+                'active_cabang' => Auth::user()->hasRole('super_admin') ? Cabang::query()->count() : 1,
             ],
+        ];
+    }
+
+    public function getKeuanganChartData(string $filter = 'monthly'): array
+    {
+        $cabangId = $this->actorCabangId();
+        $labels = [];
+        $pemasukan = [];
+        $pengeluaran = [];
+
+        if ($filter === 'monthly') {
+            $month = now()->month;
+            $year = now()->year;
+            $daysInMonth = now()->daysInMonth;
+
+            $incomeData = Payment::query()
+                ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
+                ->where('status', 'lunas')
+                ->whereMonth('tanggal_bayar', $month)
+                ->whereYear('tanggal_bayar', $year)
+                ->selectRaw('DAY(tanggal_bayar) as day, SUM(nominal) as total')
+                ->groupBy('day')
+                ->pluck('total', 'day');
+
+            $expenseData = Pengeluaran::query()
+                ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
+                ->where('tipe', 'pengeluaran')
+                ->whereMonth('tanggal', $month)
+                ->whereYear('tanggal', $year)
+                ->selectRaw('DAY(tanggal) as day, SUM(nominal) as total')
+                ->groupBy('day')
+                ->pluck('total', 'day');
+
+            $salaryData = Salary::query()
+                ->when($cabangId, fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId)))
+                ->whereIn('status', ['diterima', 'dibayar'])
+                ->where('periode', now()->format('Y-m'))
+                ->selectRaw('DAY(LAST_DAY(CONCAT(periode, "-01"))) as day, SUM(total_gaji) as total')
+                ->groupBy('day')
+                ->pluck('total', 'day');
+
+            for ($i = 1; $i <= $daysInMonth; $i++) {
+                $labels[] = (string) $i;
+                $pemasukan[] = (int) ($incomeData[$i] ?? 0);
+                $pengeluaran[] = (int) ($expenseData[$i] ?? 0) + (int) ($salaryData[$i] ?? 0);
+            }
+        } else {
+            $year = now()->year;
+            
+            $incomeData = Payment::query()
+                ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
+                ->where('status', 'lunas')
+                ->whereYear('tanggal_bayar', $year)
+                ->selectRaw('MONTH(tanggal_bayar) as month, SUM(nominal) as total')
+                ->groupBy('month')
+                ->pluck('total', 'month');
+
+            $expenseData = Pengeluaran::query()
+                ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
+                ->where('tipe', 'pengeluaran')
+                ->whereYear('tanggal', $year)
+                ->selectRaw('MONTH(tanggal) as month, SUM(nominal) as total')
+                ->groupBy('month')
+                ->pluck('total', 'month');
+
+            $salaryData = Salary::query()
+                ->when($cabangId, fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId)))
+                ->whereIn('status', ['diterima', 'dibayar'])
+                ->where('periode', 'like', $year . '-%')
+                ->selectRaw('CAST(SUBSTR(periode, 6, 2) AS UNSIGNED) as month, SUM(total_gaji) as total')
+                ->groupBy('month')
+                ->pluck('total', 'month');
+
+            for ($m = 1; $m <= 12; $m++) {
+                $labels[] = self::ID_MONTH_SHORT[$m];
+                $pemasukan[] = (int) ($incomeData[$m] ?? 0);
+                $pengeluaran[] = (int) ($expenseData[$m] ?? 0) + (int) ($salaryData[$m] ?? 0);
+            }
+        }
+
+        $totalPemasukan = array_sum($pemasukan);
+        $totalPengeluaran = array_sum($pengeluaran);
+        $overallTotal = $totalPemasukan + $totalPengeluaran;
+        $persenPemasukan = $overallTotal > 0 ? round(($totalPemasukan / $overallTotal) * 100, 1) : 0;
+
+        return [
+            'labels' => $labels,
+            'pemasukan' => $pemasukan,
+            'pengeluaran' => $pengeluaran,
+            'total' => [
+                'pemasukan' => $totalPemasukan,
+                'pengeluaran' => $totalPengeluaran,
+                'persentase_pemasukan' => $persenPemasukan
+            ]
         ];
     }
 
@@ -266,17 +396,14 @@ class ManagementService
             ];
         }
 
-        $jkGroups = Siswa::query()
+        $materiGroups = Siswa::query()
             ->where('cabang_id', $cabangId)
             ->where('status', 'aktif')
-            ->selectRaw('jenis_kelamin, COUNT(*) as c')
-            ->groupBy('jenis_kelamin')
-            ->pluck('c', 'jenis_kelamin');
-
-        $siswaJk = [
-            'laki_laki' => (int) ($jkGroups['laki_laki'] ?? 0),
-            'perempuan' => (int) ($jkGroups['perempuan'] ?? 0),
-        ];
+            ->join('materi_les', 'siswas.materi_les_id', '=', 'materi_les.id')
+            ->selectRaw('materi_les.nama_materi as label, COUNT(*) as c')
+            ->groupBy('materi_les.nama_materi')
+            ->pluck('c', 'label')
+            ->toArray();
 
         $presensi7 = [];
         $start7 = Carbon::now()->subDays(6)->startOfDay();
@@ -327,7 +454,7 @@ class ManagementService
         }
 
         return [
-            'siswa_jenis_kelamin' => $siswaJk,
+            'siswa_materi_les' => $materiGroups,
             'presensi_series' => [
                 '7d' => $presensi7,
                 '1m' => $presensi1m,
@@ -743,7 +870,7 @@ class ManagementService
 
         return Tutor::query()
             ->with(['cabang:id,nama_cabang', 'user:id,name,email'])
-            ->withCount('kehadirans')
+            ->withCount(['kehadirans' => fn($q) => $q->whereMonth('tanggal', now()->month)->whereYear('tanggal', now()->year)])
             ->when($tutorId, fn ($q) => $q->where('id', $tutorId))
             ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
             ->when($request->string('search')->toString(), function ($q, $s) {
@@ -929,7 +1056,7 @@ class ManagementService
 
     public function studentsForSelect(): Collection
     {
-        $q = Siswa::query()->select('id', 'nama', 'cabang_id')->orderBy('nama');
+        $q = Siswa::query()->with('cabang:id,nama_cabang')->select('id', 'nama', 'cabang_id')->orderBy('nama');
 
         $user = Auth::user();
         if ($user && $user->hasRole('admin_cabang')) {

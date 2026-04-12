@@ -1,12 +1,13 @@
 <x-layouts.dashboard-shell title="Laporan Mitra — eBimbel">
-    <x-module-page-header title="Laporan & Analisa Mitra {{ $cabang->nama_cabang }}" description="Rekapitulasi laba bersih dan pembagian hasil mitra untuk periode {{ \Carbon\Carbon::parse($month)->translatedFormat('F Y') }}.">
+    <x-module-page-header title="Laporan & Analisa Mitra {{ $cabang ? $cabang->nama_cabang : 'Seluruh Cabang' }}" description="Rekapitulasi laba bersih dan pembagian hasil mitra untuk periode {{ \Carbon\Carbon::parse($month)->translatedFormat('F Y') }}.">
         <x-slot name="actions">
-            <a href="{{ route('laporan-keuangan.index', ['month' => $month, 'cabang_id' => $cabang->id]) }}" class="inline-flex rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+            @php $currentCabangId = $cabang ? $cabang->id : 'all'; @endphp
+            <a href="{{ route('laporan-keuangan.index', ['month' => $month, 'cabang_id' => $currentCabangId]) }}" class="inline-flex rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 Kembali
             </a>
-            <button onclick="window.print()" class="inline-flex rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">
+            <a href="{{ route('laporan-keuangan.export.pdf', ['type' => 'mitra', 'month' => $month, 'cabang_id' => $currentCabangId]) }}" class="inline-flex rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">
                 Cetak Laporan
-            </button>
+            </a>
         </x-slot>
     </x-module-page-header>
 
@@ -112,7 +113,7 @@
                 <div class="flex flex-col items-center">
                     <p class="mb-20">Investor</p>
                     <div class="w-48 border-b-2 border-slate-900"></div>
-                    <p class="mt-2 uppercase">Investor Cabang {{ $cabang->nama_cabang }}</p>
+                    <p class="mt-2 uppercase">Investor {{ $cabang ? 'Cabang ' . $cabang->nama_cabang : 'Seluruh Cabang' }}</p>
                 </div>
                 <div class="flex flex-col items-center">
                     <p class="mb-2 text-slate-400 font-normal">Tegal, {{ now()->translatedFormat('d F Y') }}</p>

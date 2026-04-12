@@ -10,12 +10,11 @@
 {{-- Page intro --}}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <p class="text-sm font-medium text-blue-600">{{ $isSuper ? 'Seluruh jaringan cabang' : 'Ringkasan cabang Anda' }}</p>
         <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             {{ $isSuper ? 'Dashboard Super Admin' : 'Dashboard Admin Cabang' }}
         </h1>
         <p class="mt-1 max-w-2xl text-sm text-slate-600">
-            Ringkasan operasional: siswa, tutor, jadwal, presensi, pembayaran, dan laporan. Data berikut prototipe UI.
+            Ringkasan operasional seluruh cabang untuk memantau siswa, pendapatan, dan pembayaran secara terpusat.
         </p>
     </div>
     <div class="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
@@ -28,41 +27,94 @@
 </div>
 
 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    @foreach ([
-        ['title' => 'Total Siswa Aktif', 'value' => number_format($dashboardData['total_siswa'] ?? 0), 'delta' => '+2,4%', 'tone' => 'text-emerald-600', 'icon' => 'users'],
-        ['title' => 'Total Tutor Terdaftar', 'value' => number_format($dashboardData['total_tutor'] ?? 0), 'delta' => '+3', 'tone' => 'text-emerald-600', 'icon' => 'academic'],
-        ['title' => 'Pembayaran Bulan Ini', 'value' => 'Rp '.number_format((int) ($dashboardData['pembayaran_bulan'] ?? 0), 0, ',', '.'), 'delta' => 'Sedang berjalan', 'tone' => 'text-blue-600', 'icon' => 'cash'],
-        ['title' => 'Saldo Total '.now()->year, 'value' => 'Rp '.number_format((int) ($moduleCards['saldo_tahun_ini'] ?? 0), 0, ',', '.'), 'delta' => 'Pendapatan Pusat', 'tone' => 'text-emerald-600', 'icon' => 'chart'],
-    ] as $card)
-        <article class="relative overflow-hidden rounded-xl border border-blue-100/80 bg-white p-5 shadow-sm ring-1 ring-slate-900/5">
+    @php
+        $cards = [
+            [
+                'title' => 'Total Siswa Aktif', 
+                'value' => number_format($dashboardData['total_siswa'] ?? 0), 
+                'delta' => 'Naik +2,4%', 
+                'sub' => 'Bulan lalu',
+                'trend' => 'up',
+                'tone' => 'text-emerald-600', 
+                'icon' => 'users'
+            ],
+            [
+                'title' => 'Cabang Terdaftar', 
+                'value' => number_format($dashboardData['total_cabang'] ?? 0), 
+                'delta' => 'Naik +3%', 
+                'sub' => 'Berjalan '.($dashboardData['total_cabang'] ?? 0),
+                'trend' => 'up',
+                'tone' => 'text-emerald-600', 
+                'icon' => 'academic'
+            ],
+            [
+                'title' => 'Pendapatan Bulan Ini', 
+                'value' => 'Rp '.number_format((int) ($dashboardData['pembayaran_bulan'] ?? 0), 0, ',', '.'), 
+                'delta' => 'Seluruh cabang', 
+                'sub' => '',
+                'trend' => 'up',
+                'tone' => 'text-blue-600', 
+                'icon' => 'chart',
+                'bg' => 'from-blue-700 to-blue-900',
+                'border' => 'border-blue-800',
+                'dark' => true
+            ],
+            [
+                'title' => 'Pengeluaran Bulan Ini', 
+                'value' => 'Rp '.number_format((int) ($dashboardData['kpi']['pengeluaran']['month_val'] ?? 0), 0, ',', '.'), 
+                'delta' => 'Operasional & Lainnya', 
+                'sub' => '',
+                'trend' => 'down',
+                'tone' => 'text-amber-600', 
+                'icon' => 'cash',
+                'bg' => 'from-blue-400 to-blue-600',
+                'border' => 'border-blue-600',
+                'dark' => true
+            ],
+            
+        ];
+    @endphp
+
+    @foreach ($cards as $card)
+        <article class="relative overflow-hidden rounded-xl border 
+            {{ $card['border'] ?? 'border-blue-100/80' }} 
+            {{ !empty($card['dark']) ? 'bg-gradient-to-br '.$card['bg'].' text-white' : 'bg-white' }} 
+            p-5 shadow-sm ring-1 ring-slate-900/5 transition-all hover:shadow-md group">
             <div class="flex items-start justify-between gap-3">
-                <div>
-                    <p class="text-sm font-medium text-slate-500">{{ $card['title'] }}</p>
-                    <p class="mt-2 text-2xl font-bold text-blue-950">{{ $card['value'] }}</p>
-                    <p class="mt-1 text-xs font-medium {{ $card['tone'] }}">{{ $card['delta'] }}</p>
+                <div class="flex-1">
+                    <p class="text-[10px] font-bold uppercase tracking-widest 
+                        {{ !empty($card['dark']) ? 'text-white' : 'text-blue-500' }}">{{ $card['title'] }}</p>
+                    <p class="mt-2 text-xl font-black 
+                        {{ !empty($card['dark']) ? 'text-white' : 'text-blue-950' }}">{{ $card['value'] }}</p>
+                    <div class="mt-2 flex items-center gap-1">
+                        <span class="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold {{ $card['trend'] === 'up' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' }}">
+                            @if($card['trend'] === 'up')
+                                <svg class="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"/></svg>
+                            @else
+                                <svg class="h-3 w-3 transition-transform group-hover:-translate-x-0.5 group-hover:translate-y-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 4.5l-15 15m0 0h11.25m-11.25 0V8.25"/></svg>
+                            @endif
+                            {{ $card['delta'] }}
+                        </span>
+                        <span class="text-[10px] font-medium text-slate-400 capitalize">{{ $card['sub'] }}</span>
+                    </div>
                 </div>
-                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl 
+                    {{ !empty($card['dark']) 
+                        ? 'bg-white/10 text-white' 
+                        : ($card['trend'] === 'up' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600') 
+                    }} shadow-inner">
                     @if ($card['icon'] === 'users')
-                        <div class="p-2 bg-emerald-50 rounded-lg">
-                            <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        </div>
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     @elseif ($card['icon'] === 'academic')
-                        <div class="p-2 bg-blue-50 rounded-lg">
-                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"/></svg>
-                        </div>
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                     @elseif ($card['icon'] === 'cash')
-                        <div class="p-2 bg-blue-50 rounded-lg">
-                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        </div>
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     @elseif ($card['icon'] === 'chart')
-                        <div class="p-2 bg-emerald-50 rounded-lg">
-                            <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                        </div>
-                    @else
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25"/></svg>
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     @endif
                 </span>
             </div>
+            <div class="absolute -bottom-2 -right-2 h-16 w-16 rounded-full bg-slate-50 opacity-10 transition-transform group-hover:scale-110"></div>
         </article>
     @endforeach
 </div>
@@ -98,56 +150,160 @@
                             </span>
                         </div>
                         <p class="mt-3 font-semibold {{ !empty($mod['dark']) ? 'text-white' : 'text-slate-900' }}">{{ $mod['label'] }}</p>
-                        <p class="text-sm {{ !empty($mod['dark']) ? 'text-blue-100' : 'text-slate-600' }}">{{ $mod['files'] }}</p>
+                        <p class="text-md {{ !empty($mod['dark']) ? 'text-blue-100' : 'text-slate-600' }}">{{ $mod['files'] }}</p>
                         <p class="mt-2 text-xs {{ !empty($mod['dark']) ? 'text-blue-200' : 'text-slate-500' }}">{{ $mod['date'] }}</p>
                     </a>
                 @endforeach
             </div>
         </section>
 
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            x-data="{
+                filter: 'monthly',
+                labels: [],
+                pemasukan: [],
+                pengeluaran: [],
+                total: { pemasukan: 0, pengeluaran: 0, persentase_pemasukan: 0 },
+                loading: false,
+                months: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
+                async fetchData() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch(`/api/dashboard/keuangan-chart?filter=${this.filter}`);
+                        const data = await response.json();
+                        this.labels = data.labels;
+                        this.pemasukan = data.pemasukan;
+                        this.pengeluaran = data.pengeluaran;
+                        this.total = data.total;
+                    } catch (e) {
+                        console.error('Failed to fetch chart data', e);
+                    }
+                    this.loading = false;
+                },
+                get currentPeriodLabel() {
+                    const now = new Date();
+                    return this.filter === 'monthly' 
+                        ? 'Bulan ' + this.months[now.getMonth()] + ' ' + now.getFullYear()
+                        : 'Tahun ' + now.getFullYear();
+                },
+                get max() {
+                    const allVals = [...this.pemasukan, ...this.pengeluaran];
+                    return Math.max(...allVals, 1);
+                },
+                get incomePoints() {
+                    if (this.pemasukan.length === 0) return [];
+                    const n = this.pemasukan.length;
+                    return this.pemasukan.map((val, idx) => {
+                        const x = 45 + (idx / (n - 1)) * 755;
+                        const y = 200 - (val / this.max) * 150;
+                        return [x, y, val];
+                    });
+                },
+                get expensePoints() {
+                    if (this.pengeluaran.length === 0) return [];
+                    const n = this.pengeluaran.length;
+                    return this.pengeluaran.map((val, idx) => {
+                        const x = 45 + (idx / (n - 1)) * 755;
+                        const y = 200 - (val / this.max) * 150;
+                        return [x, y, val];
+                    });
+                },
+                get incomeLine() {
+                    const points = this.incomePoints;
+                    if (points.length === 0) return '';
+                    return 'M ' + points.map(p => p[0] + ' ' + p[1]).join(' L');
+                },
+                get expenseLine() {
+                    const points = this.expensePoints;
+                    if (points.length === 0) return '';
+                    return 'M ' + points.map(p => p[0] + ' ' + p[1]).join(' L');
+                },
+                formatRupiah(val) {
+                    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+                },
+                formatShort(val) {
+                    if (val === 0) return '0';
+                    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'jt';
+                    if (val >= 1000) return (val / 1000).toFixed(0) + 'k';
+                    return val;
+                }
+            }"
+            x-init="fetchData()"
+        >
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-lg font-semibold text-slate-900">Pendapatan {{ $isSuper ? 'konsolidasi' : 'cabang' }}</h2>
-                    <p class="text-sm text-slate-500">Trend 8 bulan (contoh data)</p>
+                <div class="space-y-1">
+                    <h2 class="text-lg font-semibold text-slate-900">Grafik Pemasukan dan Pengeluaran Bimbel</h2>
+                    <p class="text-sm text-slate-500">Tren Keuangan <span x-text="currentPeriodLabel"></span></p>
                 </div>
-                <div class="flex gap-2">
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800">
-                        <span class="h-2 w-2 rounded-full bg-blue-600"></span> Realisasi
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                        <span class="h-2 w-2 rounded-full bg-slate-400"></span> Target
-                    </span>
+                <div class="flex items-center gap-4">
+                    <div class="flex gap-2">
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold text-blue-600 border border-blue-100">
+                            <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span> Pemasukan
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-600 border border-amber-100">
+                            <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> Pengeluaran
+                        </span>
+                    </div>
+                    <div class="flex p-1 bg-slate-100 rounded-lg">
+                        <button @click="filter = 'monthly'; fetchData()" :class="filter === 'monthly' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'" class="px-3 py-1 text-xs font-bold rounded-md transition-all">Bulan ini</button>
+                        <button @click="filter = 'yearly'; fetchData()" :class="filter === 'yearly' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'" class="px-3 py-1 text-xs font-bold rounded-md transition-all">Tahun ini</button>
+                    </div>
                 </div>
             </div>
-            <div class="mt-6 h-64 w-full">
-                <svg viewBox="0 0 800 220" class="h-full w-full overflow-visible" preserveAspectRatio="none" aria-hidden="true">
-                    <defs>
-                        <linearGradient id="chartFillOp" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="rgb(37 99 235 / 0.35)" />
-                            <stop offset="100%" stop-color="rgb(37 99 235 / 0)" />
-                        </linearGradient>
-                    </defs>
-                    @php
-                        $vals = $monthlyRevenue->pluck('value');
-                        $max = max($vals->max() ?: 1, 1);
-                        $points = $monthlyRevenue->values()->map(function ($item, $idx) use ($max) {
-                            $x = (int) round(($idx / 7) * 800);
-                            $y = 200 - (int) round(($item['value'] / $max) * 150);
-                            return [$x, $y];
-                        })->all();
-                        $line = collect($points)->map(fn ($p) => "{$p[0]} {$p[1]}")->implode(' L');
-                    @endphp
-                    <path d="M{{ $line }} L800 220 L0 220 Z" fill="url(#chartFillOp)" />
-                    <path d="M{{ $line }}" fill="none" stroke="rgb(37 99 235)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-                    @foreach ($points as $pt)
-                        <circle cx="{{ $pt[0] }}" cy="{{ $pt[1] }}" r="5" fill="white" stroke="rgb(37 99 235)" stroke-width="2" />
-                    @endforeach
-                </svg>
-                <div class="mt-2 flex justify-between text-xs text-slate-400">
-                    @foreach ($monthlyRevenue as $m)
-                        <span>{{ $m['label'] }}</span>
-                    @endforeach
+
+            <div class="transition-opacity duration-300" :class="loading ? 'opacity-50' : 'opacity-100'">
+                <div class="h-64 w-full relative">
+                    <svg viewBox="0 0 800 220" class="h-full w-full overflow-visible" preserveAspectRatio="none" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="chartFillIncome" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="rgb(14 165 233 / 0.35)" />
+                            <stop offset="100%" stop-color="rgb(14 165 233 / 0)" />
+                            </linearGradient>
+                            <linearGradient id="chartFillExpense" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="rgb(245 158 11 / 0.35)" />
+                                <stop offset="100%" stop-color="rgb(245 158 11 / 0)" />
+                            </linearGradient>
+                        </defs>
+
+                        <!-- Pemasukan Path -->
+                        <path :d="incomeLine + ' L 800 200 L 45 200 Z'" fill="url(#chartFillIncome)" x-show="incomeLine" />
+                        <path :d="incomeLine" fill="none" stroke="rgb(2 132 199)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" x-show="incomeLine" />
+                        
+                        <!-- Pengeluaran Path -->
+                        <path :d="expenseLine + ' L 800 200 L 45 200 Z'" fill="url(#chartFillExpense)" x-show="expenseLine" />
+                        <path :d="expenseLine" fill="none" stroke="rgb(245 158 11)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" x-show="expenseLine" />
+ 
+                        <!-- Dots & Labels Income -->
+                        <template x-for="(pt, idx) in incomePoints" :key="'inc-'+idx">
+                            <g>
+                                <circle :cx="pt[0]" :cy="pt[1]" r="4" fill="white" stroke="rgb(2 132 199)" stroke-width="2" />
+                                <text x-show="pt[2] > 0 && (filter === 'yearly' || idx % 3 === 0)" 
+                                      :x="pt[0]" :y="pt[1] - 8" text-anchor="middle" 
+                                      class="fill-blue-700 font-bold" style="font-size: 8px;" 
+                                      x-text="formatShort(pt[2])"></text>
+                            </g>
+                        </template>
+ 
+                        <!-- Dots & Labels Expense -->
+                        <template x-for="(pt, idx) in expensePoints" :key="'exp-'+idx">
+                            <g>
+                                <circle :cx="pt[0]" :cy="pt[1]" r="4" fill="white" stroke="rgb(245 158 11)" stroke-width="2" />
+                                <text x-show="pt[2] > 0 && (filter === 'yearly' || idx % 3 === 0)" 
+                                      :x="pt[0]" :y="pt[1] + 16" text-anchor="middle" 
+                                      class="fill-amber-700 font-bold" style="font-size: 8px;" 
+                                      x-text="formatShort(pt[2])"></text>
+                            </g>
+                        </template>
+                    </svg>
+
+                    <!-- X-Axis Labels -->
+                    <div class="flex justify-between text-[10px] font-bold text-slate-400 pl-[45px]">
+                        <template x-for="(label, idx) in labels" :key="idx">
+                            <span x-show="filter === 'yearly' || idx % 2 === 0 || idx === labels.length - 1" 
+                                  x-text="label" 
+                                  class="w-8 text-center"></span>
+                        </template>
+                    </div>
                 </div>
             </div>
         </section>
@@ -155,7 +311,7 @@
         <div class="grid gap-6 lg:grid-cols-2" x-data="{ kpiPeriod: 'month' }">
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-slate-900">Capaian operasional</h2>
+                    <h2 class="text-lg font-semibold text-slate-900">Capaian operasional Bimbel</h2>
                     <div class="flex p-1 bg-slate-100 rounded-lg">
                         <button @click="kpiPeriod = 'month'" :class="kpiPeriod === 'month' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'" class="px-3 py-1 text-xs font-bold rounded-md transition-all">Bulan</button>
                         <button @click="kpiPeriod = 'year'" :class="kpiPeriod === 'year' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'" class="px-3 py-1 text-xs font-bold rounded-md transition-all">Tahun</button>
@@ -164,9 +320,9 @@
                 <p class="text-sm text-slate-500 mt-1">Progress performa berdasarkan filter</p>
                 <div class="mt-6 space-y-6">
                     @foreach ([
-                        ['label' => 'Presensi Siswa', 'month' => $kpi['presensi']['month'], 'year' => $kpi['presensi']['year'], 'color' => 'from-blue-600 to-sky-400'],
-                        ['label' => 'Pembayaran Lunas', 'month' => $kpi['pembayaran']['month'], 'year' => $kpi['pembayaran']['year'], 'color' => 'from-emerald-600 to-teal-400'],
-                        ['label' => 'Pengeluaran', 'month' => $kpi['pengeluaran']['month_pct'], 'year' => 100, 'color' => 'from-rose-600 to-orange-400', 'sub' => 'Nominal: Rp '.number_format($kpi['pengeluaran']['month_val'], 0, ',', '.')],
+                        ['label' => 'Laba Bersih Pendapatan', 'month' => ($comparison['income_month'] > 0 ? round((max($comparison['income_month'] - $comparison['expense_month'], 0) / $comparison['income_month']) * 100) : 0), 'year' => ($comparison['income_year'] > 0 ? round((max($comparison['income_year'] - $comparison['expense_year'], 0) / $comparison['income_year']) * 100) : 0), 'color' => 'from-blue-600 to-blue-400', 'year_sub' => 'Laba: Rp '.number_format(max($comparison['income_year'] - $comparison['expense_year'], 0), 0, ',', '.'), 'month_sub' => 'Laba: Rp '.number_format(max($comparison['income_month'] - $comparison['expense_month'], 0), 0, ',', '.')],
+                        ['label' => 'Pembayaran Lunas', 'month' => $kpi['pembayaran']['month'], 'year' => $kpi['pembayaran']['year'], 'color' => 'from-emerald-600 to-teal-400', 'month_sub' => 'Nominal: Rp '.number_format($kpi['pembayaran']['month_val'], 0, ',', '.'), 'year_sub' => 'Nominal: Rp '.number_format($kpi['pembayaran']['year_val'], 0, ',', '.')],
+                        ['label' => 'Biaya Pengeluaran', 'month' => $kpi['pengeluaran']['month_pct'], 'year' => 100, 'color' => 'from-rose-600 to-orange-400', 'month_sub' => 'Nominal: Rp '.number_format($kpi['pengeluaran']['month_val'], 0, ',', '.'), 'year_sub' => 'Nominal: Rp '.number_format($kpi['pengeluaran']['year_val'], 0, ',', '.')],
                     ] as $row)
                         <div>
                             <div class="flex items-center justify-between text-sm">
@@ -177,47 +333,84 @@
                                 <div class="h-full rounded-full bg-gradient-to-r {{ $row['color'] }} shadow-sm transition-all duration-500" 
                                      :style="'width: ' + (kpiPeriod === 'month' ? '{{ $row['month'] }}%' : '{{ $row['year'] }}%')"></div>
                             </div>
-                            @if(isset($row['sub']))
-                                <p class="mt-1 text-[10px] text-slate-400 font-semibold" x-show="kpiPeriod === 'month'">{{ $row['sub'] }}</p>
+                            @if(isset($row['month_sub']))
+                                <p class="mt-1 text-[10px] text-slate-400 font-semibold">
+                                    <span x-show="kpiPeriod === 'month'">{{ $row['month_sub'] }}</span>
+                                    <span x-show="kpiPeriod === 'year'">{{ $row['year_sub'] }}</span>
+                                </p>
                             @endif
                         </div>
                     @endforeach
                 </div>
             </section>
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-semibold text-slate-900">Pemasukan VS Pengeluaran</h2>
-                <p class="text-sm text-slate-500">Perbandingan realisasi finansial</p>
-                <div class="mt-6 space-y-6">
-                    @foreach ([['label' => 'Bulan Ini', 'income' => $comparison['income_month'], 'expense' => $comparison['expense_month']], ['label' => 'Tahun Ini', 'income' => $comparison['income_year'], 'expense' => $comparison['expense_year']]] as $comp)
-                        @php
-                            $total = max($comp['income'] + $comp['expense'], 1);
-                            $incPct = round(($comp['income'] / $total) * 100);
-                            $expPct = round(($comp['expense'] / $total) * 100);
-                        @endphp
-                        <div>
-                            <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                                <span>{{ $comp['label'] }}</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <div class="h-4 flex-1 overflow-hidden rounded-lg bg-slate-100 flex">
-                                    <div class="h-full bg-blue-600 transition-all" style="width: {{ $incPct }}%" title="Income"></div>
-                                    <div class="h-full bg-rose-500 transition-all" style="width: {{ $expPct }}%" title="Expense"></div>
+                @php
+                    $materiDist = $dashboardData['siswa_materi_les'] ?? [];
+                    $totalSiswaMateri = array_sum($materiDist);
+                    $safeTotalMateri = max($totalSiswaMateri, 1);
+                    
+                    $materiConfigs = [
+                        'Les Matematika Intensif' => ['color' => 'rgb(56 189 248)', 'bg' => 'bg-sky-50', 'ring' => 'ring-sky-100', 'text' => 'text-sky-900', 'dot' => 'bg-sky-400'],
+                        'Les Kelas Prima' => ['color' => 'rgb(251 191 36)', 'bg' => 'bg-amber-50', 'ring' => 'ring-amber-100', 'text' => 'text-amber-900', 'dot' => 'bg-amber-400'],
+                        'Les Jarimatika' => ['color' => 'rgb(239 68 68)', 'bg' => 'bg-red-50', 'ring' => 'ring-red-100', 'text' => 'text-red-900', 'dot' => 'bg-red-500'],
+                        'Les Baca AHE' => ['color' => 'rgb(234 88 12)', 'bg' => 'bg-orange-50', 'ring' => 'ring-orange-100', 'text' => 'text-orange-900', 'dot' => 'bg-orange-600'],
+                        'Les IEC' => ['color' => 'rgb(30 58 138)', 'bg' => 'bg-indigo-50', 'ring' => 'ring-indigo-100', 'text' => 'text-indigo-900', 'dot' => 'bg-indigo-900'],
+                    ];
+
+                    $gradientStops = [];
+                    $currentAngle = 0;
+                    foreach ($materiConfigs as $label => $config) {
+                        $val = $materiDist[$label] ?? 0;
+                        $pct = ($val / $safeTotalMateri) * 100;
+                        $angle = ($pct / 100) * 360;
+                        if ($pct > 0) {
+                            $gradientStops[] = "{$config['color']} {$currentAngle}deg " . ($currentAngle + $angle) . "deg";
+                        }
+                        $currentAngle += $angle;
+                    }
+                    $conicGradient = !empty($gradientStops) ? implode(', ', $gradientStops) : 'rgb(241 245 249) 0deg 360deg';
+                @endphp
+
+                <h2 class="text-lg font-semibold text-slate-900">Grafik Siswa per Materi Les</h2>
+                <p class="text-sm text-slate-500">Distribusi seluruh siswa bimbingan</p>
+                
+                <div class="mt-6 flex flex-col items-center gap-6 sm:flex-row sm:justify-center">
+                    <div class="relative h-40 w-40 shrink-0">
+                        @if ($totalSiswaMateri > 0)
+                            <div
+                                class="h-full w-full rounded-full shadow-inner ring-4 ring-slate-50"
+                                style="background: conic-gradient({{ $conicGradient }});"
+                            ></div>
+                            <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                <div class="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                                    <span class="text-2xl font-bold text-slate-900">{{ number_format($totalSiswaMateri) }}</span>
+                                    <span class="text-[10px] font-medium uppercase tracking-wide text-slate-500">Total</span>
                                 </div>
-                                <span class="text-[10px] font-bold text-slate-700">{{ $incPct }}% / {{ $expPct }}%</span>
                             </div>
-                            <div class="mt-1 flex justify-between text-[10px]">
-                                <span class="text-blue-600">In: Rp {{ number_format($comp['income'], 0, ',', '.') }}</span>
-                                <span class="text-rose-600">Out: Rp {{ number_format($comp['expense'], 0, ',', '.') }}</span>
-                            </div>
-                        </div>
-                    @endforeach
+                        @else
+                            <div class="flex h-full w-full items-center justify-center rounded-full bg-slate-100 text-sm text-slate-500">Belum ada data</div>
+                        @endif
+                    </div>
+                    <ul class="w-full max-w-[240px] space-y-2 text-sm">
+                        @foreach ($materiConfigs as $label => $config)
+                            @php
+                                $val = $materiDist[$label] ?? 0;
+                            @endphp
+                            <li class="relative flex items-center justify-between rounded-lg {{ $config['bg'] }} px-3 py-1.5 ring-1 {{ $config['ring'] }}">
+                                <span class="flex items-center gap-2 font-medium text-slate-700">
+                                    <span class="h-3 w-3 rounded-full {{ $config['dot'] }}"></span> {{ $label }}
+                                </span>
+                                <span class="font-semibold {{ $config['text'] }}">{{ number_format($val) }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
             </section>
         </div>
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-semibold text-slate-900">Pembayaran terbaru</h2>
-            <p class="text-sm text-slate-500">Prototipe—nanti dari model Payment</p>
+            <h2 class="text-lg font-semibold text-slate-900">Pembayaran terbaru bimbel</h2>
+            <p class="text-sm text-slate-500">Aktivitas Transaksi Pembayaran Siswa Terbaru</p>
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead>
@@ -236,8 +429,12 @@
                                 <td class="py-3 pr-4">{{ optional($payment->fee)->nama_biaya }}</td>
                                 <td class="py-3 pr-4">Rp {{ number_format((int) $payment->nominal, 0, ',', '.') }}</td>
                                 <td class="py-3 pr-4">
-                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $payment->status === 'lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
-                                        {{ $payment->status === 'lunas' ? 'Lunas' : 'Belum' }}
+                                    @php
+                                        $isLunas = $payment->status === 'lunas';
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider {{ $isLunas ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100' }}">
+                                        <span class="h-1.5 w-1.5 rounded-full {{ $isLunas ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
+                                        {{ $isLunas ? 'Lunas' : 'Belum Lunas' }}
                                     </span>
                                 </td>
                                 <td class="py-3 text-slate-500">{{ optional($payment->tanggal_bayar)->format('d M Y') }}</td>
@@ -251,7 +448,7 @@
 
     <aside class="space-y-6 xl:col-span-4">
 
-        <div class="grid gap-6 lg:grid-cols-2">
+        <div class="grid gap-6">
             <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-lg font-semibold text-slate-900">Distribusi pendapatan</h2>
                 <p class="text-sm text-slate-500">Berdasarkan kategori biaya</p>
@@ -280,8 +477,8 @@
                             @endif
                         @endforeach
                     </svg>
-                    <div class="absolute inset-[18%] flex items-center justify-center rounded-full bg-white shadow-inner">
-                        <svg class="h-10 w-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5"/></svg>
+                    <div class="absolute inset-[20%] flex items-center justify-center rounded-full bg-white shadow-inner">
+                        <svg class="h-16 w-16 text-blue-600 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5"/></svg>
                     </div>
                 </div>
                 <ul class="mt-4 space-y-1.5 text-xs text-slate-600">
@@ -303,8 +500,8 @@
             <div>
             @foreach ([
                 ['title' => 'Reminder WA', 'body' => $notifications['wa_reminder'] . ' tagihan jatuh tempo besok. Antrian pengiriman siap.', 'from' => 'from-blue-950', 'to' => 'to-blue-800', 'icon' => 'bell'],
-                ['title' => 'Pembayaran Lunas', 'body' => $notifications['lunas_today'] . ' Siswa Lunas Pembayaran di hari ini.', 'from' => 'from-blue-800', 'to' => 'to-blue-600', 'icon' => 'check'],
-                ['title' => $isSuper ? 'Cabang aktif' : 'Sinkronisasi', 'body' => ($isSuper ? ($notifications['active_cabang'] . ' cabang online.') : 'Data cabang Anda sinkron.'), 'from' => 'from-sky-500', 'to' => 'to-blue-500', 'icon' => 'cloud'],
+                ['title' => 'Pembayaran Lunas', 'body' => $notifications['lunas_month'] . ' Siswa Lunas Pembayaran di bulan ini.', 'from' => 'from-blue-800', 'to' => 'to-blue-600', 'icon' => 'check'],
+                ['title' => $isSuper ? 'Cabang aktif' : 'Sinkronisasi', 'body' => ($isSuper ? ($notifications['active_cabang'] . ' cabang terdaftar.') : 'Data cabang Anda sinkron.'), 'from' => 'from-sky-500', 'to' => 'to-blue-500', 'icon' => 'cloud'],
             ] as $card)
                 <div class="group relative rounded-2xl bg-gradient-to-br {{ $card['from'] }} {{ $card['to'] }} p-5 text-white shadow-md mb-2 overflow-hidden">
                     <div class="relative z-10">

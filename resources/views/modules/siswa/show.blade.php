@@ -52,7 +52,7 @@
                             <p class="font-bold text-slate-900">{{ $siswa->jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan' }}</p>
                         </div>
                         <div class="space-y-1 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Kontak Person (Siswa)</p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">No HP Siswa</p>
                             <p class="font-bold text-slate-900">{{ $siswa->no_hp ?: '—' }}</p>
                         </div>
                          <div class="space-y-1 p-4 rounded-xl bg-slate-50 border border-slate-100">
@@ -83,7 +83,7 @@
                             <p class="mt-1 text-xs text-slate-500 italic">{{ $siswa->pekerjaan_ibu ?: 'Pekerjaan —' }}</p>
                         </div>
                         <div class="sm:col-span-2 p-4 rounded-xl bg-indigo-50 border border-indigo-100">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Emergency Call / No HP Wali</p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Nomor HP Wali</p>
                             <p class="text-lg font-black text-indigo-900">{{ $siswa->no_hp_orang_tua ?: '—' }}</p>
                         </div>
                     </div>

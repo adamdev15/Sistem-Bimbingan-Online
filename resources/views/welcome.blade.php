@@ -193,7 +193,7 @@
                         </div>
                     </div>
                     <div class="backdrop-blur">
-                        <img src="{{ isset($settings['hero_filename']) ? asset('image/' . $settings['hero_filename']) : asset('image/hero.png') }}" alt="Hero Bimbel" class="mx-auto w-96 rounded-xl">
+                        <img src="{{ isset($settings['hero_filename']) ? asset('image/' . $settings['hero_filename']) : asset('image/hero.png') }}" alt="Hero Bimbel" class="mx-auto w-[70%] rounded-xl">
                     </div>
                 </div>
             </section>
@@ -229,7 +229,7 @@
             <section id="programs" class="bg-slate-50 py-16">
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <h2 class="text-center text-3xl font-bold text-blue-950">Program Belajar Kami</h2>
-                    <p class="text-center text-slate-600 mt-3 max-w-2xl mx-auto">Kami menyediakan berbagai program mata pelajaran yang disesuaikan dengan jenjang dan kebutuhan pemahaman siswa.</p>
+                    <p class="text-center text-slate-600 mt-3 max-w-2xl mx-auto">Kami menyediakan berbagai program materi les yang disesuaikan dengan jenjang dan kebutuhan pemahaman siswa.</p>
                     <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                         @forelse ($programs ?? [] as $program)
                             <div class="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 hover:shadow-md transition">

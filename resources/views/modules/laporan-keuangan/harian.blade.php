@@ -4,9 +4,9 @@
             <a href="{{ route('laporan-keuangan.index', ['month' => $month, 'cabang_id' => $selectedCabangId]) }}" class="inline-flex rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 Kembali
             </a>
-            <button onclick="window.print()" class="inline-flex rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">
+            <a href="{{ route('laporan-keuangan.export.pdf', ['type' => 'harian', 'month' => $month, 'cabang_id' => $selectedCabangId]) }}" class="inline-flex rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">
                 Cetak Laporan
-            </button>
+            </a>
         </x-slot>
     </x-module-page-header>
 

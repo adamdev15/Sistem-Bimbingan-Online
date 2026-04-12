@@ -16,14 +16,26 @@
 
     @if (session('status'))
         <p class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</p>
-    @endif
-
-    <div
+    @endif    <div
         x-data="{
             cabangId: @js($filters['cabang_id'] ?? ''),
             tutors: @js($tutors),
             loading: false,
             printOpen: false,
+            // Modal state
+            printCabangId: '{{ auth()->user()->hasRole('admin_cabang') ? \App\Models\Cabang::where('user_id', auth()->id())->value('id') : '' }}',
+            printStudents: [],
+            printStudentId: '',
+            printStudentSearch: '',
+            showStudentList: false,
+            get selectedStudentName() {
+                const s = this.printStudents.find(x => x.id == this.printStudentId);
+                return s ? s.nama : 'Pilih Siswa';
+            },
+            get filteredStudents() {
+                if (!this.printStudentSearch) return this.printStudents;
+                return this.printStudents.filter(s => s.nama.toLowerCase().includes(this.printStudentSearch.toLowerCase()));
+            },
             async fetchTutors() {
                 if (!this.cabangId) {
                     this.tutors = [];
@@ -39,8 +51,25 @@
                 } finally {
                     this.loading = false;
                 }
+            },
+            async fetchPrintStudents() {
+                if (!this.printCabangId) {
+                    this.printStudents = [];
+                    this.printStudentId = '';
+                    return;
+                }
+                this.loading = true;
+                try {
+                    const res = await fetch(`/api/cabang/${this.printCabangId}/students`);
+                    this.printStudents = await res.json();
+                } catch (e) {
+                    console.error('Gagal memuat siswa');
+                } finally {
+                    this.loading = false;
+                }
             }
         }"
+        x-init="if(printCabangId) fetchPrintStudents()"
         class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5 p-5"
     >
         {{-- FILTER + ACTION --}}
@@ -85,7 +114,7 @@
                 <div class="flex flex-wrap items-center gap-2 ml-auto">
                     @if ($isStaffRekap)
                         <button @click="printOpen = true" class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                             Cetak Kartu
                         </button>
 
@@ -120,23 +149,30 @@
                     @forelse ($presensis as $p)
                         @php $st = $p->status; @endphp
                         <tr class="text-slate-700 hover:bg-slate-50">
-                            <td class="px-4 py-3 font-mono text-xs">{{ optional($p->tanggal)->format('d/m/Y') }}</td>
+                            <td class="px-4 py-3 font-mono text-xs text-slate-900">{{ optional($p->tanggal)->format('d/m/Y') }}</td>
                             <td class="px-4 py-3 font-medium">{{ optional($p->materiLes)->nama_materi ?? '—' }}</td>
                             @if ($isStaffRekap)
-                                <td class="px-4 py-3 text-xs text-slate-500">{{ optional($p->cabang)->nama_cabang ?? '—' }}</td>
+                                <td class="px-4 py-3 text-xs font-bold text-slate-900">{{ optional($p->cabang)->nama_cabang ?? '—' }}</td>
                                 <td class="px-4 py-3 font-medium text-slate-900">{{ optional($p->tutor)->nama ?? '—' }}</td>
                                 <td class="px-4 py-3">{{ optional($p->siswa)->nama }}</td>
-                                <td class="px-4 py-3 text-xs">{{ substr($p->jam_mulai, 0, 5) }} - {{ substr($p->jam_selesai, 0, 5) }}</td>
+                                <td class="px-4 py-3 text-xs">{{ $p->jam_mulai->format('H:i') }} - {{ $p->jam_selesai->format('H:i') }}</td>
                             @else
-                                <td class="px-4 py-3">{{ substr($p->jam_mulai, 0, 5) }} - {{ substr($p->jam_selesai, 0, 5) }}</td>
+                                <td class="px-4 py-3">{{ $p->jam_mulai->format('H:i') }} - {{ $p->jam_selesai->format('H:i') }}</td>
                             @endif
                             <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold border @class([
-                                    'bg-emerald-100 border-emerald-200 text-emerald-800' => $st === 'hadir',
-                                    'bg-rose-100 border-rose-200 text-rose-800' => $st === 'alfa',
-                                    'bg-blue-100 border-blue-200 text-blue-800' => $st === 'izin',
-                                    'bg-yellow-100 border-yellow-200 text-yellow-800' => $st === 'sakit',
-                                ])">{{ ucfirst($st) }}</span>
+                                @php
+                                    $config = [
+                                        'hadir' => ['color' => 'bg-emerald-50 text-emerald-700 border-emerald-100', 'dot' => 'bg-emerald-500'],
+                                        'alfa'   => ['color' => 'bg-rose-50 text-rose-700 border-rose-100', 'dot' => 'bg-rose-500'],
+                                        'izin'   => ['color' => 'bg-blue-50 text-blue-700 border-blue-100', 'dot' => 'bg-blue-500'],
+                                        'sakit'  => ['color' => 'bg-amber-50 text-amber-700 border-amber-100', 'dot' => 'bg-amber-500'],
+                                    ];
+                                    $stCfg = $config[$st] ?? ['color' => 'bg-slate-50 text-slate-700 border-slate-100', 'dot' => 'bg-slate-500'];
+                                @endphp
+                                <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border {{ $stCfg['color'] }}">
+                                    <span class="h-1.5 w-1.5 rounded-full {{ $stCfg['dot'] }}"></span>
+                                    {{ $st }}
+                                </span>
                             </td>
                         </tr>
                     @empty
@@ -153,49 +189,93 @@
             </div>
         @endif
         @if ($isStaffRekap)
-            {{-- Modal: Cetak Kartu (Outside scope for robustness) --}}
+            {{-- Modal: Cetak Kartu --}}
             <template x-teleport="body">
-                <div x-show="printOpen" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" role="dialog">
-                    <div @click.outside="printOpen = false" class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-900/10 transition-all">
-                        <div class="mb-4 flex items-center justify-between">
-                            <h3 class="text-lg font-bold text-slate-900">Cetak Kartu Absensi</h3>
-                            <button @click="printOpen = false" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
-                        </div>
-                        <form action="{{ route('presensi.print-card') }}" method="GET" target="_blank" class="space-y-4">
+                <div x-show="printOpen" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="dialog">
+                    <div @click.outside="printOpen = false" class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl ring-1 ring-slate-900/10 transition-all">
+                        <div class="mb-6 flex items-center justify-between">
                             <div>
-                                <label class="block text-sm font-semibold text-slate-700">Pilih Siswa</label>
-                                <select name="student_id" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-blue-500 outline-none shadow-sm">
-                                    <option value="">-- Pilih Siswa --</option>
-                                    @php
-                                        $adminCabangId = auth()->user()->hasRole('admin_cabang') ? \App\Models\Cabang::where('user_id', auth()->id())->value('id') : null;
-                                        $siswaList = \App\Models\Siswa::with('cabang')->when($adminCabangId, fn($q) => $q->where('cabang_id', $adminCabangId))->orderBy('nama')->get();
-                                    @endphp
-                                    @foreach($siswaList as $s)
-                                        <option value="{{ $s->id }}">{{ $s->nama }} ({{ $s->cabang->nama_cabang ?? '' }})</option>
-                                    @endforeach
-                                </select>
+                                <h3 class="text-xl font-bold text-slate-900">Cetak Kartu Absensi</h3>
+                                <p class="text-sm text-slate-500 mt-1">Pilih siswa untuk mengunduh rekap bulanan.</p>
                             </div>
+                            <button @click="printOpen = false" class="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-rose-100 hover:text-rose-600 transition-colors">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <form action="{{ route('presensi.print-card') }}" method="GET" target="_blank" class="space-y-5">
+                            @if($isSuperAdmin)
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Pilih Cabang</label>
+                                    <select x-model="printCabangId" @change="fetchPrintStudents()" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none shadow-sm bg-slate-50/50">
+                                        <option value="">-- Semua Cabang --</option>
+                                        @foreach($cabangs as $c)
+                                            <option value="{{ $c->id }}">{{ $c->nama_cabang }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+
+                            <div class="relative">
+                                <label class="block text-sm font-bold text-slate-700 mb-1.5">Pilih Siswa</label>
+                                <input type="hidden" name="student_id" x-model="printStudentId">
+                                
+                                <div class="relative">
+                                    <button type="button" 
+                                            @click="showStudentList = !showStudentList"
+                                            class="w-full flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none shadow-sm bg-white text-left overflow-hidden">
+                                        <span x-text="selectedStudentName" class="truncate">Pilih Siswa</span>
+                                        <svg class="h-4 w-4 text-slate-400 transition-transform" :class="showStudentList ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+                                    </button>
+
+                                    <div x-show="showStudentList" 
+                                         @click.outside="showStudentList = false"
+                                         x-transition
+                                         class="absolute z-[80] mt-2 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-xl ring-1 ring-black/5">
+                                        <div class="mb-2 p-1">
+                                            <input type="text" x-model="printStudentSearch" placeholder="Cari siswa..." class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 outline-none">
+                                        </div>
+                                        <div class="max-h-52 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
+                                            <template x-for="s in filteredStudents" :key="s.id">
+                                                <button type="button" 
+                                                        @click="printStudentId = s.id; showStudentList = false; printStudentSearch = ''"
+                                                        class="w-full px-3 py-2 text-left text-sm rounded-lg hover:bg-blue-50 hover:text-blue-700 transition"
+                                                        :class="printStudentId == s.id ? 'bg-blue-600 text-white' : 'text-slate-700'">
+                                                    <span x-text="s.nama"></span>
+                                                </button>
+                                            </template>
+                                            <template x-if="filteredStudents.length === 0">
+                                                <p class="p-3 text-center text-xs text-slate-400">Siswa tidak ditemukan</p>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700">Bulan</label>
-                                    <select name="bulan" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-blue-500 outline-none shadow-sm">
+                                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Bulan</label>
+                                    <select name="bulan" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none shadow-sm bg-white">
                                         @foreach($months as $num => $name)
                                             <option value="{{ $num }}" @selected($num == date('n'))>{{ $name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700">Tahun</label>
-                                    <select name="tahun" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-blue-500 outline-none shadow-sm">
+                                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Tahun</label>
+                                    <select name="tahun" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none shadow-sm bg-white">
                                         @for($y = (int)date('Y') - 2; $y <= (int)date('Y') + 1; $y++)
                                             <option value="{{ $y }}" @selected($y == (int)date('Y'))>{{ $y }}</option>
                                         @endfor
                                     </select>
                                 </div>
                             </div>
-                            <div class="pt-4 flex justify-end gap-3 text-sm font-semibold">
-                                <button type="button" @click="printOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-slate-700 hover:bg-slate-50">Batal</button>
-                                <button type="submit" class="rounded-xl bg-emerald-600 px-6 py-2.5 text-white shadow-sm hover:bg-emerald-700 transition">Cetak</button>
+                            <div class="pt-6 flex flex-col gap-3">
+                                <button type="submit" :disabled="!printStudentId" class="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-bold text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                    Unduh Kartu Absensi
+                                </button>
+                                <button type="button" @click="printOpen = false" class="w-full py-2 text-sm font-semibold text-slate-500 hover:text-slate-800 transition">Batalkan</button>
                             </div>
                         </form>
                     </div>

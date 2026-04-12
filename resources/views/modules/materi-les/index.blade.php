@@ -109,12 +109,12 @@
                         <table class="min-w-full divide-y divide-slate-300">
                             <thead class="bg-slate-50">
                                 <tr>
-                                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-slate-900 sm:pl-6 lg:pl-8">No</th>
-                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Materi / Foto</th>
-                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Deskripsi</th>
-                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Pertemuan</th>
-                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Fee Tutor</th>
-                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Biaya Daftar</th>
+                                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-slate-700 sm:pl-6 lg:pl-8">No</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Materi / Foto</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Deskripsi</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Pertemuan</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Fee Tutor</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Biaya Daftar</th>
                                     @role('super_admin')
                                     <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6 lg:pr-8">
                                         <span class="sr-only">Aksi</span>
@@ -125,7 +125,7 @@
                             <tbody class="divide-y divide-slate-200 bg-white">
                                 @forelse ($materiLes as $index => $item)
                                     <tr class="hover:bg-slate-50 transition-colors">
-                                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-900 sm:pl-6 lg:pl-8">
+                                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-700 sm:pl-6 lg:pl-8">
                                             {{ $materiLes->firstItem() + $index }}
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500">
@@ -144,16 +144,16 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-3 py-4 text-sm text-slate-500 max-w-sm truncate" title="{{ $item->deskripsi }}">
+                                        <td class="px-3 py-4 text-sm text-slate-700 max-w-sm truncate" title="{{ $item->deskripsi }}">
                                             {{ $item->deskripsi ?? '-' }}
                                         </td>
-                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500">
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-700">
                                             {{ $item->pertemuan_per_minggu }}x / Minggu
                                         </td>
-                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500">
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-700">
                                             {{ $item->fee ? $item->fee->nama_fee . ' (Rp ' . number_format($item->fee->nominal, 0, ',', '.') . ')' : '-' }}
                                         </td>
-                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500">
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-700">
                                             {{ $item->biaya_daftar ? 'Rp ' . number_format($item->biaya_daftar, 0, ',', '.') : '-' }}
                                         </td>
                                         @role('super_admin')

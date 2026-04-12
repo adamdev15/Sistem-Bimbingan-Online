@@ -18,4 +18,11 @@ class DashboardController extends Controller
             'dashboardData' => $this->service->dashboardStats(),
         ]);
     }
+
+    public function keuanganChart(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
+    {
+        $filter = $request->query('filter', 'monthly');
+        $data = $this->service->getKeuanganChartData($filter);
+        return response()->json($data);
+    }
 }

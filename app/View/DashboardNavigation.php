@@ -62,10 +62,23 @@ class DashboardNavigation
                 ]
             ],
             [
+                'label' => 'Presensi',
+                'icon' => 'presensi',
+                'route' => 'presensi.index',
+                'roles' => ['super_admin', 'admin_cabang', 'tutor', 'siswa'],
+                'patterns' => ['presensi.*'],
+            ],
+            [
                 'label' => 'Keuangan',
                 'icon' => 'keuangan',
                 'roles' => ['super_admin', 'admin_cabang', 'siswa'],
                 'children' => [
+                    [
+                        'label' => 'Gaji Tutor',
+                        'route' => 'salaries.index',
+                        'roles' => ['super_admin', 'admin_cabang'],
+                        'patterns' => ['salaries.*'],
+                    ],
                     [
                         'label' => 'Pembayaran',
                         'route' => 'pembayaran.index',
@@ -78,12 +91,7 @@ class DashboardNavigation
                         'roles' => ['super_admin', 'admin_cabang'],
                         'patterns' => ['pengeluaran.*'],
                     ],
-                    [
-                        'label' => 'Gaji Tutor',
-                        'route' => 'salaries.index',
-                        'roles' => ['super_admin', 'admin_cabang'],
-                        'patterns' => ['salaries.*'],
-                    ],
+                    
                     [
                         'label' => 'Laporan Keuangan',
                         'route' => 'laporan-keuangan.index',
@@ -91,13 +99,6 @@ class DashboardNavigation
                         'patterns' => ['laporan-keuangan.*'],
                     ],
                 ]
-            ],
-            [
-                'label' => 'Presensi',
-                'icon' => 'presensi',
-                'route' => 'presensi.index',
-                'roles' => ['super_admin', 'admin_cabang', 'tutor', 'siswa'],
-                'patterns' => ['presensi.*'],
             ],
             [
                 'label' => 'Pengaturan',

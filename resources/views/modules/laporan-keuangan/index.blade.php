@@ -1,4 +1,4 @@
-﻿<x-layouts.dashboard-shell title="Laporan Keuangan — eBimbel">
+<x-layouts.dashboard-shell title="Laporan Keuangan — eBimbel">
     <x-module-page-header title="Analisa Keuangan" description="Ringkasan performa finansial cabang secara real-time dengan visualisasi data mendalam.">
     </x-module-page-header>
 
@@ -10,7 +10,11 @@
                     <div class="flex-1 min-w-[200px]">
                         <label class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">Cabang</label>
                         <select name="cabang_id" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition">
-                            <option value="">-- Pilih Cabang --</option>
+                            @if(auth()->user()->hasRole('super_admin'))
+                                <option value="all" @selected($selectedCabangId == 'all')>Semua Cabang</option>
+                            @else
+                                <option value="">-- Pilih Cabang --</option>
+                            @endif
                             @foreach ($cabangs as $c)
                                 <option value="{{ $c->id }}" @selected($selectedCabangId == $c->id)>{{ $c->nama_cabang }}</option>
                             @endforeach
@@ -69,7 +73,7 @@
             </div>
         </div>
 
-        @if (!$selectedCabangId)
+        @if (!$selectedCabangId && !auth()->user()->hasRole('super_admin'))
             <div class="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-blue-200 bg-blue-50/30 p-20 text-center">
                 <div class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-blue-500/10">
                     <svg class="h-12 w-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -84,7 +88,12 @@
                     <div class="flex items-center justify-between mb-8">
                         <div>
                             <h3 class="text-lg font-black text-slate-900 tracking-tight">Grafik Keuangan</h3>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Overview Pemasukan vs Pengeluaran</p>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                Overview Pemasukan vs Pengeluaran 
+                                @if($selectedCabangId === 'all')
+                                    <span class="text-blue-600">(Semua Cabang)</span>
+                                @endif
+                            </p>
                         </div>
                         <div class="hidden sm:flex items-center gap-4">
                             <div class="flex items-center gap-1.5">

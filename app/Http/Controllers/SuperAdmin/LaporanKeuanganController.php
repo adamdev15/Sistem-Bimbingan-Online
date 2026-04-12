@@ -29,7 +29,8 @@ class LaporanKeuanganController extends Controller
     {
         $cabangId = $this->getCabangId();
         $cabangs = Cabang::all();
-        $selectedCabangId = $cabangId ?: $request->cabang_id;
+        $selectedCabangId = $request->cabang_id ?? $cabangId;
+        $filterCabangId = $selectedCabangId === 'all' ? null : $selectedCabangId;
 
         $month = $request->string('month', now()->format('Y-m'))->toString();
         $start = Carbon::parse($month)->startOfMonth();
@@ -38,33 +39,30 @@ class LaporanKeuanganController extends Controller
         // Simple KPI cards
         $income = Payment::where('status', 'lunas')
             ->whereBetween('tanggal_bayar', [$start, $end])
-            ->when($selectedCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $selectedCabangId)))
+            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
             ->sum('nominal');
 
         $expense = Pengeluaran::whereBetween('tanggal', [$start, $end])
-            ->when($selectedCabangId, fn($q) => $q->where('cabang_id', $selectedCabangId))
+            ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
             ->sum('nominal');
 
         $salaries = Salary::where('periode', $month)
-            ->when($selectedCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $selectedCabangId)))
+            ->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))
             ->sum('total_gaji');
 
         // Logic for Chart Overview (Daily Data)
         $dailyIncome = Payment::where('status', 'lunas')
             ->whereBetween('tanggal_bayar', [$start, $end])
-            ->when($selectedCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $selectedCabangId)))
+            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
             ->selectRaw('DATE(tanggal_bayar) as date, SUM(nominal) as total')
             ->groupBy('date')
             ->pluck('total', 'date');
 
         $dailyExpense = Pengeluaran::whereBetween('tanggal', [$start, $end])
-            ->when($selectedCabangId, fn($q) => $q->where('cabang_id', $selectedCabangId))
+            ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
             ->selectRaw('DATE(tanggal) as date, SUM(nominal) as total')
             ->groupBy('date')
             ->pluck('total', 'date');
-
-        // Note: Salaries are usually per month, but if we want per day we'd need payment dates. 
-        // For the overview chart, we'll focus on Payments vs Operational Expenses as "Daily Cashflow".
 
         $chartLabels = [];
         $incomeSeries = [];
@@ -104,7 +102,9 @@ class LaporanKeuanganController extends Controller
     public function harian(Request $request): View
     {
         $cabangId = $this->getCabangId();
-        $selectedCabangId = $cabangId ?: $request->cabang_id;
+        $selectedCabangId = $request->cabang_id ?? $cabangId;
+        $filterCabangId = $selectedCabangId === 'all' ? null : $selectedCabangId;
+
         $month = $request->string('month', now()->format('Y-m'))->toString();
         
         $start = Carbon::parse($month)->startOfMonth();
@@ -113,14 +113,14 @@ class LaporanKeuanganController extends Controller
         // 1. Get Daily Income
         $dailyIncome = Payment::where('status', 'lunas')
             ->whereBetween('tanggal_bayar', [$start, $end])
-            ->when($selectedCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $selectedCabangId)))
+            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
             ->selectRaw('DATE(tanggal_bayar) as date, SUM(nominal) as total')
             ->groupBy('date')
             ->pluck('total', 'date');
 
         // 2. Get Daily Expenses
         $dailyExpense = Pengeluaran::whereBetween('tanggal', [$start, $end])
-            ->when($selectedCabangId, fn($q) => $q->where('cabang_id', $selectedCabangId))
+            ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
             ->selectRaw('DATE(tanggal) as date, SUM(nominal) as total')
             ->groupBy('date')
             ->pluck('total', 'date');
@@ -128,9 +128,6 @@ class LaporanKeuanganController extends Controller
         // 3. Merge and Build Ledger
         $ledger = [];
         $runningBalance = 0;
-        
-        // We might want to get the balance BEFORE this month started (Carry over)
-        // For simplicity in this bimbel app, we'll start from 0 for the month display
         
         for ($date = $start->copy(); $date <= $end; $date->addDay()) {
             $currentDate = $date->format('Y-m-d');
@@ -153,17 +150,20 @@ class LaporanKeuanganController extends Controller
             'ledger' => $ledger,
             'month' => $month,
             'selectedCabangId' => $selectedCabangId,
-            'cabang' => $selectedCabangId ? Cabang::find($selectedCabangId) : null
+            'cabang' => $filterCabangId ? Cabang::find($filterCabangId) : null
         ]);
     }
 
     public function rekapBulanan(Request $request): View
     {
         $cabangId = $this->getCabangId();
-        $selectedCabangId = $cabangId ?: $request->cabang_id;
-        if (!$selectedCabangId) {
+        $selectedCabangId = $request->cabang_id ?? $cabangId;
+        
+        if (!$selectedCabangId && !Auth::user()->hasRole('super_admin')) {
             return redirect()->route('laporan-keuangan.index')->withErrors(['cabang' => 'Pilih cabang untuk melihat laporan bulanan.']);
         }
+
+        $filterCabangId = $selectedCabangId === 'all' ? null : $selectedCabangId;
 
         $month = $request->string('month', now()->format('Y-m'))->toString();
         $start = Carbon::parse($month)->startOfMonth();
@@ -235,10 +235,13 @@ class LaporanKeuanganController extends Controller
     public function bulanan(Request $request): View
     {
         $cabangId = $this->getCabangId();
-        $selectedCabangId = $cabangId ?: $request->cabang_id;
-        if (!$selectedCabangId) {
+        $selectedCabangId = $request->cabang_id ?? $cabangId;
+
+        if (!$selectedCabangId && !Auth::user()->hasRole('super_admin')) {
             return redirect()->route('laporan-keuangan.index')->withErrors(['cabang' => 'Pilih cabang untuk melihat laporan bulanan.']);
         }
+
+        $filterCabangId = $selectedCabangId === 'all' ? null : $selectedCabangId;
 
         $month = $request->string('month', now()->format('Y-m'))->toString();
         $start = Carbon::parse($month)->startOfMonth();
@@ -273,10 +276,10 @@ class LaporanKeuanganController extends Controller
 
         // Bagi Hasil Calculation
         $shares = [
-            'investor_pct' => $cabang->profit_share_investor,
-            'pusat_pct' => $cabang->profit_share_pusat,
-            'investor_amount' => ($netProfit > 0) ? ($netProfit * $cabang->profit_share_investor / 100) : 0,
-            'pusat_amount' => ($netProfit > 0) ? ($netProfit * $cabang->profit_share_pusat / 100) : 0,
+            'investor_pct' => $cabang ? $cabang->profit_share_investor : 0,
+            'pusat_pct' => $cabang ? $cabang->profit_share_pusat : 0,
+            'investor_amount' => ($cabang && $netProfit > 0) ? ($netProfit * $cabang->profit_share_investor / 100) : 0,
+            'pusat_amount' => ($cabang && $netProfit > 0) ? ($netProfit * $cabang->profit_share_pusat / 100) : 0,
         ];
 
         return view('modules.laporan-keuangan.bulanan', [
@@ -293,6 +296,104 @@ class LaporanKeuanganController extends Controller
         ]);
     }
 
-    public function exportExcel(Request $request) { /* To be implemented */ }
-    public function exportPdf(Request $request) { /* To be implemented */ }
+    public function exportPdf(Request $request)
+    {
+        $type = $request->query('type', 'harian');
+        $cabangId = $this->getCabangId();
+        $selectedCabangId = $request->cabang_id ?? $cabangId;
+        $filterCabangId = $selectedCabangId === 'all' ? null : $selectedCabangId;
+
+        $month = $request->string('month', now()->format('Y-m'))->toString();
+        $start = Carbon::parse($month)->startOfMonth();
+        $end = Carbon::parse($month)->endOfMonth();
+        $cabang = $filterCabangId ? Cabang::find($filterCabangId) : null;
+
+        $view = 'modules.laporan-keuangan.pdf.' . $type;
+        $data = [
+            'month' => $month,
+            'cabang' => $cabang,
+            'selectedCabangId' => $selectedCabangId,
+        ];
+
+        if ($type === 'harian') {
+            $dailyIncome = Payment::where('status', 'lunas')
+                ->whereBetween('tanggal_bayar', [$start, $end])
+                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
+                ->selectRaw('DATE(tanggal_bayar) as date, SUM(nominal) as total')
+                ->groupBy('date')
+                ->pluck('total', 'date');
+
+            $dailyExpense = Pengeluaran::whereBetween('tanggal', [$start, $end])
+                ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
+                ->selectRaw('DATE(tanggal) as date, SUM(nominal) as total')
+                ->groupBy('date')
+                ->pluck('total', 'date');
+
+            $ledger = [];
+            $runningBalance = 0;
+            for ($date = $start->copy(); $date <= $end; $date->addDay()) {
+                $currentDate = $date->format('Y-m-d');
+                $income = $dailyIncome->get($currentDate, 0);
+                $expense = $dailyExpense->get($currentDate, 0);
+                $net = $income - $expense;
+                $runningBalance += $net;
+                $ledger[] = ['tanggal' => $date->copy(), 'pemasukan' => $income, 'pengeluaran' => $expense, 'jumlah' => $net, 'saldo' => $runningBalance];
+            }
+            $data['ledger'] = $ledger;
+            $filename = 'Laporan_Harian_' . $month . '.pdf';
+        } elseif ($type === 'bulanan') {
+            $categories = ['Pendaftaran' => ['pendaftaran'], 'SPP Baca' => ['spp baca', 'baca'], 'SPP Mapel' => ['spp mapel', 'mapel'], 'SPP Jarmat' => ['jarmat', 'jarimatrik']];
+            $rekapIncome = [];
+            $totalIncome = 0;
+            foreach ($categories as $label => $terms) {
+                $sum = Payment::where('payments.status', 'lunas')->whereBetween('payments.tanggal_bayar', [$start, $end])
+                    ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
+                    ->join('fees', 'payments.biaya_id', '=', 'fees.id')
+                    ->where(function($q) use ($terms) { foreach ($terms as $term) { $q->orWhere('fees.nama_biaya', 'LIKE', "%{$term}%"); } })
+                    ->sum('payments.nominal');
+                $rekapIncome[] = ['keterangan' => $label, 'nominal' => $sum];
+                $totalIncome += $sum;
+            }
+            $otherIncome = Payment::where('payments.status', 'lunas')->whereBetween('payments.tanggal_bayar', [$start, $end])
+                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
+                ->join('fees', 'payments.biaya_id', '=', 'fees.id')
+                ->where(function($q) use ($categories) { 
+                    foreach ($categories as $terms) { foreach ($terms as $term) { $q->where('fees.nama_biaya', 'NOT LIKE', "%{$term}%"); } } 
+                })->sum('payments.nominal');
+            $rekapIncome[] = ['keterangan' => 'Lain-lain', 'nominal' => $otherIncome];
+            $totalIncome += $otherIncome;
+            $totalOperasional = Pengeluaran::whereBetween('tanggal', [$start, $end])->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))->sum('nominal');
+            $data['rekapIncome'] = $rekapIncome;
+            $data['totalIncome'] = $totalIncome;
+            $data['totalOperasional'] = $totalOperasional;
+            $filename = 'Laporan_Bulanan_' . $month . '.pdf';
+        } elseif ($type === 'mitra') {
+            $incomeBreakdown = Payment::where('payments.status', 'lunas')->whereBetween('payments.tanggal_bayar', [$start, $end])
+                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))->join('fees', 'payments.biaya_id', '=', 'fees.id')
+                ->select('fees.nama_biaya', DB::raw('SUM(payments.nominal) as total'))->groupBy('fees.nama_biaya')->get();
+            $expenseBreakdown = Pengeluaran::whereBetween('tanggal', [$start, $end])->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
+                ->join('kategori_pengeluarans', 'pengeluarans.kategori_id', '=', 'kategori_pengeluarans.id')
+                ->select('kategori_pengeluarans.nama_kategori', DB::raw('SUM(pengeluarans.nominal) as total'))->groupBy('kategori_pengeluarans.nama_kategori')->get();
+            $totalSalaries = Salary::where('periode', $month)->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))->sum('total_gaji');
+            $totalIncome = $incomeBreakdown->sum('total');
+            $totalExpenses = $expenseBreakdown->sum('total') + $totalSalaries;
+            $netProfit = $totalIncome - $totalExpenses;
+            $data['incomeBreakdown'] = $incomeBreakdown;
+            $data['expenseBreakdown'] = $expenseBreakdown;
+            $data['totalSalaries'] = $totalSalaries;
+            $data['totalIncome'] = $totalIncome;
+            $data['totalExpenses'] = $totalExpenses;
+            $data['netProfit'] = $netProfit;
+            $data['shares'] = [
+                'investor_pct' => $cabang ? $cabang->profit_share_investor : 0, 
+                'pusat_pct' => $cabang ? $cabang->profit_share_pusat : 0,
+                'investor_amount' => ($cabang && $netProfit > 0) ? ($netProfit * $cabang->profit_share_investor / 100) : 0,
+                'pusat_amount' => ($cabang && $netProfit > 0) ? ($netProfit * $cabang->profit_share_pusat / 100) : 0,
+            ];
+            $filename = 'Laporan_Mitra_' . $month . '.pdf';
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($view, $data);
+        return $pdf->stream($filename);
+    }
 }

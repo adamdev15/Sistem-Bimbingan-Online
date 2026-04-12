@@ -87,7 +87,7 @@
                             <th class="px-4 py-3.5">Nama</th>
                             <th class="px-4 py-3.5">Email login</th>
                             <th class="px-4 py-3.5">Cabang</th>
-                            <th class="px-4 py-3.5">Total Sesi</th>
+                            <th class="px-4 py-3.5">Total Kehadiran</th>
                             <th class="px-4 py-3.5">Status</th>
                             <th class="px-4 py-3.5 text-right">Aksi</th>
                         </tr>
@@ -99,7 +99,7 @@
                                 <td class="px-4 py-3.5 font-medium text-slate-900">{{ $tutor->nama }}</td>
                                 <td class="px-4 py-3.5 text-slate-600">{{ optional($tutor->user)->email ?? $tutor->email }}</td>
                                 <td class="px-4 py-3.5">{{ optional($tutor->cabang)->nama_cabang }}</td>
-                                <td class="px-4 py-3.5">{{ $tutor->kehadirans_count }}</td>
+                                <td class="px-4 py-3.5">{{ $tutor->kehadirans_count }}/{{ now()->translatedFormat('F') }}</td>
                                 <td class="px-4 py-3.5">
                                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $tutor->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700' }}">{{ ucfirst($tutor->status) }}</span>
                                 </td>

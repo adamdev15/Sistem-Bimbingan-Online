@@ -109,7 +109,15 @@
                                 <td class="px-4 py-3.5 text-slate-600">{{ $siswa->alamat }}</td>
                                 <td class="px-4 py-3.5 text-slate-600">{{ optional($siswa->materiLes)->nama_materi ?? '—' }}</td>
                                 <td class="px-4 py-3.5">
-                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $siswa->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800' }}">{{ ucfirst($siswa->status) }}</span>
+                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold 
+                                    {{ $siswa->status === 'aktif' 
+                                        ? 'bg-emerald-100 text-emerald-800' 
+                                        : ($siswa->status === 'cuti' 
+                                            ? 'bg-yellow-100 text-yellow-800' 
+                                            : 'bg-rose-100 text-rose-800') 
+                                    }}">
+                                        {{ ucfirst($siswa->status) }}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-3.5 text-right">
                                     <div class="flex flex-wrap items-center justify-end gap-2">
@@ -291,7 +299,8 @@
                             <label class="text-xs font-semibold text-slate-500">Status</label>
                             <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="">Pilih status</option>
-                            <option value="aktif">Aktif</option>
+                                <option value="aktif">Aktif</option>
+                                <option value="cuti">Cuti</option>
                                 <option value="nonaktif">Nonaktif</option>
                             </select>
                         </div>
@@ -429,6 +438,7 @@
                             <label class="text-xs font-semibold text-slate-500">Status</label>
                             <select name="status" x-model="edit.status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="aktif">Aktif</option>
+                                <option value="cuti">Cuti</option>
                                 <option value="nonaktif">Nonaktif</option>
                             </select>
                         </div>
@@ -483,7 +493,7 @@
                         </div>
                         <div class="pt-4 flex justify-end gap-2 text-sm">
                             <button type="button" @click="printOpen = false" class="rounded-lg border border-slate-200 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
-                            <button type="submit" class="rounded-lg bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700">Cetak PDF</button>
+                            <button type="submit" class="rounded-lg bg-emerald-600 px-3 py-2 font-semibold text-white hover:bg-emerald-700">Cetak Kartu</button>
                         </div>
                     </form>
                 </div>

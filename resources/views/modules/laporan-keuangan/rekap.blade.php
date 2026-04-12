@@ -1,12 +1,12 @@
 <x-layouts.dashboard-shell title="Laporan Bulanan — eBimbel">
-    <x-module-page-header title="Laporan Bulanan - {{ $cabang->nama_cabang }}" description="Rekapitulasi total pemasukan dan pengeluaran operasional periode {{ \Carbon\Carbon::parse($month)->translatedFormat('F Y') }}.">
+    <x-module-page-header title="Laporan Bulanan - {{ $cabang ? $cabang->nama_cabang : 'Semua Cabang (Konsolidasi)' }}" description="Rekapitulasi total pemasukan dan pengeluaran operasional periode {{ \Carbon\Carbon::parse($month)->translatedFormat('F Y') }}.">
         <x-slot name="actions">
             <a href="{{ route('laporan-keuangan.index', ['month' => $month, 'cabang_id' => $selectedCabangId]) }}" class="inline-flex rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 Kembali
             </a>
-            <button onclick="window.print()" class="inline-flex rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">
+            <a href="{{ route('laporan-keuangan.export.pdf', ['type' => 'bulanan', 'month' => $month, 'cabang_id' => $selectedCabangId]) }}" class="inline-flex rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">
                 Cetak Laporan
-            </button>
+            </a>
         </x-slot>
     </x-module-page-header>
 

@@ -196,6 +196,16 @@ class PresensiController extends Controller
         );
     }
 
+    public function getStudentsByCabang(Cabang $cabang)
+    {
+        return response()->json(
+            Siswa::where('cabang_id', $cabang->id)
+                ->where('status', 'aktif')
+                ->select('id', 'nama')
+                ->get()
+        );
+    }
+
     public function printCard(Request $request)
     {
         $request->validate([
