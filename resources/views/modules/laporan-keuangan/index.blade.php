@@ -1,5 +1,5 @@
-<x-layouts.dashboard-shell title="Laporan Keuangan — eBimbel">
-    <x-module-page-header title="Analisa Keuangan" description="Ringkasan performa finansial cabang secara real-time dengan visualisasi data mendalam.">
+﻿<x-layouts.dashboard-shell title="Laporan Keuangan — Bimbel Jarimatrik">
+    <x-module-page-header title="Analisa Keuangan" description="Pusat kendali analisa data keuangan bimbel untuk memantau pendapatan dan laba bersih bimbel.">
     </x-module-page-header>
 
     <div class="space-y-6">

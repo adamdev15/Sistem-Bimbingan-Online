@@ -193,7 +193,7 @@
                         </div>
                     </div>
                     <div class="backdrop-blur">
-                        <img src="{{ isset($settings['hero_filename']) ? asset('image/' . $settings['hero_filename']) : asset('image/hero.png') }}" alt="Hero Bimbel" class="mx-auto w-[70%] rounded-xl">
+                        <img src="{{ isset($settings['hero_filename']) ? asset('image/' . $settings['hero_filename']) : asset('image/hero.png') }}" alt="Hero Bimbel" class="mx-auto w-full rounded-xl">
                     </div>
                 </div>
             </section>
@@ -230,7 +230,7 @@
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <h2 class="text-center text-3xl font-bold text-blue-950">Program Belajar Kami</h2>
                     <p class="text-center text-slate-600 mt-3 max-w-2xl mx-auto">Kami menyediakan berbagai program materi les yang disesuaikan dengan jenjang dan kebutuhan pemahaman siswa.</p>
-                    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         @forelse ($programs ?? [] as $program)
                             <div class="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 hover:shadow-md transition">
                                 <div class="relative w-full aspect-video rounded-xl bg-slate-100 overflow-hidden mb-4">
@@ -339,15 +339,16 @@
             <div class="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-8">
                 <div>
                     <img src="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" alt="Logo eBimbel" class="mb-4 h-12 w-auto">
-                    <p class="text-sm text-slate-400">Dengan eBimbel, Anda merasakan revolusi pengelolaan bimbel yang lebih modern, cepat, dan efisien untuk admin, guru, serta siswa.</p>
+                    <p class="text-sm text-slate-400">Bimbel Terbaik di Tegal untuk Masa Depan Anak Lebih Cerah
+Bimbel Jarimatrik Tegal, Bantu anak lebih memahami pelajaran dengan metode belajar modern, tutor berpengalaman, dan suasana belajar yang nyaman.</p>
                 </div>
                 <div>
-                    <h3 class="mb-3 text-xl font-semibold text-white">Latest News</h3>
+                    <h3 class="mb-3 text-xl font-semibold text-white">Tentang Jarimatrik</h3>
                     <ul class="space-y-2 text-sm text-slate-400">
-                        <li>Aplikasi bimbel gratis untuk manajemen lembaga kursus.</li>
-                        <li>Integrasi online terdepan untuk bimbel dan kursus era digital.</li>
-                        <li>Solusi modern efisiensi kerja manajemen lembaga bimbel.</li>
-                        <li>Solusi jadwal dan absensi digital.</li>
+                        <li>Bimbel Jarimatrik, solusi digital terpadu untuk manajemen bimbel modern.</li>
+                        <li>Kelola siswa, tutor, jadwal, dan pembayaran dalam satu platform.</li>
+                        <li>Tingkatkan efisiensi operasional dengan sistem yang praktis dan terintegrasi.</li>
+                        <li>Monitoring jadwal dan presensi lebih akurat dan real-time.</li>
                     </ul>
                 </div>
                 <div>
@@ -362,7 +363,7 @@
                 </div>
             </div>
             <div class="mx-auto mt-8 flex max-w-7xl flex-col items-center justify-between gap-2 border-t border-slate-800 px-4 pt-5 text-xs text-slate-500 sm:flex-row sm:px-6 lg:px-8">
-                <p>&copy; {{ date('Y') }} eBimbel. All rights reserved.</p>
+                <p>&copy; {{ date('Y') }} Bimbel Jarimatrik. All rights reserved.</p>
                 <p>Privacy Policy</p>
             </div>
         </footer>

@@ -1,4 +1,4 @@
-<x-layouts.dashboard-shell title="Siswa - eBimbel">
+<x-layouts.dashboard-shell title="Siswa - Sistem Bimbel Jarimatrik">
     <div
         x-data="{
             createOpen: false,
@@ -35,7 +35,7 @@
         }"
         class="space-y-6"
     >
-        <x-module-page-header title="Data siswa" description="Pendaftaran siswa, cabang, dan akun login portal siswa (email unik di sistem).">
+        <x-module-page-header title="Data siswa" description="Kelola data siswa, pendaftaran, dan informasi terkait dalam satu sistem bimbel.">
         </x-module-page-header>
 
         @if (session('status'))

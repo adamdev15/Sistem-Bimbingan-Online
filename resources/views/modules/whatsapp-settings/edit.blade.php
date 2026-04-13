@@ -1,8 +1,8 @@
-<x-layouts.dashboard-shell title="Pengaturan Notifikasi WhatsApp — eBimbel">
+<x-layouts.dashboard-shell title="Notifikasi WhatsApp — Bimbel Jarimatrik">
     <div class="space-y-6">
         <x-module-page-header
-            title="Integrasi Notifikasi WhatsApp"
-            description="Kelola Pesan Notifikasi Otomatis WhatsApp"
+            title="Notifikasi WhatsApp"
+            description="Kelola pesan notifikasi otomatis WhatsApp."
         />
 
         @if (session('status'))

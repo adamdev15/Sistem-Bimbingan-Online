@@ -9,7 +9,7 @@
         'siswa' => 'Siswa',
     ];
 @endphp
-<x-layouts.dashboard-shell title="Pengguna — eBimbel">
+<x-layouts.dashboard-shell title="Pengguna — Bimbel Jarimatrik">
     <div
         x-data="{
             createOpen: @json($openCreate),
@@ -30,7 +30,7 @@
     >
         <x-module-page-header
             title="Manajemen pengguna"
-            description="Kelola akun login, peran akses, dan verifikasi email untuk seluruh sistem."
+            description="Kelola data pengguna, peran akses, dan verifikasi email untuk seluruh sistem bimbel."
         >
         </x-module-page-header>
 

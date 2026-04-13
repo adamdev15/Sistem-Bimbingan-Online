@@ -33,8 +33,8 @@
 @endphp
 
 <x-module-page-header
-    title="Dashboard Admin Cabang"
-    description="Ringkasan operasional cabang Anda: siswa, tutor, jadwal, presensi, dan laporan."
+    title="Dashboard Admin Cabang {{ $cabangNama }}"
+    description="Ringkasan operasional cabang yang menampilkan data siswa, tutor, presensi, serta laporan keuangan."
 />
 
 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">

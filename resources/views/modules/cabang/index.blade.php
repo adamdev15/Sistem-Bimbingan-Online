@@ -1,4 +1,4 @@
-<x-layouts.dashboard-shell title="Cabang - eBimbel">
+<x-layouts.dashboard-shell title="Cabang - Bimbel Jarimatrik">
     <div
         x-data="{
             createOpen: false,
@@ -18,7 +18,7 @@
         }"
         class="space-y-6"
     >
-        <x-module-page-header title="Master cabang" description="Kelola lokasi cabang, status operasional, dan akun admin cabang untuk akses dashboard.">
+        <x-module-page-header title="Data cabang bimbel" description="Kelola data cabang bimbel, status operasional, dan data akun akses admin cabang.">
             
         </x-module-page-header>
 

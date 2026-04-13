@@ -1,6 +1,6 @@
-<x-layouts.dashboard-shell title="Pengaturan Website - eBimbel">
+<x-layouts.dashboard-shell title="Pengaturan Website - Bimbel Jarimatrik">
     <div class="space-y-6">
-        <x-module-page-header title="Pengaturan Website" description="Kelola Website dengan Ubah konten, text copywriting, dan informasi terkait Website." />
+        <x-module-page-header title="Pengaturan Website" description="Kelola tampilan website bimbel dengan mengubah konten, text copywriting, dan informasi terkait website." />
 
         @if (session('status'))
             <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -24,12 +24,16 @@
                             @if(isset($settings['logo_filename']))
                             <p class="text-xs text-slate-500 mt-2">Aktif: {{ $settings['logo_filename'] }}</p>
                             @endif
+                            @if(isset($settings['logo_filename'])) 
+                            <img src="{{ asset('image/' . $settings['logo_filename']) }}" alt="Logo" class="mt-2 w-32 rounded-xl">
+                            @endif
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-slate-700">Gambar Hero Utama (PNG/JPG)</label>
                             <input type="file" name="hero_image" accept="image/png, image/jpeg" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                             @if(isset($settings['hero_filename']))
                             <p class="text-xs text-slate-500 mt-2">Aktif: {{ $settings['hero_filename'] }}</p>
+                            <img src="{{ asset('image/' . $settings['hero_filename']) }}" alt="Hero" class="mt-2 w-32 rounded-xl">
                             @endif
                         </div>
                     </div>
@@ -39,24 +43,28 @@
                 <div class="border-b border-slate-200 pb-8">
                     <h2 class="text-lg font-bold text-slate-800">Teks Utama & Copywriting</h2>
                     <p class="text-sm text-slate-500 mb-4">Pengaturan judul utama pada hero section dan halaman utama.</p>
-                    <div class="grid gap-6">
-                        <div>
+                    <div class="grid gap-6 lg:grid-cols-2">
+                        <div class="mb-1">
+                            <label class="block text-sm font-semibold text-slate-700">Nama Bimbel</label>
+                            <input type="text" name="nama_bimbel" value="{{ $settings['nama_bimbel'] ?? 'Bimbel Jarimatrik' }}" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
+                        </div>
+                        <div class="mb-1">
                             <label class="block text-sm font-semibold text-slate-700">Tagline Atas (Badge)</label>
                             <input type="text" name="tagline" value="{{ $settings['tagline'] ?? 'Bimbel Terpercaya di Tegal untuk Masa Depan Anak Lebih Cerah' }}" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
                         </div>
-                        <div>
+                        <div class="mb-1">
                             <label class="block text-sm font-semibold text-slate-700">Judul Utama (Hero Title)</label>
                             <input type="text" name="hero_title" value="{{ $settings['hero_title'] ?? 'Platform bimbel online profesional untuk cabang, tutor, dan siswa.' }}" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
                         </div>
-                        <div>
+                        <div class="mb-1">
                             <label class="block text-sm font-semibold text-slate-700">Deskripsi Hero</label>
                             <textarea name="hero_desc" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">{{ $settings['hero_desc'] ?? 'Kelola jadwal, presensi, pembayaran, dan komunikasi WhatsApp dalam satu dashboard yang rapi, responsif, dan siap berkembang.' }}</textarea>
                         </div>
-                        <div>
+                        <div class="mb-1">
                             <label class="block text-sm font-semibold text-slate-700">Deskripsi "Apa Itu Bimbel?"</label>
-                            <textarea name="about_us" rows="4" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">{{ $settings['about_us'] ?? 'eBimbel merupakan software aplikasi sistem informasi online berbasis web untuk membantu mengelola manajemen dan administrasi bimbel secara real time.' }}</textarea>
+                            <textarea name="about_us" rows="4" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">{{ $settings['about_us'] ?? 'Bimbel Jarimatrik merupakan software aplikasi sistem informasi online berbasis web untuk membantu mengelola manajemen dan administrasi bimbel secara real time.' }}</textarea>
                         </div>
-                        <div>
+                        <div class="mb-1">
                             <label class="block text-sm font-semibold text-slate-700">Teks Syarat & Ketentuan Pendaftaran (HTML disarankan)</label>
                             <textarea name="registration_terms" rows="6" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-mono focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">{{ $settings['registration_terms'] ?? '<ol><li>Mengisi form pendaftaran siswa secara lengkap.</li><li>Mengisi data orang tua atau wali siswa.</li><li>Lakukan pengecekan secara berkala.</li></ol>' }}</textarea>
                         </div>

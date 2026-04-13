@@ -3,14 +3,14 @@
     $isSuperAdmin = auth()->user()->hasRole('super_admin');
     $presensiDesc = $isSiswa
         ? 'Riwayat kehadiran Anda per sesi belajar.'
-        : 'Rekap kehadiran siswa per cabang. Gunakan menu Input Presensi untuk mengisi sesi.';
+        : 'Kelola data Absensi kehadiran siswa dan tutor per sesi belajar. Dengan informasi rekap kartu Absensi siswa';
     $months = [
         1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
         7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
     ];
     $currentYear = date('Y');
 @endphp
-<x-layouts.dashboard-shell title="Absensi — eBimbel">
+<x-layouts.dashboard-shell title="Absensi — Bimbel Jarimatrik">
     <x-module-page-header title="Absensi & Kehadiran" :description="$presensiDesc">
     </x-module-page-header>
 
@@ -19,7 +19,6 @@
     @endif    <div
         x-data="{
             cabangId: @js($filters['cabang_id'] ?? ''),
-            tutors: @js($tutors),
             loading: false,
             printOpen: false,
             // Modal state
@@ -35,22 +34,6 @@
             get filteredStudents() {
                 if (!this.printStudentSearch) return this.printStudents;
                 return this.printStudents.filter(s => s.nama.toLowerCase().includes(this.printStudentSearch.toLowerCase()));
-            },
-            async fetchTutors() {
-                if (!this.cabangId) {
-                    this.tutors = [];
-                    return;
-                }
-                this.loading = true;
-                try {
-                    const res = await fetch(`/api/cabang/${this.cabangId}/tutors`);
-                    const data = await res.json();
-                    this.tutors = data;
-                } catch (e) {
-                    console.error('Gagal memuat tutor');
-                } finally {
-                    this.loading = false;
-                }
             },
             async fetchPrintStudents() {
                 if (!this.printCabangId) {
@@ -79,7 +62,7 @@
                     @if($isStaffRekap && $isSuperAdmin)
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cabang</label>
-                            <select name="cabang_id" x-model="cabangId" @change="fetchTutors()" class="mt-1.5 px-6 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300">
+                            <select name="cabang_id" x-model="cabangId" class="mt-1.5 px-6 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300">
                                 <option value="">Semua Cabang</option>
                                 @foreach ($cabangs as $c)
                                     <option value="{{ $c->id }}" @selected(($filters['cabang_id'] ?? '') == (string) $c->id)>{{ $c->nama_cabang }}</option>
@@ -89,17 +72,12 @@
                     @endif
                     @if($isStaffRekap)
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Tutor</label>
-                            <select name="tutor_id" class="mt-1.5 px-6 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300">
-                                <option value="">Semua Tutor</option>
-                                <template x-for="t in tutors" :key="t.id">
-                                    <option :value="t.id" :selected="t.id == @js($filters['tutor_id'] ?? '')" x-text="t.nama"></option>
-                                </template>
-                                @if(!$isSuperAdmin)
-                                    @foreach ($tutors as $tutor)
-                                        <option value="{{ $tutor->id }}" @selected(($filters['tutor_id'] ?? '') == (string) $tutor->id) >{{ $tutor->nama }}</option>
-                                    @endforeach
-                                @endif
+                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Pilih Materi Les</label>
+                            <select name="materi_les_id" class="mt-1.5 px-6 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300">
+                                <option value="">Semua Materi</option>
+                                @foreach ($materis as $m)
+                                    <option value="{{ $m->id }}" @selected(($filters['materi_les_id'] ?? '') == (string) $m->id)>{{ $m->nama_materi }}</option>
+                                @endforeach
                             </select>
                         </div>
                     @endif

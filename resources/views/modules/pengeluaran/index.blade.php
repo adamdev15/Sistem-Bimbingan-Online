@@ -1,5 +1,5 @@
-<x-layouts.dashboard-shell title="Pengeluaran — eBimbel">
-    <x-module-page-header title="Pengeluaran Operasional" description="Kelola biaya operasional cabang (sewa, listrik, dll) secara transparan.">
+<x-layouts.dashboard-shell title="Pengeluaran — Bimbel Jarimatrik">
+    <x-module-page-header title="Pengeluaran Operasional" description="Pusat Kelola data biaya operasional cabang dengan informasi rekap periode.">
     </x-module-page-header>
 
     @if (session('status'))

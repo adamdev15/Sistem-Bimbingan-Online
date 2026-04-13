@@ -35,7 +35,7 @@
         }
     }">
         <div class="space-y-6">
-            <x-module-page-header title="Materi Les" description="Kelola informasi program materi les, gambar penawaran, dan paket pertemuan.">
+            <x-module-page-header title="Materi Les" description="Kelola informasi program materi les, biaya pendaftaran, dan paket pertemuan.">
             </x-module-page-header>
 
             @if(session('success'))

@@ -8,7 +8,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ $settings['hero_title'] ?? 'Bimbel Jarimatrik Login' }}</title>
+        <title>{{ $title ?? 'Bimbel Jarimatrik Login' }}</title>
         <link rel="icon" href="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" type="image/x-icon">
 
         <!-- Fonts -->
@@ -27,9 +27,10 @@
                             <img src="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" alt="Logo Bimbel" class="h-12 w-auto">
                         </a>
                         <h1 class="mt-1 mb-2 text-4xl font-extrabold leading-tight">Selamat datang di Bimbel Jarimatik TEGAL</h1>
+                        <p class="text-lg text-blue-100">{{ $settings['hero_desc'] ?? 'Bimbingan Belajar Terbaik untuk Sukses Akademik' }}</p>
                     </div>
                     <div class="rounded-2xl">
-                        <img src="{{ isset($settings['hero_filename']) ? asset('image/' . $settings['hero_filename']) : asset('image/hero.png') }}" alt="Ilustrasi" class="mx-auto w-80 rounded-xl">
+                        <img src="{{ isset($settings['hero_filename']) ? asset('image/' . $settings['hero_filename']) : asset('image/hero.png') }}" alt="Ilustrasi" class="mx-auto w-full rounded-xl">
                     </div>
                 </section>
 

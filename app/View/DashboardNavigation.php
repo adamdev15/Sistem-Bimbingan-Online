@@ -62,7 +62,7 @@ class DashboardNavigation
                 ]
             ],
             [
-                'label' => 'Presensi',
+                'label' => 'Absensi',
                 'icon' => 'presensi',
                 'route' => 'presensi.index',
                 'roles' => ['super_admin', 'admin_cabang', 'tutor', 'siswa'],

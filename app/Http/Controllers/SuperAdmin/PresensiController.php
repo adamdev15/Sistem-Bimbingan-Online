@@ -65,36 +65,27 @@ class PresensiController extends Controller
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
-            if ($request->filled('tutor_id')) {
-                $query->where('tutor_id', $request->tutor_id);
+            if ($request->filled('materi_les_id')) {
+                $query->where('materi_les_id', $request->materi_les_id);
             }
         }
 
         $presensis = $query->paginate(15)->withQueryString();
 
-        $tutors = collect();
+        $materis = MateriLes::all();
         $cabangs = collect();
         if (!$isSiswa) {
-            $actorCabangId = $this->actorCabangId($request);
             if ($user->hasRole('super_admin')) {
                 $cabangs = Cabang::all();
-                $activeCabangId = $request->integer('cabang_id');
-                if ($activeCabangId) {
-                    $tutors = Tutor::where('status', 'aktif')->where('cabang_id', $activeCabangId)->get();
-                }
-            } else {
-                $tutors = Tutor::where('status', 'aktif')
-                    ->where('cabang_id', $actorCabangId)
-                    ->get();
             }
         }
 
         return view('modules.presensi.index', [
             'presensis' => $presensis,
             'isSiswa' => $isSiswa,
-            'tutors' => $tutors,
+            'materis' => $materis,
             'cabangs' => $cabangs,
-            'filters' => $request->only(['tanggal', 'status', 'tutor_id', 'bulan', 'tahun', 'cabang_id', 'month'])
+            'filters' => $request->only(['tanggal', 'status', 'materi_les_id', 'bulan', 'tahun', 'cabang_id', 'month'])
         ]);
     }
 
@@ -166,6 +157,7 @@ class PresensiController extends Controller
             ->with(['siswa', 'tutor', 'materiLes', 'creator', 'cabang'])
             ->when($cabangId, fn($q) => $q->where('cabang_id', $cabangId))
             ->when($request->filled('tanggal'), fn($q) => $q->whereDate('tanggal', $request->date('tanggal')))
+            ->when($request->filled('materi_les_id'), fn($q) => $q->where('materi_les_id', $request->materi_les_id))
             ->latest('tanggal')
             ->get();
 

@@ -4,7 +4,7 @@
     $canSnap = $isSiswa && filled(config('midtrans.client_key')) && filled(config('midtrans.server_key'));
 @endphp
 
-<x-layouts.dashboard-shell title="Pembayaran - eBimbel">
+<x-layouts.dashboard-shell title="Pembayaran - Bimbel Jarimatrik">
     <div
         x-data='{
             massOpen: false,
@@ -48,8 +48,8 @@
         <x-module-page-header
             title="Pembayaran & Tagihan"
             :description="$isSiswa
-                ? 'Kelola riwayat pembayaran dan lunasi tagihan aktif Anda.'
-                : 'Pusat kendali keuangan untuk memantau arus kas dari tagihan siswa.'"
+                ? 'Kelola riwayat pembayaran dan tagihan aktif Anda.'
+                : 'Pusat kendali data keuangan untuk memantau arus kas pembayaran dari tagihan siswa.'"
         >
         </x-module-page-header>
 

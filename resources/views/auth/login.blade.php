@@ -1,4 +1,4 @@
-<x-guest-layout>
+<x-guest-layout title="Login - Bimbel Jarimatrik">
     <div class="mb-6">
         <h2 class="text-3xl font-bold text-blue-950">Masuk ke Akun</h2>
         <p class="mt-1 text-sm text-slate-500">Silakan login untuk mengakses dashboard bimbel.</p>

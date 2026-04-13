@@ -21,7 +21,7 @@
         }"
         class="space-y-6"
     >
-        <x-module-page-header title="Data tutor" description="Penugasan cabang, riwayat sesi, dan akun login portal tutor.">
+        <x-module-page-header title="Data tutor" description="Ringkasan data dan kehadiran tutor secara lengkap pada sistem bimbel.">
         </x-module-page-header>
 
         @if (session('status'))

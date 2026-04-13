@@ -6,7 +6,7 @@
     <div x-data="{ salaryModalOpen: @json($openSalaryCreate) }" class="space-y-6">
         <x-module-page-header
             title="Gaji tutor"
-            description="Rekap periode, nominal, status alur (pending → dibayar → diterima), dan pencatat entri (created_by)."
+            description="Kelola data Gaji tutor, dengan informasi rekap periode, nominal, dan status (pending → dibayar → diterima)."
         >
         </x-module-page-header>
 
