@@ -8,6 +8,7 @@
     <div
         x-data='{
             massOpen: false,
+            reminderOpen: false,
             pendingOpen: false,
             payLoading: null,
             detailOpen: false,
@@ -19,10 +20,31 @@
             showStudentList: false,
             studentSearch: "",
             allStudents: @json($students),
+
+            // Reminder Selective State
+            reminderSearch: "",
+            selectedPaymentIds: [],
+            unpaidPayments: @json($unpaidPayments),
             
             get filteredStudents() {
                 if (!this.studentSearch) return this.allStudents;
                 return this.allStudents.filter(s => s.nama.toLowerCase().includes(this.studentSearch.toLowerCase()));
+            },
+
+            get filteredUnpaid() {
+                if (!this.reminderSearch) return this.unpaidPayments;
+                return this.unpaidPayments.filter(p => 
+                    p.siswa.nama.toLowerCase().includes(this.reminderSearch.toLowerCase()) ||
+                    p.fee.nama_biaya.toLowerCase().includes(this.reminderSearch.toLowerCase())
+                );
+            },
+
+            togglePayment(id) {
+                if (this.selectedPaymentIds.includes(id)) {
+                    this.selectedPaymentIds = this.selectedPaymentIds.filter(i => i !== id);
+                } else {
+                    this.selectedPaymentIds.push(id);
+                }
             },
 
             openPaymentDetail(payload) {
@@ -41,6 +63,16 @@
                 } finally {
                     this.payLoading = null;
                 }
+            },
+            formatIndonesianDate(dateStr) {
+                if (!dateStr) return "-";
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return dateStr;
+                const months = [
+                    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+                ];
+                return date.getDate() + " " + months[date.getMonth()] + " " + date.getFullYear();
             }
         }'
         class="space-y-6"
@@ -123,13 +155,10 @@
 
                 <div class="flex flex-wrap items-center gap-2">
                     @if ($isAdmin)
-                        <form method="POST" action="{{ route('pembayaran.notify-due-bulk') }}" class="inline">
-                            @csrf
-                            <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50" @disabled(($dueBulkCount ?? 0) === 0)>
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                                Reminder ({{ $dueBulkCount ?? 0 }})
-                            </button>
-                        </form>
+                        <button @click="reminderOpen = true" class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50" :disabled="unpaidPayments.length === 0">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                            Reminder Selection
+                        </button>
                         <button @click="massOpen = true" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-black tracking-widest text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                             Buat Tagihan
@@ -171,7 +200,7 @@
                                 @endif
                                 <td class="px-6 py-4">
                                     <div class="font-semibold text-slate-800">{{ optional($pay->fee)->nama_biaya }}</div>
-                                    <div class="text-[10px] text-slate-400 italic">Terbit: {{ optional($pay->tanggal_bayar)->translatedFormat("d M Y") }}</div>
+                                    <div class="text-[10px] text-slate-400 italic">{{ optional($pay->tanggal_bayar)->translatedFormat("d M Y") }}</div>
                                 </td>
                                 <td class="px-6 py-4 mt-0.5">
                                     <span @class([
@@ -182,7 +211,7 @@
                                         {{ $pay->due_date ? $pay->due_date->translatedFormat("d M Y") : "—" }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-right font-black text-slate-900">
+                                <td class="px-2 py-4 text-right font-black text-slate-900">
                                     Rp {{ number_format((int) $pay->nominal, 0, ",", ".") }}
                                 </td>
                                 <td class="px-6 py-4 text-center">
@@ -276,7 +305,7 @@
                     </div>
                     <div class="flex gap-3">
                         <a href="{{ route("pembayaran.export.ringkasan.pdf") }}" class="rounded-2xl bg-rose-500 px-6 py-3 text-sm font-black  tracking-widest hover:bg-rose-600 transition shadow-lg shadow-rose-900/40">PDF Report</a>
-                        <a href="{{ route("pembayaran.export.ringkasan.excel") }}" class="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-black  tracking-widest hover:bg-emerald-600 transition shadow-lg shadow-emerald-900/40">Excel Report</a>
+                        <a href="{{ route('pembayaran.export.excel', request()->query()) }}" class="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-black  tracking-widest hover:bg-emerald-600 transition shadow-lg shadow-emerald-900/40">Excel Report</a>
                     </div>
                 </div>
             </div>
@@ -298,7 +327,7 @@
                             <label class="mb-2 block text-sm font-bold text-slate-700">Jenis Biaya</label>
                             <select name="biaya_id" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm bg-slate-50/50">
                                 @foreach ($fees as $fee)
-                                    <option value="{{ $fee->id }}">{{ $fee->nama_biaya }} (Rp {{ number_format((int)$fee->nominal,0,",",".") }})</option>
+                                    <option value="{{ $fee->id }}">{{ $fee->nama_biaya }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -374,6 +403,79 @@
                 </form>
             </div>
         </div>
+        {{-- MODAL: SELECTIVE REMINDER --}}
+        <div x-show="reminderOpen" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]">
+            <div @click.outside="reminderOpen = false" class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+                <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/80 p-6 backdrop-blur-md">
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900 tracking-tight">Kirim Pengingat Pembayaran</h3>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Pilih siswa yang ingin diingatkan</p>
+                    </div>
+                    <button @click="reminderOpen = false" class="text-slate-400 hover:text-slate-600 font-bold text-2xl">&times;</button>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    {{-- Search --}}
+                    <div class="relative">
+                        <input type="text" x-model="reminderSearch" placeholder="Cari nama siswa atau jenis biaya..." class="w-full rounded-2xl border border-slate-200 bg-slate-50/50 pl-11 pr-4 py-3.5 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all">
+                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+
+                    {{-- List --}}
+                    <div class="space-y-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
+                        <template x-for="p in filteredUnpaid" :key="p.id">
+                            <label :for="'reminder-' + p.id" 
+                                   class="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                                   :class="selectedPaymentIds.includes(p.id) ? 'border-blue-500 bg-blue-50 ring-4 ring-blue-500/5' : 'bg-white'">
+                                <div class="relative flex items-center">
+                                    <input type="checkbox" :id="'reminder-' + p.id" :value="p.id" x-model="selectedPaymentIds" class="h-5 w-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500">
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-black text-slate-900 truncate" x-text="p.siswa.nama"></p>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tight" x-text="p.fee.nama_biaya"></span>
+                                        <span class="text-[10px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-md" x-text="'Tanggal Jatuh Tempo ' + formatIndonesianDate(p.due_date)"></span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-black text-slate-900" x-text="'Rp ' + Number(p.nominal).toLocaleString('id-ID')"></p>
+                                </div>
+                            </label>
+                        </template>
+
+                        <template x-if="filteredUnpaid.length === 0">
+                            <div class="py-12 text-center">
+                                <div class="bg-slate-50 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+                                    <svg class="h-8 w-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                </div>
+                                <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">Tidak ada tagihan yang cocok</p>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                        <p class="text-xs font-bold text-slate-500">
+                            Terpilih: <span class="text-blue-600" x-text="selectedPaymentIds.length"></span> siswa
+                        </p>
+                        <div class="flex gap-3">
+                            <button @click="reminderOpen = false" class="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Batal</button>
+                            <form method="POST" action="{{ route('pembayaran.notify-due-bulk') }}">
+                                @csrf
+                                <template x-for="id in selectedPaymentIds" :key="id">
+                                    <input type="hidden" name="payment_ids[]" :value="id">
+                                </template>
+                                <button type="submit" 
+                                        :disabled="selectedPaymentIds.length === 0"
+                                        class="px-8 py-3 rounded-xl bg-amber-600 text-white text-sm font-black tracking-widest shadow-lg shadow-amber-200 hover:bg-amber-700 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Ingatkan
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- Modal: detail transaksi lunas (admin / cabang) --}}
         <div
             x-show="detailOpen"
@@ -476,7 +578,7 @@
                                 <dd class="mt-0.5 text-sm font-medium text-slate-800" x-text="detail?.siswa?.cabang || '—'"></dd>
                             </div>
                             <div>
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Akun login</dt>
+                                <dt class="text-[11px] font-semibold uppercase text-slate-500"></dt>
                                 <dd class="mt-0.5 text-sm text-slate-800">
                                     <span x-text="detail?.siswa?.akun_nama || '—'"></span>
                                     <span class="block break-all text-xs text-slate-500" x-text="detail?.siswa?.akun_email ? '(' + detail.siswa.akun_email + ')' : ''"></span>

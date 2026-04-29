@@ -2,8 +2,9 @@
     $openSalaryCreate = $errors->any() && old('form_context') === 'salary_create';
     $hasTutors = $tutors->isNotEmpty();
 @endphp
-<x-layouts.dashboard-shell title="Gaji tutor — eBimbel">
-    <div x-data="{ salaryModalOpen: @json($openSalaryCreate) }" class="space-y-6">
+<x-layouts.dashboard-shell title="Gaji tutor — Jarimatrik">
+    <div x-data="{ salaryModalOpen: @json($openSalaryCreate) }">
+        <div class="space-y-6">
         <x-module-page-header
             title="Gaji tutor"
             description="Kelola data Gaji tutor, dengan informasi rekap periode, nominal, dan status (pending → dibayar → diterima)."
@@ -12,6 +13,20 @@
 
         @if (session('status'))
             <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</p>
+        @endif
+
+        @if (session('error'))
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Data Sudah Ada',
+                        text: @js(session('error')),
+                        confirmButtonColor: '#3085d6',
+                    });
+                });
+            </script>
+            <p class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{{ session('error') }}</p>
         @endif
 
         @if (! $hasTutors)
@@ -50,7 +65,7 @@
                 <div class="flex flex-wrap items-center gap-2 ml-auto">
                     <button type="button" @click="$dispatch('open-export-salary-modal')" class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 transition-all">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        Cetak PDF
+                        Cetak Laporan
                     </button>
                     <button
                         type="button"
@@ -81,7 +96,12 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($salaries as $s)
                             <tr class="text-slate-700 transition hover:bg-slate-50/80">
-                                <td class="px-4 py-3.5 font-medium">{{ $s->periode }}</td>
+                                <td class="px-4 py-3.5">
+                                    <div class="font-medium text-slate-900">{{ $s->periode }}</div>
+                                    @if($s->start_date && $s->end_date)
+                                        <div class="text-[11px] text-slate-500">{{ $s->start_date->format('d/m/Y') }} - {{ $s->end_date->format('d/m/Y') }}</div>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3.5">{{ optional($s->tutor)->nama }}</td>
                                 <td class="px-4 py-3.5">{{ $s->total_kehadiran }} Sesi</td>
                                 <td class="px-4 py-3.5">Rp {{ number_format((float) $s->total_gaji, 0, ',', '.') }}</td>
@@ -119,16 +139,19 @@
         <div
             x-data="{ 
                 tutorId: '{{ old('tutor_id', $tutors->first()->id ?? '') }}',
-                periode: '{{ old('periode', date('Y-m')) }}',
+                startDate: '',
+                endDate: '',
                 totalKehadiran: {{ old('total_kehadiran', 0) }},
+                totalGaji: {{ old('total_gaji', 0) }},
                 isLoading: false,
                 async fetchAttendance() {
-                    if (!this.tutorId || !this.periode) return;
+                    if (!this.tutorId || !this.startDate || !this.endDate) return;
                     this.isLoading = true;
                     try {
-                        const res = await fetch(`{{ route('api.salaries.attendance-count') }}?tutor_id=${this.tutorId}&periode=${this.periode}`);
+                        const res = await fetch(`{{ route('api.salaries.attendance-count') }}?tutor_id=${this.tutorId}&start_date=${this.startDate}&end_date=${this.endDate}`);
                         const data = await res.json();
                         this.totalKehadiran = data.count || 0;
+                        this.totalGaji = data.total_salary || 0;
                     } catch (e) {
                         console.error(e);
                     } finally {
@@ -174,12 +197,17 @@
                         @enderror
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="sal-start" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mulai Tanggal</label>
+                            <input id="sal-start" name="start_date" type="date" required x-model="startDate" @change="fetchAttendance()" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label for="sal-end" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sampai Tanggal</label>
+                            <input id="sal-end" name="end_date" type="date" required x-model="endDate" @change="fetchAttendance()" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
                         <div class="sm:col-span-2">
-                            <label for="sal-periode" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Periode</label>
-                            <input id="sal-periode" name="periode" type="month" required x-model="periode" @change="fetchAttendance()" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                            @error('periode')
-                                <p class="mt-1.5 text-xs font-medium text-rose-600">{{ $message }}</p>
-                            @enderror
+                            <label for="sal-periode" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Label Periode (ex: April 2024)</label>
+                            <input id="sal-periode" name="periode" type="text" required value="{{ old('periode', date('F Y')) }}" placeholder="April 2024" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
                         <div>
                             <label for="sal-hadir" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total kehadiran</label>
@@ -195,8 +223,13 @@
                             @enderror
                         </div>
                         <div>
-                            <label for="sal-gaji" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total gaji (Manual)</label>
-                            <input id="sal-gaji" name="total_gaji" type="number" min="0" step="0.01" value="{{ old('form_context') === 'salary_create' ? old('total_gaji') : '' }}" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            <label for="sal-gaji" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Gaji (Otomatis)</label>
+                            <div class="relative mt-1.5">
+                                <input id="sal-gaji" name="total_gaji" type="number" min="0" step="0.01" required x-model="totalGaji" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15" :class="isLoading ? 'opacity-50' : ''">
+                                <div x-show="isLoading" class="absolute right-3 top-2.5">
+                                    <svg class="h-4 w-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                </div>
+                            </div>
                             @error('total_gaji')
                                 <p class="mt-1.5 text-xs font-medium text-rose-600">{{ $message }}</p>
                             @enderror
@@ -255,6 +288,7 @@
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 </x-layouts.dashboard-shell>

@@ -14,12 +14,8 @@ class MateriLes extends Model
         'deskripsi',
         'foto',
         'pertemuan_per_minggu',
-        'fee_id',
+        'biaya_tutor',
         'biaya_daftar',
+        'biaya_spp',
     ];
-
-    public function fee(): BelongsTo
-    {
-        return $this->belongsTo(Fee::class, 'fee_id');
-    }
 }

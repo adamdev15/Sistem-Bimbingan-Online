@@ -219,7 +219,7 @@
                     return 'M ' + points.map(p => p[0] + ' ' + p[1]).join(' L');
                 },
                 formatRupiah(val) {
-                    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+                    return 'Rp ' + Number(val).toLocaleString('id-ID');
                 },
                 formatShort(val) {
                     if (val === 0) return '0';
@@ -275,23 +275,23 @@
  
                         <!-- Dots & Labels Income -->
                         <template x-for="(pt, idx) in incomePoints" :key="'inc-'+idx">
-                            <g>
-                                <circle :cx="pt[0]" :cy="pt[1]" r="4" fill="white" stroke="rgb(2 132 199)" stroke-width="2" />
-                                <text x-show="pt[2] > 0 && (filter === 'yearly' || idx % 3 === 0)" 
-                                      :x="pt[0]" :y="pt[1] - 8" text-anchor="middle" 
-                                      class="fill-blue-700 font-bold" style="font-size: 8px;" 
-                                      x-text="formatShort(pt[2])"></text>
+                            <g x-show="pt[2] > 0">
+                                <circle :cx="pt[0]" :cy="pt[1]" r="5" fill="white" stroke="rgb(2 132 199)" stroke-width="2.5" />
+                                <text :x="pt[0]" :y="pt[1] - 12" text-anchor="middle" 
+                                      style="font-family: sans-serif; font-size: 12px; font-weight: 900; fill: rgb(7 89 133);">
+                                    <tspan x-text="formatRupiah(pt[2])"></tspan>
+                                </text>
                             </g>
                         </template>
  
                         <!-- Dots & Labels Expense -->
                         <template x-for="(pt, idx) in expensePoints" :key="'exp-'+idx">
-                            <g>
-                                <circle :cx="pt[0]" :cy="pt[1]" r="4" fill="white" stroke="rgb(245 158 11)" stroke-width="2" />
-                                <text x-show="pt[2] > 0 && (filter === 'yearly' || idx % 3 === 0)" 
-                                      :x="pt[0]" :y="pt[1] + 16" text-anchor="middle" 
-                                      class="fill-amber-700 font-bold" style="font-size: 8px;" 
-                                      x-text="formatShort(pt[2])"></text>
+                            <g x-show="pt[2] > 0">
+                                <circle :cx="pt[0]" :cy="pt[1]" r="5" fill="white" stroke="rgb(234 88 12)" stroke-width="2.5" />
+                                <text :x="pt[0]" :y="pt[1] + 22" text-anchor="middle" 
+                                      style="font-family: sans-serif; font-size: 12px; font-weight: 900; fill: rgb(154 52 18);">
+                                    <tspan x-text="formatRupiah(pt[2])"></tspan>
+                                </text>
                             </g>
                         </template>
                     </svg>

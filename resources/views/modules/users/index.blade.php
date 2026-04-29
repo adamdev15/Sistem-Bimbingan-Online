@@ -12,16 +12,26 @@
 <x-layouts.dashboard-shell title="Pengguna — Bimbel Jarimatrik">
     <div
         x-data="{
-            createOpen: @json($openCreate),
-            editOpen: @json($openEdit),
-            deleteOpen: @json($openDelete),
-            roleLabels: @json($roleLabels),
+            createOpen: false,
+            editOpen: false,
+            deleteOpen: false,
+            roleLabels: @js($roleLabels),
             edit: {
-                id: @json(old('edit_user_id')),
-                name: @json(old('name', '')),
-                email: @json(old('email', '')),
-                role: @json(old('role', 'siswa')),
-                emailVerified: @json((bool) old('email_verified', false)),
+                id: null,
+                name: '',
+                email: '',
+                role: 'siswa',
+                emailVerified: false,
+            },
+            doEdit(u, role) {
+                this.edit = {
+                    id: u.id,
+                    name: u.name,
+                    email: u.email,
+                    role: role || 'siswa',
+                    emailVerified: !!u.email_verified_at,
+                };
+                this.editOpen = true;
             },
             removeId: null,
             removeName: '',
@@ -126,7 +136,7 @@
                                     <div class="flex flex-wrap items-center justify-end gap-3">
                                         <button
                                             type="button"
-                                            @click="edit.id = {{ $u->id }}; edit.name = @js($u->name); edit.email = @js($u->email); edit.role = @js($rname ?? 'siswa'); edit.emailVerified = @json((bool) $u->email_verified_at); editOpen = true"
+                                            @click="doEdit({{ json_encode($u) }}, '{{ $rname }}')"
                                             class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
@@ -207,7 +217,7 @@
                         @enderror
                     </div>
                     <div class="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
-                        <input id="uc-ev" name="email_verified" value="1" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" @checked(old('form_context') === 'user_create' && old('email_verified')))>
+                        <input id="uc-ev" name="email_verified" value="1" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" @checked(old('form_context') === 'user_create' && old('email_verified'))>
                         <label for="uc-ev" class="text-sm text-slate-700">Tandai email sudah terverifikasi</label>
                     </div>
                     <div>

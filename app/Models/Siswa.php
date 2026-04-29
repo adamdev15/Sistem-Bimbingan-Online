@@ -38,8 +38,7 @@ class Siswa extends Model
         'tanggal_lahir_ibu',
         'pekerjaan_ibu',
         'no_hp_orang_tua',
-        'tanggal_cuti',
-        'tanggal_selesai_cuti',
+        'cuti_sampai',
     ];
 
     public function materiLes(): BelongsTo
@@ -65,5 +64,10 @@ class Siswa extends Model
     public function kehadirans(): HasMany
     {
         return $this->hasMany(Kehadiran::class, 'student_id');
+    }
+
+    public function phoneForNotification(): ?string
+    {
+        return $this->no_hp ?: $this->no_hp_orang_tua;
     }
 }

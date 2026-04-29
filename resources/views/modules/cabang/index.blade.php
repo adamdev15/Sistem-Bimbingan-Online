@@ -13,6 +13,9 @@
                 status: 'aktif',
                 admin_name: '',
                 admin_email: '',
+                sistem_hasil: 'pusat',
+                profit_share_investor: 0,
+                profit_share_pusat: 0,
             },
             removeId: null,
         }"
@@ -84,6 +87,8 @@
                             <th class="px-4 py-3.5">(email)</th>
                             <th class="px-4 py-3.5">Alamat</th>
                             <th class="px-4 py-3.5">Telepon</th>
+                            <th class="px-4 py-3.5">Sistem Hasil</th>
+                            <th class="px-4 py-3.5 text-center">(%)</th>
                             <th class="px-4 py-3.5">Status</th>
                             <th class="px-4 py-3.5 text-right">Aksi</th>
                         </tr>
@@ -113,6 +118,34 @@
                                     {{ $cabang->telepon ?: '—' }}
                                 </td>
 
+                                <td class="px-2 py-2.5">
+                                    <div class="flex flex-col gap-1">
+                                        @if($cabang->sistem_hasil === 'bagi_hasil')
+                                            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
+                                                Bagi Hasil
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 ring-1 ring-inset ring-slate-600/10">
+                                                Pusat
+                                            </span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="px-2 py-2.5 text-center">
+                                    @if($cabang->sistem_hasil === 'bagi_hasil')
+                                        <div class="inline-flex items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50/30 px-3 py-1.5 font-mono text-[10px]">
+                                            <div class="flex flex-col items-center">
+                                                <span class="text-indigo-600 font-bold">{{ number_format($cabang->profit_share_investor ?? 0, 0) }}%</span>
+                                            </div>
+                                            <div class="h-4 w-px bg-indigo-200"></div>
+                                            <div class="flex flex-col items-center">
+                                                <span class="text-slate-600 font-bold">{{ number_format($cabang->profit_share_pusat ?? 0, 0) }}%</span>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <span class="text-slate-300">—</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3.5">
                                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold 
                                         {{ $cabang->status === 'aktif' 
@@ -125,7 +158,7 @@
                                 <td class="px-4 py-3.5 text-right">
                                     <div class="flex items-center justify-end gap-3">
                                         <button type="button"
-                                            @click="editOpen = true; edit = { id: {{ $cabang->id }}, nama_cabang: @js($cabang->nama_cabang), alamat: @js($cabang->alamat), kota: @js($cabang->kota), telepon: @js($cabang->telepon), status: @js($cabang->status), admin_name: @js(optional($cabang->user)->name ?? ''), admin_email: @js(optional($cabang->user)->email ?? '') }"
+                                            @click="editOpen = true; edit = { id: {{ $cabang->id }}, nama_cabang: @js($cabang->nama_cabang), alamat: @js($cabang->alamat), kota: @js($cabang->kota), telepon: @js($cabang->telepon), status: @js($cabang->status), admin_name: @js(optional($cabang->user)->name ?? ''), admin_email: @js(optional($cabang->user)->email ?? ''), sistem_hasil: @js($cabang->sistem_hasil), profit_share_investor: @js($cabang->profit_share_investor), profit_share_pusat: @js($cabang->profit_share_pusat) }"
                                             class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
@@ -189,12 +222,42 @@
                                 <textarea name="alamat" required rows="2" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15"></textarea>
                             </div>
                             <div>
-                                <label class="text-xs font-semibold text-slate-500">Status</label>
                                 <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                     <option value="">Pilih status</option>
-                                <option value="aktif">Aktif</option>
+                                    <option value="aktif">Aktif</option>
                                     <option value="nonaktif">Nonaktif</option>
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 rounded-xl border border-blue-100 bg-blue-50/20 p-4" x-data="{ hasilMode: 'pusat' }">
+                        <p class="text-xs font-bold uppercase tracking-wide text-blue-800">Sistem & Pembagian Hasil</p>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="sm:col-span-2">
+                                <label class="text-xs font-semibold text-slate-500">Sistem Hasil</label>
+                                <div class="mt-2 flex gap-4">
+                                    <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                        <input type="radio" name="sistem_hasil" value="pusat" @change="hasilMode = 'pusat'" checked class="h-4 w-4 text-blue-600"> Pusat (Full)
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                        <input type="radio" name="sistem_hasil" value="bagi_hasil" @change="hasilMode = 'bagi_hasil'" class="h-4 w-4 text-blue-600"> Bagi Hasil
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="space-y-2" x-show="hasilMode === 'bagi_hasil'" x-transition>
+                                <label class="text-xs font-semibold text-slate-600">Investor Share (%)</label>
+                                <div class="relative">
+                                    <input type="number" name="profit_share_investor" value="0" step="0.01" min="0" max="100" class="w-full rounded-xl border border-slate-200 py-2.5 pl-3 pr-8 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                    <span class="absolute right-3 top-2.5 text-slate-400 font-semibold">%</span>
+                                </div>
+                            </div>
+                            <div class="space-y-2" x-show="hasilMode === 'bagi_hasil'" x-transition>
+                                <label class="text-xs font-semibold text-slate-600">Pusat Share (%)</label>
+                                <div class="relative">
+                                    <input type="number" name="profit_share_pusat" value="0" step="0.01" min="0" max="100" class="w-full rounded-xl border border-slate-200 py-2.5 pl-3 pr-8 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                    <span class="absolute right-3 top-2.5 text-slate-400 font-semibold">%</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -268,6 +331,37 @@
                                     <option value="aktif">Aktif</option>
                                     <option value="nonaktif">Nonaktif</option>
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 rounded-xl border border-blue-100 bg-blue-50/20 p-4">
+                        <p class="text-xs font-bold uppercase tracking-wide text-blue-800">Sistem & Pembagian Hasil</p>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="sm:col-span-2">
+                                <label class="text-xs font-semibold text-slate-500">Sistem Hasil</label>
+                                <div class="mt-2 flex gap-4">
+                                    <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                        <input type="radio" name="sistem_hasil" value="pusat" x-model="edit.sistem_hasil" class="h-4 w-4 text-blue-600"> Pusat (Full)
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                        <input type="radio" name="sistem_hasil" value="bagi_hasil" x-model="edit.sistem_hasil" class="h-4 w-4 text-blue-600"> Bagi Hasil
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="space-y-2" x-show="edit.sistem_hasil === 'bagi_hasil'" x-transition>
+                                <label class="text-xs font-semibold text-slate-600">Investor Share (%)</label>
+                                <div class="relative">
+                                    <input type="number" name="profit_share_investor" x-model="edit.profit_share_investor" step="0.01" min="0" max="100" class="w-full rounded-xl border border-slate-200 py-2.5 pl-3 pr-8 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                    <span class="absolute right-3 top-2.5 text-slate-400 font-semibold">%</span>
+                                </div>
+                            </div>
+                            <div class="space-y-2" x-show="edit.sistem_hasil === 'bagi_hasil'" x-transition>
+                                <label class="text-xs font-semibold text-slate-600">Pusat Share (%)</label>
+                                <div class="relative">
+                                    <input type="number" name="profit_share_pusat" x-model="edit.profit_share_pusat" step="0.01" min="0" max="100" class="w-full rounded-xl border border-slate-200 py-2.5 pl-3 pr-8 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                    <span class="absolute right-3 top-2.5 text-slate-400 font-semibold">%</span>
+                                </div>
                             </div>
                         </div>
                     </div>

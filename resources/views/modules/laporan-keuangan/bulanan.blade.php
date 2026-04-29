@@ -1,4 +1,4 @@
-<x-layouts.dashboard-shell title="Laporan Mitra — eBimbel">
+<x-layouts.dashboard-shell title="Laporan Mitra — Jarimatrik">
     <x-module-page-header title="Laporan & Analisa Mitra {{ $cabang ? $cabang->nama_cabang : 'Seluruh Cabang' }}" description="Rekapitulasi laba bersih dan pembagian hasil mitra untuk periode {{ \Carbon\Carbon::parse($month)->translatedFormat('F Y') }}.">
         <x-slot name="actions">
             @php $currentCabangId = $cabang ? $cabang->id : 'all'; @endphp

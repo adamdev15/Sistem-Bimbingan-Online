@@ -2,7 +2,7 @@
     $invRef = 'INV-'.str_pad((string) $payment->id, 5, '0', STR_PAD_LEFT);
     $nominalFmt = 'Rp '.number_format((int) round((float) $payment->nominal), 0, ',', '.');
 @endphp
-<x-layouts.dashboard-shell title="Panduan bayar manual - eBimbel">
+<x-layouts.dashboard-shell title="Panduan bayar manual - Jarimatrik">
     <div
         class="space-y-6"
         x-data="{

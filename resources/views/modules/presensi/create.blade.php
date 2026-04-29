@@ -1,4 +1,4 @@
-<x-layouts.dashboard-shell title="Input Presensi — eBimbel">
+<x-layouts.dashboard-shell title="Input Presensi — Jarimatrik">
     <x-module-page-header title="Input Presensi Sesi" description="Catat kehadiran siswa untuk kombinasi tutor, materi, dan waktu sesi.">
         <x-slot name="actions">
             <a href="{{ route('presensi.index') }}" class="inline-flex rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">

@@ -81,7 +81,7 @@
                             </select>
                         </div>
                     @endif
-                    <div class="flex-1 min-w-[200px]">
+                    <div class="flex-1 min-w-[100px]">
                         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Pilih Periode</label>
                         <input name="month" type="month" value="{{ $filters['month'] ?? '' }}" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300">
                     </div>

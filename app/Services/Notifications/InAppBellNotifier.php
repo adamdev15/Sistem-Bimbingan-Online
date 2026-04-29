@@ -104,7 +104,6 @@ class InAppBellNotifier
         ]);
 
         $this->whatsapp->notifySiswaPaymentSuccess($payment);
-        $this->whatsapp->notifyAdminPaymentReceived($payment);
     }
 
     public function jadwalCreated(Jadwal $jadwal): void

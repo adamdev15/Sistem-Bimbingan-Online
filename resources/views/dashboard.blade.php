@@ -1,14 +1,14 @@
 @php
     $user = auth()->user();
-    $dashTitle = 'Dashboard — eBimbel';
+    $dashTitle = 'Dashboard — Jarimatrik';
     if ($user->hasRole('super_admin')) {
-        $dashTitle = 'Super Admin — eBimbel';
+        $dashTitle = 'Super Admin — Jarimatrik';
     } elseif ($user->hasRole('admin_cabang')) {
-        $dashTitle = 'Admin Cabang — eBimbel';
+        $dashTitle = 'Admin Cabang — Jarimatrik';
     } elseif ($user->hasRole('tutor')) {
-        $dashTitle = 'Beranda Tutor — eBimbel';
+        $dashTitle = 'Beranda Tutor — Jarimatrik';
     } elseif ($user->hasRole('siswa')) {
-        $dashTitle = 'Beranda Siswa — eBimbel';
+        $dashTitle = 'Beranda Siswa — Jarimatrik';
     }
 @endphp
 <x-layouts.dashboard-shell :title="$dashTitle">

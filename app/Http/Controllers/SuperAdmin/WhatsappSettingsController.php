@@ -32,28 +32,42 @@ class WhatsappSettingsController extends Controller
             (new WhatsappSettingsSeeder)->run();
         }
 
-        $allowed = self::allowedKeys();
+        // Only show enabled toggle, token and templates
         $settings = Setting::query()
-            ->whereIn('setting_key', $allowed)
-            ->orderBy('setting_key')
+            ->where(function ($q) {
+                $q->whereIn('setting_key', ['whatsapp.enabled', 'whatsapp.token'])
+                    ->orWhere('setting_key', 'LIKE', 'wa.template.%');
+            })
+            ->orderByRaw("FIELD(setting_key, 'whatsapp.enabled', 'whatsapp.token') DESC, setting_key ASC")
             ->get();
 
         $placeholdersHelp = [
             'wa.template.siswa.invoice_created' => ':nama, :biaya, :nominal, :due_date, :inv',
             'wa.template.siswa.payment_due_tomorrow' => ':nama, :biaya, :nominal, :due_date, :inv',
             'wa.template.siswa.payment_success' => ':nama, :biaya, :nominal, :due_date, :inv',
-            'wa.template.siswa.class_schedule' => ':nama, :mapel, :hari, :jam, :cabang',
-            'wa.template.siswa.class_reminder' => ':nama, :mapel, :hari, :jam, :cabang',
-            'wa.template.tutor.class_schedule' => ':nama, :mapel, :hari, :jam, :cabang',
-            'wa.template.tutor.class_reminder' => ':nama, :mapel, :hari, :jam, :cabang',
             'wa.template.tutor.salary_paid' => ':nama, :periode, :nominal, :status',
-            'wa.template.admin.payment_received' => ':nama_siswa, :biaya, :nominal, :inv, :cabang',
         ];
 
         return view('modules.whatsapp-settings.edit', [
             'settings' => $settings,
             'placeholdersHelp' => $placeholdersHelp,
         ]);
+    }
+
+    public function test(Request $request, \App\Services\WhatsApp\WhatsAppService $waService): RedirectResponse
+    {
+        $request->validate([
+            'target' => ['required', 'string'],
+        ]);
+
+        $target = $waService->normalizePhone($request->target);
+        if (!$target) {
+            return back()->withErrors(['test_target' => 'Nomor HP tidak valid. Gunakan format 628xxx atau 08xxx.']);
+        }
+
+        $waService->send($target, 'Bimbel Jarimatrik - Test koneksi WhatsApp Gateway berhasil! 🚀');
+
+        return back()->with('status', 'Pesan test telah dikirim ke ' . $target);
     }
 
     public function update(Request $request): RedirectResponse

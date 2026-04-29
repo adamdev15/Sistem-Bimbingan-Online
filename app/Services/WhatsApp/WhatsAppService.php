@@ -43,16 +43,16 @@ class WhatsAppService
 
     public function send(string $normalizedTarget, string $message): void
     {
-        $url = trim((string) ($this->settings->get('whatsapp.api_url') ?: config('services.whatsapp.url', '')));
-        $token = trim((string) ($this->settings->get('whatsapp.token') ?: config('services.whatsapp.key', '')));
+        // Prioritize Settings table, fallback to .env/config
+        $url = config('services.whatsapp.url', 'https://api.fonnte.com/send');
+        $token = (string) $this->settings->get('whatsapp.token') ?: config('services.whatsapp.key');
 
-        if ($url === '' || $token === '') {
-            Log::notice('WhatsApp: URL atau token kosong, pesan tidak dikirim.');
-
+        if (empty($url) || empty($token)) {
+            Log::notice('WhatsApp: URL atau token belum dikonfigurasi.');
             return;
         }
 
-        if ($normalizedTarget === '' || $message === '') {
+        if (empty($normalizedTarget) || empty($message)) {
             return;
         }
 
@@ -65,18 +65,21 @@ class WhatsAppService
                 ->post($url, [
                     'target' => $normalizedTarget,
                     'message' => $message,
+                    // 'delay' => '2', // Optional: Fonnte specific
+                    // 'countryCode' => '62', // Optional
                 ]);
+
+            if (!$response->successful()) {
+                Log::warning('WhatsApp: Gagal mengirim pesan', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'target' => $normalizedTarget,
+                ]);
+            }
         } catch (\Throwable $e) {
-            Log::error('WhatsApp: request gagal', ['error' => $e->getMessage()]);
-
-            return;
-        }
-
-        if (! $response->successful()) {
-            $body = $response->body();
-            Log::warning('WhatsApp: response non-success', [
-                'status' => $response->status(),
-                'body' => mb_substr($body, 0, 500),
+            Log::error('WhatsApp: request error', [
+                'error' => $e->getMessage(),
+                'target' => $normalizedTarget,
             ]);
         }
     }

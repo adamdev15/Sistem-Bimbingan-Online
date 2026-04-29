@@ -1,7 +1,7 @@
 @php
     $settings = \App\Models\Setting::pluck('value', 'setting_key')->toArray();
 @endphp
-<x-layouts.landing title="Pendaftaran Siswa Baru - eBimbel">
+<x-layouts.landing title="Pendaftaran Siswa Baru - Bimbel Jarimatrik">
     <div
         x-data="{
             showTop: false,
@@ -20,12 +20,8 @@
                 if(this.step === 1) {
                     this.step = 2;
                 } else if(this.step === 2) {
-                    if(!this.form.name || !this.form.email || !this.form.password || !this.form.cabang_id || !this.form.no_hp) {
-                        window.Toast.fire({ icon: 'warning', title: 'Data penting di Data Siswa (Nama, Email, Password, Cabang, No HP) wajib diisi!' });
-                        return;
-                    }
-                    if(this.form.password !== this.form.password_confirmation) {
-                        window.Toast.fire({ icon: 'warning', title: 'Konfirmasi password tidak cocok!' });
+                    if(!this.form.name || !this.form.cabang_id || !this.form.no_hp || !this.form.jenis_kelamin || !this.form.alamat) {
+                        window.Toast.fire({ icon: 'warning', title: 'Data penting di Data Siswa (Nama, Cabang, No HP) wajib diisi!' });
                         return;
                     }
                     this.step = 3;
@@ -111,16 +107,12 @@
                         <div class="prose prose-blue max-w-none text-slate-600 bg-blue-50/50 p-6 rounded-xl border border-blue-100 prose-ol:pl-4">
                             {!! $settings['registration_terms'] ?? '<ol><li>Mengisi form data siswa secara lengkap dan benar.</li><li>Mengisi form data orang tua/wali.</li><li>Setelah mendaftar, lakukan login dengan email dan password.</li></ol>' !!}
                         </div>
-                        
-                        <div class="mt-6 flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer" @click="agreed = !agreed">
-                            <input type="checkbox" id="agreed" x-model="agreed" @click.stop class="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
-                            <label for="agreed" class="text-sm font-medium text-slate-700 cursor-pointer select-none">
-                                Saya telah membaca, mengerti, dan menyetujui ketentuan pendaftaran di atas.
-                            </label>
+                        <div class="mt-8 flex items-center gap-3">
+                            <input type="checkbox" id="agreed" x-model="agreed" class="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                            <label for="agreed" class="text-sm text-slate-600">Saya telah membaca dan menyetujui ketentuan pendaftaran</label>
                         </div>
-                        
                         <div class="mt-8 flex justify-end">
-                            <button type="button" @click="nextStep" :disabled="!agreed" :class="!agreed ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'" class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 transition focus:outline-none focus:ring-4 focus:ring-blue-500/30">
+                            <button type="button" @click="nextStep" :disabled="!agreed" :class="!agreed ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'" class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500/30">
                                 Lanjutkan ke Data Siswa
                                 <svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                             </button>
@@ -132,26 +124,11 @@
                         <h2 class="text-xl font-bold text-slate-900 mb-6">Informasi Data Siswa</h2>
                         
                         <div class="grid sm:grid-cols-2 gap-5">
-                            <div>
+                            <div class="sm:col-span-2">
                                 <label class="block text-sm font-semibold text-slate-700">Nama Lengkap <span class="text-red-500">*</span></label>
                                 <input type="text" name="name" x-model="form.name" placeholder="Misal: Budi Santoso" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
                             </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700">Email Akun (Login) <span class="text-red-500">*</span></label>
-                                <input type="email" name="email" x-model="form.email" placeholder="contoh@gmail.com" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700">Password <span class="text-red-500">*</span></label>
-                                <input type="password" name="password" x-model="form.password" placeholder="Min. 8 karakter" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700">Konfirmasi Password <span class="text-red-500">*</span></label>
-                                <input type="password" name="password_confirmation" x-model="form.password_confirmation" placeholder="Ulangi password" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
-                            </div>
 
-                            <div class="sm:col-span-2 pt-4 pb-2 border-b border-slate-100">
-                                <h3 class="font-bold text-slate-800">Detail Profil</h3>
-                            </div>
 
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700">Tempat Lahir</label>
@@ -162,7 +139,7 @@
                                 <input type="date" name="tanggal_lahir" x-model="form.tanggal_lahir" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-slate-700">Jenis Kelamin</label>
+                                <label class="block text-sm font-semibold text-slate-700">Jenis Kelamin <span class="text-red-500">*</span></label>
                                 <select name="jenis_kelamin" x-model="form.jenis_kelamin" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 text-slate-700 bg-white">
                                     <option value="">Pilih Jenis Kelamin</option>
                                     <option value="laki_laki">Laki-Laki</option>
@@ -200,7 +177,7 @@
                                 </select>
                             </div>
                             <div class="sm:col-span-2">
-                                <label class="block text-sm font-semibold text-slate-700">Alamat Lengkap</label>
+                                <label class="block text-sm font-semibold text-slate-700">Alamat Lengkap <span class="text-red-500">*</span></label>
                                 <textarea name="alamat" x-model="form.alamat" rows="2" placeholder="Nama jalan, RT/RW, Kecamatan..." class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"></textarea>
                             </div>
                         </div>
@@ -275,7 +252,7 @@
                             <button type="button" @click="prevStep" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 rounded-xl">
                                 Kembali
                             </button>
-                            <button type="button" @click="submitForm" class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-8 py-3 text-sm font-semibold text-white shadow-sm ring-1 ring-emerald-500/20 transition hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-500/30">
+                            <button type="button" @click="submitForm" class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-8 py-3 text-sm font-semibold text-white shadow-sm ring-1 ring-emerald-600/20 transition hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-500/30">
                                 Daftar Sekarang!
                             </button>
                         </div>

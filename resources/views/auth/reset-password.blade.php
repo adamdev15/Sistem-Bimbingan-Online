@@ -1,8 +1,11 @@
 <x-guest-layout>
-    <div class="mb-4">
-        <h2 class="text-2xl font-bold text-slate-900 leading-tight">Buat Kata Sandi Baru</h2>
-        <p class="mt-2 text-sm text-slate-600 leading-relaxed">
-            Silakan masukkan alamat email Anda dan buat kata sandi baru yang aman untuk akun Anda.
+    <div class="mb-6">
+        <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm ring-1 ring-emerald-100">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Atur Ulang Kata Sandi</h2>
+        <p class="mt-2 text-sm text-slate-500 leading-relaxed font-medium">
+            Silakan masukkan kata sandi baru yang aman untuk akun <span class="text-blue-600 font-bold">Bimbel Jarimatrik</span> Anda.
         </p>
     </div>
 

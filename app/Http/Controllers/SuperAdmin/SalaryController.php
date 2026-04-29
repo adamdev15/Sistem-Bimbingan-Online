@@ -20,8 +20,40 @@ use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
+use App\Exports\GajiTutorExport;
+
 class SalaryController extends Controller
 {
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        $user = auth()->user();
+        $cabangId = $user->hasRole('admin_cabang') 
+            ? Cabang::where('user_id', $user->id)->value('id') 
+            : null;
+
+        $query = Salary::query()
+            ->with(['tutor', 'creator'])
+            ->when($cabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $cabangId)))
+            ->when($request->month, function($q) use ($request) {
+                $m = $request->month;
+                if (preg_match('/^\d{4}-\d{2}$/', $m)) {
+                    $date = \Carbon\Carbon::parse($m);
+                    $q->where(function($sub) use ($m, $date) {
+                        $sub->where('periode', $m)
+                            ->orWhere('periode', $date->translatedFormat('F Y'))
+                            ->orWhere('periode', $date->format('F Y'));
+                    });
+                } else {
+                    $q->where('periode', 'like', "%{$m}%");
+                }
+            })
+            ->latest();
+
+        $name = 'gaji-tutor-export-' . now()->format('Y-m-d-His') . '.xlsx';
+        
+        return Excel::download(new GajiTutorExport($query), $name);
+    }
+
     public function __construct(
         private readonly ManagementService $service,
         private readonly WhatsAppNotifier $whatsapp,
@@ -29,10 +61,28 @@ class SalaryController extends Controller
 
     public function index(Request $request): View
     {
+        $user = auth()->user();
+        $cabangId = $user->hasRole('admin_cabang') 
+            ? \App\Models\Cabang::where('user_id', $user->id)->value('id') 
+            : null;
+
+        $stats = [
+            'pending' => Salary::where('status', 'pending')
+                ->when($cabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $cabangId)))
+                ->count(),
+            'dibayar' => Salary::where('status', 'dibayar')
+                ->when($cabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $cabangId)))
+                ->count(),
+            'total_rp' => Salary::whereIn('status', ['dibayar', 'diterima'])
+                ->when($cabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $cabangId)))
+                ->sum('total_gaji'),
+        ];
+
         return view('modules.salaries.index', [
             'salaries' => $this->service->salaryIndex($request),
             'tutors' => $this->tutorsForSalaryForm(),
             'filters' => $request->only(['status', 'tutor_id']),
+            'stats' => $stats,
         ]);
     }
 
@@ -47,14 +97,6 @@ class SalaryController extends Controller
             ->stream($name);
     }
 
-    public function exportExcel(Request $request): BinaryFileResponse
-    {
-        $this->assertSalaryExportAllowed($request);
-        $payload = $this->service->salaryReportPayload($request);
-        $name = 'gaji-tutor-laporan-'.now()->format('Y-m-d-His').'.xlsx';
-
-        return Excel::download(new GajiTutorLaporanExport($payload), $name);
-    }
 
     private function assertSalaryExportAllowed(Request $request): void
     {
@@ -67,6 +109,8 @@ class SalaryController extends Controller
         $data = $request->validate([
             'tutor_id' => ['required', 'exists:tutors,id'],
             'periode' => ['required', 'string', 'max:64'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'total_kehadiran' => ['required', 'integer', 'min:0'],
             'total_gaji' => ['required', 'numeric', 'min:0'],
             'status' => ['nullable', 'in:pending,dibayar,diterima'],
@@ -75,15 +119,33 @@ class SalaryController extends Controller
 
         $this->guardTutorCabang((int) $data['tutor_id']);
 
-        Salary::query()->create([
+        // Check if salary for this tutor and period already exists
+        $exists = Salary::where('tutor_id', $data['tutor_id'])
+            ->where('periode', $data['periode'])
+            ->first();
+
+        if ($exists) {
+            $tutor = Tutor::find($data['tutor_id']);
+            return back()
+                ->withInput()
+                ->with('error', "Gaji tutor {$tutor->nama} periode {$data['periode']} telah diinputkan, cek data terlebih dahulu.");
+        }
+
+        $salary = Salary::query()->create([
             'tutor_id' => $data['tutor_id'],
             'periode' => $data['periode'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
             'total_kehadiran' => $data['total_kehadiran'],
             'total_gaji' => $data['total_gaji'],
             'status' => $data['status'] ?? 'pending',
             'catatan' => $data['catatan'],
             'created_by' => $request->user()?->id,
         ]);
+
+        if (in_array($salary->status, ['dibayar', 'diterima'])) {
+            $this->whatsapp->notifyTutorSalaryPaid($salary);
+        }
 
         return back()->with('status', 'Data gaji disimpan.');
     }
@@ -92,21 +154,45 @@ class SalaryController extends Controller
     {
         $tutorId = $request->integer('tutor_id');
         $periode = $request->string('periode')->toString(); // Expecting YYYY-MM
+        $startDate = $request->string('start_date')->toString();
+        $endDate = $request->string('end_date')->toString();
 
-        if (!$tutorId || !preg_match('/^\d{4}-\d{2}$/', $periode)) {
-            return response()->json(['count' => 0]);
+        if (!$tutorId) {
+            return response()->json(['count' => 0, 'total_salary' => 0]);
         }
 
-        [$year, $month] = explode('-', $periode);
-
-        $count = Kehadiran::query()
+        $query = Kehadiran::query()
+            ->with('materiLes')
             ->where('tutor_id', $tutorId)
-            ->whereYear('tanggal', (int) $year)
-            ->whereMonth('tanggal', (int) $month)
-            ->where('status', 'hadir')
-            ->count();
+            ->where('status', 'hadir');
 
-        return response()->json(['count' => $count]);
+        if ($startDate && $endDate) {
+            $query->whereBetween('tanggal', [$startDate, $endDate]);
+        } elseif ($periode && preg_match('/^\d{4}-\d{2}$/', $periode)) {
+            [$year, $month] = explode('-', $periode);
+            $query->whereYear('tanggal', (int) $year)
+                  ->whereMonth('tanggal', (int) $month);
+        } else {
+            return response()->json(['count' => 0, 'total_salary' => 0]);
+        }
+
+        $kehadirans = $query->get();
+        // Group by date to handle multiple students on the same day as one attendance session
+        $groupedByDate = $kehadirans->groupBy(function($item) {
+            return $item->tanggal->format('Y-m-d');
+        });
+
+        $count = $groupedByDate->count();
+        $totalSalary = $groupedByDate->sum(function($dailyKehadirans) {
+            // For each day, take the rate from the first attendance record
+            $first = $dailyKehadirans->first();
+            return $first->materiLes->biaya_tutor ?? 0;
+        });
+
+        return response()->json([
+            'count' => $count,
+            'total_salary' => $totalSalary
+        ]);
     }
 
     public function update(Request $request, Salary $salary): RedirectResponse
@@ -121,7 +207,7 @@ class SalaryController extends Controller
         $salary->update($data);
         $salary->refresh();
 
-        if ($before !== 'dibayar' && $salary->status === 'dibayar') {
+        if ($before !== $salary->status && in_array($salary->status, ['dibayar', 'diterima'])) {
             $this->whatsapp->notifyTutorSalaryPaid($salary);
         }
 

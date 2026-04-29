@@ -18,13 +18,18 @@ class Salary extends Model
         'total_kehadiran',
         'total_gaji',
         'created_by',
+        'status',
         'catatan',
+        'start_date',
+        'end_date',
     ];
 
     protected function casts(): array
     {
         return [
             'total_gaji' => 'decimal:2',
+            'start_date' => 'date',
+            'end_date' => 'date',
         ];
     }
 

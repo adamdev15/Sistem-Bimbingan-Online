@@ -26,7 +26,6 @@ class UserManagementController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'form_context' => ['nullable', 'string', 'max:40'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -34,7 +33,7 @@ class UserManagementController extends Controller
             'email_verified' => ['nullable', 'boolean'],
         ]);
 
-        $user = User::query()->create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
@@ -43,13 +42,12 @@ class UserManagementController extends Controller
 
         $user->syncRoles([$data['role']]);
 
-        return back()->with('status', 'Pengguna berhasil ditambahkan.');
+        return back()->with('status', 'Pengguna "' . $user->name . '" berhasil ditambahkan.');
     }
 
     public function update(Request $request, User $user): RedirectResponse
     {
         $data = $request->validate([
-            'form_context' => ['nullable', 'string', 'max:40'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
@@ -57,13 +55,17 @@ class UserManagementController extends Controller
             'email_verified' => ['nullable', 'boolean'],
         ]);
 
-        if ($user->is($request->user())) {
-            $data['role'] = (string) ($user->getRoleNames()->first() ?? 'super_admin');
+        // Prevent changing own role
+        if ($user->id === auth()->id()) {
+            $data['role'] = $user->getRoleNames()->first() ?: 'super_admin';
         }
 
         $user->name = $data['name'];
         $user->email = $data['email'];
-        $user->email_verified_at = $request->boolean('email_verified') ? now() : null;
+        
+        if ($request->has('email_verified')) {
+             $user->email_verified_at = $request->boolean('email_verified') ? ($user->email_verified_at ?: now()) : null;
+        }
 
         if (! empty($data['password'])) {
             $user->password = $data['password'];
@@ -72,17 +74,18 @@ class UserManagementController extends Controller
         $user->save();
         $user->syncRoles([$data['role']]);
 
-        return back()->with('status', 'Pengguna diperbarui.');
+        return back()->with('status', 'Data pengguna "' . $user->name . '" telah diperbarui.');
     }
 
     public function destroy(Request $request, User $user): RedirectResponse
     {
-        if ($user->is($request->user())) {
-            return back()->withErrors(['user' => 'Tidak dapat menghapus akun yang sedang login.']);
+        if ($user->id === auth()->id()) {
+            return back()->withErrors(['error' => 'Anda tidak dapat menghapus akun Anda sendiri.']);
         }
 
+        $userName = $user->name;
         $user->delete();
 
-        return back()->with('status', 'Pengguna dihapus.');
+        return back()->with('status', 'Pengguna "' . $userName . '" berhasil dihapus.');
     }
 }

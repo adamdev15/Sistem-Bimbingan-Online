@@ -1,8 +1,8 @@
 <x-guest-layout>
-    <div class="mb-4">
-        <h2 class="text-2xl font-bold text-slate-900 leading-tight">Lupa Kata Sandi?</h2>
-        <p class="mt-2 text-sm text-slate-600 leading-relaxed">
-            Jangan khawatir! Masukkan alamat email Anda di bawah ini, dan kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda.
+    <div class="mb-6">
+        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Lupa Kata Sandi?</h2>
+        <p class="mt-2 text-sm text-slate-500 leading-relaxed font-medium">
+            Jangan khawatir! Masukkan alamat email Anda, dan kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda di <span class="text-blue-600 font-bold">Bimbel Jarimatrik</span>.
         </p>
     </div>
 

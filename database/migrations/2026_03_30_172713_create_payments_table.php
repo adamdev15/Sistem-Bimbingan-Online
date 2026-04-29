@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained('siswas');
-            $table->foreignId('biaya_id')->constrained('fees');
+            $table->foreignId('biaya_id')->constrained('fees')->nullable();
             $table->decimal('nominal', 14, 2);
             $table->date('tanggal_bayar');
             $table->enum('status', ['lunas', 'belum'])->default('belum');

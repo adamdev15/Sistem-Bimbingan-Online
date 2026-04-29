@@ -211,30 +211,45 @@ class PresensiController extends Controller
         // Logic for Jatuh Tempo from created_at
         $jatuhTempoTgl = $siswa->created_at?->day ?? 1;
 
-        // Fetch attendance for the selected month
-        $kehadirans = Kehadiran::where('student_id', $siswa->id)
-            ->whereYear('tanggal', $request->tahun)
-            ->whereMonth('tanggal', $request->bulan)
-            ->where('status', 'hadir')
-            ->get();
+        $targetDate = \Carbon\Carbon::createFromDate($request->tahun, $request->bulan, 1);
+        
+        $monthsData = [];
+        // Loop for 6 months (selected month first, then 5 back)
+        for ($i = 0; $i <= 5; $i++) {
+            $current = $targetDate->copy()->subMonths($i);
+            $month = $current->month;
+            $year = $current->year;
+            $period = $current->format('Y-m');
 
-        // Map presence to days
-        $presenceDays = $kehadirans->pluck('tanggal')->map(fn($d) => $d->day)->toArray();
+            // Fetch attendance for this month
+            $kehadirans = Kehadiran::where('student_id', $siswa->id)
+                ->whereYear('tanggal', $year)
+                ->whereMonth('tanggal', $month)
+                ->where('status', 'hadir')
+                ->get();
+            
+            $presenceDays = $kehadirans->pluck('tanggal')->map(fn($d) => $d->day)->toArray();
 
-        // Get SPP payment for the selected month
-        $payment = Payment::where('student_id', $siswa->id)
-            ->whereYear('tanggal_bayar', $request->tahun)
-            ->whereMonth('tanggal_bayar', $request->bulan)
-            ->orderByDesc('id')
-            ->first();
+            // Get SPP payment for this month (using invoice_period)
+            $payment = Payment::where('student_id', $siswa->id)
+                ->where('invoice_period', $period)
+                ->whereHas('fee', function($q) {
+                    $q->where('tipe', 'bulanan');
+                })
+                ->orderByDesc('id')
+                ->first();
+
+            $monthsData[] = [
+                'monthName' => $current->translatedFormat('F'),
+                'presenceDays' => $presenceDays,
+                'payment' => $payment,
+            ];
+        }
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.kartu-absensi', [
             'siswa' => $siswa,
-            'bulan' => $request->bulan,
-            'tahun' => $request->tahun,
             'jatuhTempoTgl' => $jatuhTempoTgl,
-            'presenceDays' => $presenceDays,
-            'payment' => $payment,
+            'monthsData' => $monthsData,
         ]);
 
         return $pdf->stream("Kartu-Absensi-{$siswa->nama}.pdf");

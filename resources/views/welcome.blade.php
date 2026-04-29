@@ -11,7 +11,22 @@
                 }
             }
         }"
-        x-init="window.addEventListener('scroll', () => showTop = window.scrollY > 250)"
+        x-init="
+            window.addEventListener('scroll', () => showTop = window.scrollY > 250);
+            @if(session('status'))
+                window.Swal.fire({
+                    icon: 'success',
+                    title: 'Pendaftaran Berhasil!',
+                    text: '{{ session('status') }}',
+                    confirmButtonText: 'Oke',
+                    confirmButtonColor: '#2563eb',
+                    customClass: {
+                        popup: 'rounded-2xl',
+                        confirmButton: 'rounded-xl px-5 py-2.5'
+                    }
+                });
+            @endif
+        "
         x-effect="document.body.classList.toggle('overflow-hidden', mobileMenu)"
         @keydown.escape.window="mobileMenu = false"
     >
@@ -89,7 +104,7 @@
             >
                 <div class="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
                     <a href="{{ route('landing') }}" class="flex shrink-0 items-center rounded-lg bg-white px-2.5 py-1.5 shadow-md ring-1 ring-white/30" @click="mobileMenu = false">
-                        <img src="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" alt="eBimbel" class="h-7 w-auto">
+                        <img src="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" alt="Jarimatrik" class="h-7 w-auto">
                     </a>
                     <button
                         type="button"
@@ -201,11 +216,11 @@
             <section id="about" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
                 <div class="grid items-center gap-10 lg:grid-cols-2">
                     <div class="order-2 lg:order-1">
-                        <img src="{{ asset('image/whats.png') }}" alt="Apa itu eBimbel" class="mx-auto w-full max-w-lg">
+                        <img src="{{ asset('image/whats.png') }}" alt="Apa itu Jarimatrik" class="mx-auto w-full max-w-lg">
                     </div>
                     <div class="order-1 space-y-4 lg:order-2">
-                        <h2 class="text-3xl font-bold text-blue-950">Tentang Bimbel Kami</h2>
-                        <p class="text-slate-700">{{ $settings['about_us'] ?? 'eBimbel merupakan lembaga pendidikan pilihan dengan metode terstruktur, pendekatan personal bagi minat anak, dan sistem evaluasi transparan.' }}</p>
+                        <h2 class="text-3xl font-bold text-blue-950">Tentang Jarimatrik</h2>
+                        <p class="text-slate-700">{{ $settings['about_us'] ?? 'Jarimatrik merupakan lembaga pendidikan pilihan dengan metode terstruktur, pendekatan personal bagi minat anak, dan sistem evaluasi transparan.' }}</p>
                         <div class="space-y-2">
                             @foreach ([
                                 ['title' => 'Meningkatkan Kualitas Bimbel', 'desc' => 'Memberikan kesan profesional dan modern pada lembaga Anda.'],
@@ -338,7 +353,7 @@
         <footer class="bg-[#060b16] py-10 text-slate-300">
             <div class="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-8">
                 <div>
-                    <img src="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" alt="Logo eBimbel" class="mb-4 h-12 w-auto">
+                    <img src="{{ isset($settings['logo_filename']) ? asset('image/' . $settings['logo_filename']) : asset('image/logo-bimbel.png') }}" alt="Logo Jarimatrik" class="mb-4 h-12 w-auto">
                     <p class="text-sm text-slate-400">Bimbel Terbaik di Tegal untuk Masa Depan Anak Lebih Cerah
 Bimbel Jarimatrik Tegal, Bantu anak lebih memahami pelajaran dengan metode belajar modern, tutor berpengalaman, dan suasana belajar yang nyaman.</p>
                 </div>
@@ -358,7 +373,7 @@ Bimbel Jarimatrik Tegal, Bantu anak lebih memahami pelajaran dengan metode belaj
                         <li><span class="text-blue-400">Phone:</span> {{ $settings['footer_phone1'] ?? '6281233640003' }}</li>
                         <li><span class="text-blue-400">Phone:</span> {{ $settings['footer_phone2'] ?? '6282210880003' }}</li>
                         <li><span class="text-blue-400">Email:</span> {{ $settings['footer_email'] ?? 'esekolahnet@gmail.com' }}</li>
-                        <li><span class="text-blue-400">Web:</span> {{ $settings['footer_web'] ?? 'https://ebimbel.co.id' }}</li>
+                        <li><span class="text-blue-400">Web:</span> {{ $settings['footer_web'] ?? 'https://jarimatrik.co.id' }}</li>
                     </ul>
                 </div>
             </div>

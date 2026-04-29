@@ -5,7 +5,7 @@
     <title>Kartu Absensi - {{ $siswa->nama }}</title>
     <style>
         @page { margin: 1cm; }
-        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11px; color: #333; }
+        body { font-family: 'DejaVu Sans', 'Arial', sans-serif; font-size: 11px; color: #333; }
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
         .header table { width: 100%; border: none; }
         .header .logo { width: 70px; text-align: left; }
@@ -86,19 +86,12 @@
             </tr>
         </thead>
         <tbody>
-            @php
-                $monthsArr = [
-                    1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
-                    7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
-                ];
-            @endphp
-            @for ($i = 0; $i < 6; $i++)
+            @foreach ($monthsData as $data)
                 @php
-                    $isRequestedMonth = ($i === 0);
-                    $monthName = $isRequestedMonth ? ($monthsArr[$bulan] ?? '') : '';
+                    $payment = $data['payment'];
                     $sppStatus = '';
-                    if ($isRequestedMonth) {
-                        if ($payment && $payment->status === 'lunas') {
+                    if ($payment) {
+                        if ($payment->status === 'lunas') {
                             $sppStatus = 'LUNAS (' . number_format($payment->nominal, 0, ',', '.') . ')';
                         } else {
                             $sppStatus = 'BELUM LUNAS';
@@ -106,7 +99,7 @@
                     }
                 @endphp
                 <tr>
-                    <td height="110" class="month-cell">{{ $monthName }}</td>
+                    <td height="110" class="month-cell">{{ $data['monthName'] }}</td>
                     <td class="payment-cell">{{ $sppStatus }}</td>
                     <td>
                         <table class="date-grid">
@@ -115,9 +108,10 @@
                                     @for ($col = 1; $col <= 8; $col++)
                                         @php $day = ($row * 8) + $col; @endphp
                                         @if ($day <= 31)
-                                            <td class="{{ ($isRequestedMonth && in_array($day, $presenceDays)) ? 'present' : '' }}">
+                                            @php $isPresent = in_array($day, $data['presenceDays']); @endphp
+                                            <td class="{{ $isPresent ? 'present' : '' }}">
                                                 {{ $day }}
-                                                @if ($isRequestedMonth && in_array($day, $presenceDays))
+                                                @if ($isPresent)
                                                     <span class="present-mark">✔</span>
                                                 @endif
                                             </td>
@@ -130,7 +124,7 @@
                         </table>
                     </td>
                 </tr>
-            @endfor
+            @endforeach
         </tbody>
     </table>
 

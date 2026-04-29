@@ -80,6 +80,12 @@ class DashboardNavigation
                         'patterns' => ['salaries.*'],
                     ],
                     [
+                        'label' => 'Biaya',
+                        'route' => 'fees.index',
+                        'roles' => ['super_admin'],
+                        'patterns' => ['fees.*'],
+                    ],
+                    [
                         'label' => 'Pembayaran',
                         'route' => 'pembayaran.index',
                         'roles' => ['super_admin', 'admin_cabang', 'siswa'],
@@ -150,6 +156,7 @@ class DashboardNavigation
                         'Siswa', 'Siswa (Tutor)' => 'Siswa',
                         'Tutor' => 'Tutor',
                         'Materi Les' => 'Materi Les',
+                        'Biaya' => 'Biaya',
                         'Pembayaran' => 'Pembayaran',
                         'Pengeluaran' => 'Pengeluaran',
                         'Gaji Tutor' => 'Gaji Tutor',
@@ -190,7 +197,7 @@ class DashboardNavigation
         $name = $user->getRoleNames()->first();
 
         return match ($name) {
-            'super_admin' => 'Super Admin',
+            'super_admin' => 'Admin Pusat',
             'admin_cabang' => 'Admin Cabang',
             'tutor' => 'Tutor',
             'siswa' => 'Siswa',

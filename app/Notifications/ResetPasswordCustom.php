@@ -42,13 +42,13 @@ class ResetPasswordCustom extends Notification
         ], false));
 
         return (new MailMessage)
-            ->subject('Atur Ulang Kata Sandi - Bimbel Jarimatrik')
-            ->greeting('Halo!')
-            ->line('Anda menerima email ini karena kami menerima permintaan atur ulang kata sandi untuk akun Anda.')
+            ->subject('Permintaan Atur Ulang Kata Sandi - Bimbel Jarimatrik')
+            ->greeting('Halo, ' . ($notifiable->name ?? 'Pengguna') . '!')
+            ->line('Kami mengirimkan email ini karena kami menerima permintaan untuk mengatur ulang kata sandi akun Anda di sistem Bimbel Jarimatrik.')
             ->action('Atur Ulang Kata Sandi', $url)
-            ->line('Tautan atur ulang kata sandi ini akan kedaluwarsa dalam ' . config('auth.passwords.'.config('auth.defaults.passwords').'.expire') . ' menit.')
-            ->line('Jika Anda tidak merasa melakukan permintaan ini, tidak ada tindakan lebih lanjut yang diperlukan.')
-            ->salutation('Salam hangat,' . "\n" . 'Tim Bimbel Jarimatrik');
+            ->line('Tautan pengaturan ulang kata sandi ini akan kedaluwarsa dalam ' . config('auth.passwords.'.config('auth.defaults.passwords').'.expire') . ' menit.')
+            ->line('Jika Anda tidak merasa melakukan permintaan ini, abaikan saja email ini. Keamanan akun Anda tetap terjaga.')
+            ->salutation('Salam hormat,' . "\n" . 'Tim IT Bimbel Jarimatrik');
     }
 
     /**

@@ -50,7 +50,7 @@ class WhatsAppNotifier
         }
 
         $msg = $this->templates->render('wa.template.siswa.invoice_created', $this->paymentPlaceholders($payment, $siswa));
-        $this->queueToPhone($siswa->no_hp, $msg);
+        $this->queueToPhone($siswa->phoneForNotification(), $msg);
     }
 
     public function notifySiswaPaymentSuccess(Payment $payment): void
@@ -62,7 +62,7 @@ class WhatsAppNotifier
         }
 
         $msg = $this->templates->render('wa.template.siswa.payment_success', $this->paymentPlaceholders($payment, $siswa));
-        $this->queueToPhone($siswa->no_hp, $msg);
+        $this->queueToPhone($siswa->phoneForNotification(), $msg);
     }
 
     public function notifySiswaPaymentDueTomorrow(Payment $payment): void
@@ -74,67 +74,7 @@ class WhatsAppNotifier
         }
 
         $msg = $this->templates->render('wa.template.siswa.payment_due_tomorrow', $this->paymentPlaceholders($payment, $siswa));
-        $this->queueToPhone($siswa->no_hp, $msg);
-    }
-
-    public function notifyAdminPaymentReceived(Payment $payment): void
-    {
-        $payment->loadMissing(['siswa.cabang', 'fee']);
-        $siswa = $payment->siswa;
-        $cabang = $siswa?->cabang;
-
-        $base = $this->paymentPlaceholders($payment, $siswa);
-        $base['nama_siswa'] = $siswa?->nama ?? '—';
-        $base['cabang'] = $cabang?->nama_cabang ?? '—';
-
-        $msg = $this->templates->render('wa.template.admin.payment_received', $base);
-
-        if ($cabang !== null && filled($cabang->telepon)) {
-            $this->queueToPhone($cabang->telepon, $msg);
-        }
-
-        $extra = $this->settings->get('wa.admin.super_phones', '');
-        foreach (preg_split('/[\s,;]+/', (string) $extra, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $raw) {
-            $this->queueToPhone(trim($raw), $msg);
-        }
-    }
-
-    public function notifyTutorJadwalCreated(Jadwal $jadwal): void
-    {
-        $jadwal->loadMissing(['tutor', 'mataPelajaran', 'cabang']);
-        $tutor = $jadwal->tutor;
-        if ($tutor === null) {
-            return;
-        }
-
-        $msg = $this->templates->render('wa.template.tutor.class_schedule', $this->jadwalPlaceholders($jadwal, $tutor->nama));
-        $this->queueToPhone($tutor->no_hp, $msg);
-    }
-
-    public function notifySiswaJadwalAssigned(Siswa $siswa, Jadwal $jadwal): void
-    {
-        $jadwal->loadMissing(['mataPelajaran', 'cabang']);
-        $msg = $this->templates->render('wa.template.siswa.class_schedule', $this->jadwalPlaceholders($jadwal, $siswa->nama));
-        $this->queueToPhone($siswa->no_hp, $msg);
-    }
-
-    public function notifyTutorClassReminder(Jadwal $jadwal): void
-    {
-        $jadwal->loadMissing(['tutor', 'mataPelajaran', 'cabang']);
-        $tutor = $jadwal->tutor;
-        if ($tutor === null) {
-            return;
-        }
-
-        $msg = $this->templates->render('wa.template.tutor.class_reminder', $this->jadwalPlaceholders($jadwal, $tutor->nama));
-        $this->queueToPhone($tutor->no_hp, $msg);
-    }
-
-    public function notifySiswaClassReminder(Siswa $siswa, Jadwal $jadwal): void
-    {
-        $jadwal->loadMissing(['mataPelajaran', 'cabang']);
-        $msg = $this->templates->render('wa.template.siswa.class_reminder', $this->jadwalPlaceholders($jadwal, $siswa->nama));
-        $this->queueToPhone($siswa->no_hp, $msg);
+        $this->queueToPhone($siswa->phoneForNotification(), $msg);
     }
 
     public function notifyTutorSalaryPaid(Salary $salary): void
@@ -154,6 +94,29 @@ class WhatsAppNotifier
         $this->queueToPhone($tutor->no_hp, $msg);
     }
 
+    public function notifyTutorJadwalCreated(Jadwal $jadwal): void
+    {
+        $jadwal->loadMissing(['tutor', 'mataPelajaran', 'cabang']);
+        $tutor = $jadwal->tutor;
+        if ($tutor === null) {
+            return;
+        }
+
+        $msg = $this->templates->render('wa.template.tutor.class_schedule', [
+            'nama' => $tutor->nama,
+            'mapel' => $jadwal->mataPelajaran->nama_materi ?? 'Materi Les',
+            'hari' => ucfirst((string) $jadwal->hari),
+            'jam' => $jadwal->jam_mulai . ' - ' . $jadwal->jam_selesai,
+            'cabang' => $jadwal->cabang->nama_cabang ?? 'Cabang',
+        ]);
+        $this->queueToPhone($tutor->no_hp, $msg);
+    }
+
+    public function notifyAdminPaymentReceived(Payment $payment): void
+    {
+        // Removed per user request - Admin notification handled via In-App Bell only.
+    }
+
     /**
      * @return array<string, string>
      */
@@ -166,24 +129,7 @@ class WhatsAppNotifier
             'biaya' => $feeLabel,
             'nominal' => number_format((float) $payment->nominal, 0, ',', '.'),
             'due_date' => $payment->due_date?->translatedFormat('d M Y') ?? '—',
-            'inv' => 'INV-'.str_pad((string) $payment->id, 5, '0', STR_PAD_LEFT),
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function jadwalPlaceholders(Jadwal $jadwal, string $namaPenerima): array
-    {
-        $mapel = $jadwal->mataPelajaran?->nama ?? 'Mapel';
-        $cabang = $jadwal->cabang?->nama_cabang ?? '';
-
-        return [
-            'nama' => $namaPenerima,
-            'mapel' => $mapel,
-            'hari' => ucfirst((string) $jadwal->hari),
-            'jam' => $jadwal->jam_mulai.'–'.$jadwal->jam_selesai,
-            'cabang' => $cabang !== '' ? $cabang : '—',
+            'inv' => $payment->order_id ?? ('INV-'.str_pad((string) $payment->id, 5, '0', STR_PAD_LEFT)),
         ];
     }
 }

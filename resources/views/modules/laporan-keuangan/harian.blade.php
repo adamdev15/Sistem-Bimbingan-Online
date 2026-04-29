@@ -1,4 +1,4 @@
-<x-layouts.dashboard-shell title="Laporan Harian — eBimbel">
+<x-layouts.dashboard-shell title="Laporan Harian — Jarimatrik">
     <x-module-page-header title="Buku Kas Harian - {{ $cabang ? $cabang->nama_cabang : 'Pusat (Konsolidasi)' }}" description="Visualisasi arus kas harian untuk periode {{ \Carbon\Carbon::parse($month)->translatedFormat('F Y') }}.">
         <x-slot name="actions">
             <a href="{{ route('laporan-keuangan.index', ['month' => $month, 'cabang_id' => $selectedCabangId]) }}" class="inline-flex rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">

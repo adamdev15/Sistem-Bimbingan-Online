@@ -21,6 +21,7 @@ use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use RuntimeException;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PembayaranController extends Controller
@@ -30,6 +31,7 @@ class PembayaranController extends Controller
         private readonly PembayaranReportService $reports,
         private readonly MidtransService $midtrans,
         private readonly InAppBellNotifier $bell,
+        private readonly \App\Services\WhatsApp\WhatsAppNotifier $whatsapp,
     ) {}
 
     public function index(Request $request): View
@@ -72,6 +74,9 @@ class PembayaranController extends Controller
             'siswaHasManualPaymentDestinations' => $user && $user->hasRole('siswa')
                 ? $this->siswaHasConfiguredManualDestinations()
                 : false,
+            'unpaidPayments' => $user && $user->hasAnyRole(['super_admin', 'admin_cabang']) 
+                ? $this->getUnpaidPaymentsForReminder($user) 
+                : collect(),
         ]);
     }
 
@@ -158,6 +163,14 @@ class PembayaranController extends Controller
         $name = 'pembayaran-outstanding-'.now()->format('Y-m-d-His').'.xlsx';
 
         return Excel::download(new PembayaranOutstandingExport($rows), $name);
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        $query = $this->service->pembayaranFilteredQuery($request);
+        $name = 'pembayaran-export-' . now()->format('Y-m-d-His') . '.xlsx';
+        
+        return Excel::download(new \App\Exports\PembayaranExport($query), $name);
     }
 
     public function snapToken(Request $request, Payment $payment): JsonResponse
@@ -267,7 +280,11 @@ class PembayaranController extends Controller
         $count = 0;
 
         foreach ($data['student_ids'] as $studentId) {
+            $fee = \App\Models\Fee::find($data['biaya_id']);
+            $orderId = Str::upper(Str::slug($fee->nama_biaya)) . '-' . random_int(100000000000000, 999999999999999);
+
             $payment = Payment::query()->create([
+                'order_id' => $orderId,
                 'student_id' => $studentId,
                 'biaya_id' => $data['biaya_id'],
                 'invoice_period' => $data['invoice_period'] ?? null,
@@ -280,6 +297,7 @@ class PembayaranController extends Controller
 
             if ($notify) {
                 $this->bell->paymentInvoiceCreated($payment, $user);
+                $this->whatsapp->notifySiswaInvoiceCreated($payment);
             }
             $count++;
         }
@@ -299,10 +317,14 @@ class PembayaranController extends Controller
         $user = $request->user();
         abort_unless($user && $user->hasAnyRole(['super_admin', 'admin_cabang']), 403);
 
+        $data = $request->validate([
+            'payment_ids' => ['required', 'array', 'min:1'],
+            'payment_ids.*' => ['required', 'exists:payments,id'],
+        ]);
+
         $query = Payment::query()
             ->belum()
-            ->whereNotNull('due_date')
-            ->whereDate('due_date', '<=', now());
+            ->whereIn('id', $data['payment_ids']);
 
         if ($user->hasRole('admin_cabang')) {
             $cabangId = Cabang::query()->where('user_id', $user->id)->value('id');
@@ -310,10 +332,15 @@ class PembayaranController extends Controller
             $query->whereHas('siswa', fn ($q) => $q->where('cabang_id', $cabangId));
         }
 
-        $ids = $query->pluck('id')->all();
-        $sent = $this->bell->paymentDueReminderBulk($ids, $user);
+        $payments = $query->get();
+        $sentCount = 0;
 
-        return back()->with('status', 'Notifikasi jatuh tempo terkirim ke '.$sent.' siswa (in-app). Integrasi WA dapat ditambahkan pada hook berikutnya.');
+        foreach ($payments as $payment) {
+            $this->whatsapp->notifySiswaPaymentDueTomorrow($payment);
+            $sentCount++;
+        }
+
+        return back()->with('status', 'Notifikasi pengingat pembayaran telah dikirim ke ' . $sentCount . ' siswa.');
     }
 
     public function markLunas(Request $request, Payment $payment): RedirectResponse
@@ -331,8 +358,9 @@ class PembayaranController extends Controller
         ])->save();
 
         $this->bell->paymentSettled($payment, $user);
+        $this->whatsapp->notifySiswaPaymentSuccess($payment);
 
-        return back()->with('status', 'Tagihan ditandai lunas dan siswa menerima notifikasi.');
+        return back()->with('status', 'Tagihan ditandai lunas dan siswa menerima notifikasi WhatsApp.');
     }
 
     private function assertCanManagePayment(User $user, Payment $payment): void
@@ -376,5 +404,22 @@ class PembayaranController extends Controller
         $qrisOk = is_file(public_path($qrisRelative));
 
         return $banks || $ewallets || $qrisOk;
+    }
+
+    private function getUnpaidPaymentsForReminder(User $user): \Illuminate\Support\Collection
+    {
+        $query = Payment::query()
+            ->belum()
+            ->with(['siswa:id,nama,cabang_id', 'fee:id,nama_biaya'])
+            ->whereNotNull('due_date');
+
+        if ($user->hasRole('admin_cabang')) {
+            $cabangId = Cabang::query()->where('user_id', $user->id)->value('id');
+            if ($cabangId) {
+                $query->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId));
+            }
+        }
+
+        return $query->latest('due_date')->get();
     }
 }

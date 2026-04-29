@@ -958,7 +958,10 @@ class ManagementService
             ->when($request->filled('bulan'), function ($q) use ($request) {
                 $b = $request->string('bulan')->toString();
                 if (preg_match('/^(\d{4})-(\d{2})$/', $b, $m)) {
-                    $q->whereYear('payments.tanggal_bayar', (int) $m[1])->whereMonth('payments.tanggal_bayar', (int) $m[2]);
+                    $q->where(function ($sub) use ($b, $m) {
+                        $sub->whereYear('payments.tanggal_bayar', (int) $m[1])->whereMonth('payments.tanggal_bayar', (int) $m[2])
+                            ->orWhere('payments.invoice_period', $b);
+                    });
                 }
             });
     }
@@ -970,7 +973,7 @@ class ManagementService
                 'siswa:id,nama,email,no_hp,nik,alamat,jenis_kelamin,cabang_id,user_id',
                 'siswa.cabang:id,nama_cabang',
                 'siswa.user:id,name,email',
-                'fee:id,nama_biaya,nominal,tipe',
+                'fee:id,nama_biaya,deskripsi,tipe',
                 'creator:id,name,email',
             ])
             ->latest('tanggal_bayar')
@@ -1092,7 +1095,7 @@ class ManagementService
 
     public function feesForSelect(): Collection
     {
-        return Fee::query()->select('id', 'nama_biaya', 'nominal', 'tipe')->orderBy('nama_biaya')->get();
+        return Fee::query()->select('id', 'nama_biaya', 'deskripsi', 'tipe')->orderBy('nama_biaya')->get();
     }
 
     public function tutorsForSelect(): Collection

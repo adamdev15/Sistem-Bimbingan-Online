@@ -1,37 +1,49 @@
 <x-layouts.dashboard-shell title="Materi Les">
     <div x-data="{
         showModal: false,
+        deleteOpen: false,
         isEdit: false,
+        removeId: null,
         formData: {
             id: '',
             nama_materi: '',
             deskripsi: '',
             pertemuan_per_minggu: 3,
             biaya_daftar: '',
-            fee_id: ''
+            biaya_spp: '',
+            biaya_tutor: ''
         },
-        openModal(editMode = false, data = null) {
+        openModal(editMode = false) {
             this.isEdit = editMode;
-            if (editMode && data) {
-                this.formData = {
-                    id: data.id,
-                    nama_materi: data.nama_materi,
-                    deskripsi: data.deskripsi || '',
-                    pertemuan_per_minggu: data.pertemuan_per_minggu,
-                    biaya_daftar: data.biaya_daftar || '',
-                    fee_id: data.fee_id || ''
-                };
-            } else {
+            if (!editMode) {
                 this.formData = {
                     id: '',
                     nama_materi: '',
                     deskripsi: '',
                     pertemuan_per_minggu: 3,
                     biaya_daftar: '',
-                    fee_id: ''
+                    biaya_spp: '',
+                    biaya_tutor: ''
                 };
             }
             this.showModal = true;
+        },
+        doEdit(item) {
+            this.isEdit = true;
+            this.formData = {
+                id: item.id,
+                nama_materi: item.nama_materi,
+                deskripsi: item.deskripsi || '',
+                pertemuan_per_minggu: item.pertemuan_per_minggu,
+                biaya_daftar: item.biaya_daftar || '',
+                biaya_spp: item.biaya_spp || '',
+                biaya_tutor: item.biaya_tutor || ''
+            };
+            this.showModal = true;
+        },
+        doDelete(id) {
+            this.removeId = id;
+            this.deleteOpen = true;
         }
     }">
         <div class="space-y-6">
@@ -115,6 +127,7 @@
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Pertemuan</th>
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Fee Tutor</th>
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Biaya Daftar</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-700">Biaya SPP</th>
                                     @role('super_admin')
                                     <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6 lg:pr-8">
                                         <span class="sr-only">Aksi</span>
@@ -151,24 +164,23 @@
                                             {{ $item->pertemuan_per_minggu }}x / Minggu
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-700">
-                                            {{ $item->fee ? $item->fee->nama_fee . ' (Rp ' . number_format($item->fee->nominal, 0, ',', '.') . ')' : '-' }}
+                                            {{ $item->biaya_tutor ? 'Rp ' . number_format($item->biaya_tutor, 0, ',', '.') : '-' }}
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-700">
                                             {{ $item->biaya_daftar ? 'Rp ' . number_format($item->biaya_daftar, 0, ',', '.') : '-' }}
                                         </td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-700">
+                                            {{ $item->biaya_spp ? 'Rp ' . number_format($item->biaya_spp, 0, ',', '.') : '-' }}
+                                        </td>
                                         @role('super_admin')
                                         <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 lg:pr-8">
                                             <div class="flex items-center justify-end gap-3">
-                                                <button type="button" @click="openModal(true, {{ json_encode($item) }})" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
+                                                <button type="button" @click="doEdit({{ json_encode($item) }})" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                                 </button>
-                                                <form action="{{ route('materi-les.destroy', $item) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus materi les ini?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
-                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    </button>
-                                                </form>
+                                                <button type="button" @click="doDelete({{ $item->id }})" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
                                             </div>
                                         </td>
                                         @endrole
@@ -196,20 +208,25 @@
         </div>
 
         @role('super_admin')
-        <!-- Modal -->
+        <!-- Modal Create/Edit -->
         <div x-show="showModal" class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
             <div x-show="showModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"></div>
             <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
                 <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
                     <div x-show="showModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-xl">
-                        <form :action="isEdit ? '{{ route('materi-les.index') }}/' + formData.id : '{{ route('materi-les.store') }}'" method="POST" enctype="multipart/form-data" class="divide-y divide-slate-100">
+                        <form :action="isEdit ? '{{ url('/materi-les') }}/' + formData.id : '{{ route('materi-les.store') }}'" method="POST" enctype="multipart/form-data" class="divide-y divide-slate-100">
                             @csrf
                             <template x-if="isEdit">
                                 <input type="hidden" name="_method" value="PUT">
                             </template>
-                            <div class="px-6 py-5">
-                                <h3 class="text-xl font-semibold leading-6 text-slate-900" id="modal-title" x-text="isEdit ? 'Edit Materi Les' : 'Tambah Materi Les'"></h3>
-                                <p class="mt-2 text-sm text-slate-500">Isi informasi untuk materi les / program belajar bimbel ini.</p>
+                            <div class="px-6 py-5 flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-xl font-semibold leading-6 text-slate-900" id="modal-title" x-text="isEdit ? 'Edit Materi Les' : 'Tambah Materi Les'"></h3>
+                                    <p class="mt-2 text-sm text-slate-500">Isi informasi untuk materi les / program belajar bimbel ini.</p>
+                                </div>
+                                <button type="button" @click="showModal = false" class="text-slate-400 hover:text-slate-500">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
                             </div>
                             <div class="px-6 py-6 space-y-6">
                                 <div>
@@ -235,15 +252,18 @@
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label for="fee_id" class="block text-sm font-medium leading-6 text-slate-900">Pilih Skema Gaji/Fee Tutor</label>
-                                    <div class="mt-2 text-sm">
-                                        <select name="fee_id" id="fee_id" x-model="formData.fee_id" class="block w-full rounded-xl border-0 py-2.5 px-3.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:max-w-xs sm:text-sm sm:leading-6">
-                                            <option value="">-- Pilih Skema Fee --</option>
-                                            @foreach($fees as $f)
-                                                <option value="{{ $f->id }}">{{ $f->nama_fee }} (Rp {{ number_format($f->nominal, 0, ',', '.') }})</option>
-                                            @endforeach
-                                        </select>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="biaya_spp" class="block text-sm font-medium leading-6 text-slate-900">Biaya SPP Bulanan (Rp)</label>
+                                        <div class="mt-2 text-sm">
+                                            <input type="number" name="biaya_spp" id="biaya_spp" x-model="formData.biaya_spp" min="0" class="block w-full rounded-xl border-0 py-2.5 px-3.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label for="biaya_tutor" class="block text-sm font-medium leading-6 text-slate-900">Biaya / Fee Tutor (Rp)</label>
+                                        <div class="mt-2 text-sm">
+                                            <input type="number" name="biaya_tutor" id="biaya_tutor" x-model="formData.biaya_tutor" min="0" class="block w-full rounded-xl border-0 py-2.5 px-3.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
+                                        </div>
                                     </div>
                                 </div>
 
@@ -266,7 +286,7 @@
                             </div>
                             <div class="bg-slate-50 px-6 py-4 flex flex-row-reverse gap-3 rounded-b-2xl">
                                 <button type="submit" class="inline-flex w-full justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:w-auto transition-colors">
-                                    Simpan
+                                    Simpan Materi
                                 </button>
                                 <button type="button" @click="showModal = false" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-colors">
                                     Batal
@@ -275,6 +295,25 @@
                         </form>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        {{-- Modal Delete --}}
+        <div x-show="deleteOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
+            <div @click.outside="deleteOpen = false" @keydown.escape.window="deleteOpen = false" class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
+                <div class="flex items-center gap-4 text-rose-600">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900">Hapus Materi Les</h3>
+                </div>
+                <p class="mt-3 text-sm text-slate-600">Apakah Anda yakin ingin menghapus materi les ini? Tindakan ini tidak dapat dibatalkan.</p>
+                <form method="POST" :action="`{{ url('/materi-les') }}/${removeId}`" class="mt-6 flex flex-wrap justify-end gap-2">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button" @click="deleteOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Ya, Hapus Materi</button>
+                </form>
             </div>
         </div>
         @endrole

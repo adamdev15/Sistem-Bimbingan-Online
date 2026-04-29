@@ -17,7 +17,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SiswaController extends Controller
 {
-    public function __construct(private readonly ManagementService $service) {}
+    public function __construct(
+        private readonly ManagementService $service,
+        private readonly \App\Services\WhatsApp\WhatsAppNotifier $whatsapp,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -41,14 +44,13 @@ class SiswaController extends Controller
     {
         $data = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:siswas,email', 'unique:users,email'],
+            'email' => ['nullable', 'email', 'unique:siswas,email'],
             'jenis_kelamin' => ['required', 'in:laki_laki,perempuan'],
             'nik' => ['nullable', 'string', 'max:30', 'unique:siswas,nik'],
             'no_hp' => ['required', 'string', 'max:25'],
             'alamat' => ['required', 'string'],
             'cabang_id' => ['required', 'exists:cabangs,id'],
             'status' => ['required', 'in:aktif,nonaktif'],
-            'login_password' => ['required', 'string', 'min:8', 'confirmed'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
             'tanggal_lahir' => ['nullable', 'date'],
             'asal_sekolah' => ['nullable', 'string', 'max:255'],
@@ -67,24 +69,16 @@ class SiswaController extends Controller
         $this->forceCabangForAdmin($data);
 
         $siswa = DB::transaction(function () use ($data) {
-            $user = User::query()->create([
-                'name' => $data['nama'],
-                'email' => $data['email'],
-                'password' => $data['login_password'],
-                'email_verified_at' => now(),
-            ]);
-            $user->syncRoles(['siswa']);
-
             $newSiswa = Siswa::query()->create([
                 'nama' => $data['nama'],
-                'email' => $data['email'],
+                'email' => $data['email'] ?? null,
                 'jenis_kelamin' => $data['jenis_kelamin'],
                 'nik' => $data['nik'] ?? null,
                 'no_hp' => $data['no_hp'],
                 'alamat' => $data['alamat'],
                 'cabang_id' => $data['cabang_id'],
                 'status' => $data['status'],
-                'user_id' => $user->id,
+                'user_id' => null, // No longer linked to a User account by default
                 'tempat_lahir' => $data['tempat_lahir'] ?? null,
                 'tanggal_lahir' => $data['tanggal_lahir'] ?? null,
                 'asal_sekolah' => $data['asal_sekolah'] ?? null,
@@ -101,43 +95,42 @@ class SiswaController extends Controller
                 'no_hp_orang_tua' => $data['no_hp_orang_tua'] ?? null,
             ]);
 
+
             if ($newSiswa->materi_les_id) {
-                $materiLes = \App\Models\MateriLes::with('fee')->find($newSiswa->materi_les_id);
+                $materiLes = \App\Models\MateriLes::find($newSiswa->materi_les_id);
                 if ($materiLes) {
                     $now = now();
                     
                     if ($materiLes->biaya_daftar > 0) {
-                        $feeDaftar = \App\Models\Fee::firstOrCreate(
-                            ['nama_biaya' => 'Biaya Pendaftaran - ' . $materiLes->nama_materi, 'tipe' => 'sekali'],
-                            ['nominal' => $materiLes->biaya_daftar]
-                        );
-
-                        \App\Models\Payment::create([
+                        $paymentReg = \App\Models\Payment::create([
                             'order_id' => 'REG-' . time() . rand(1000, 9999),
                             'student_id' => $newSiswa->id,
-                            'biaya_id' => $feeDaftar->id,
+                            'biaya_id' => 2, // Pendaftaran Bimbel Jarimatrik
+                            'invoice_period' => $now->format('Y-m'),
                             'nominal' => $materiLes->biaya_daftar,
                             'tanggal_bayar' => $now->format('Y-m-d'),
-                            'due_date' => $now->copy()->addDays(7)->format('Y-m-d'),
-                            'tanggal_jatuh_tempo' => $now->copy()->addDays(7)->format('Y-m-d'),
+                            'due_date' => $now->format('Y-m-d'),
+                            'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
                             'status' => 'belum',
                             'catatan' => 'Tagihan otomatis untuk Pendaftaran Biaya Awal.',
                         ]);
+                        $this->whatsapp->notifySiswaInvoiceCreated($paymentReg);
                     }
 
-                    if ($materiLes->fee_id) {
-                        \App\Models\Payment::create([
+                    if ($materiLes->biaya_spp > 0) {
+                        $paymentSpp = \App\Models\Payment::create([
                             'order_id' => 'SPP-' . time() . rand(1000, 9999),
                             'student_id' => $newSiswa->id,
-                            'biaya_id' => $materiLes->fee_id,
+                            'biaya_id' => 9, // SPP Bulanan Bimbel Jarimatrik
                             'invoice_period' => $now->format('Y-m'),
-                            'nominal' => $materiLes->fee->nominal ?? 0,
+                            'nominal' => $materiLes->biaya_spp,
                             'tanggal_bayar' => $now->format('Y-m-d'),
-                            'due_date' => $now->copy()->addDays(7)->format('Y-m-d'),
-                            'tanggal_jatuh_tempo' => $now->copy()->addDays(7)->format('Y-m-d'),
+                            'due_date' => $now->format('Y-m-d'),
+                            'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
                             'status' => 'belum',
                             'catatan' => 'Tagihan otomatis untuk SPP Bulan Pertama.',
                         ]);
+                        $this->whatsapp->notifySiswaInvoiceCreated($paymentSpp);
                     }
                 }
             }
@@ -145,34 +138,23 @@ class SiswaController extends Controller
             return $newSiswa;
         });
 
-        return $this->respondMutation($request, 'Siswa dan akun login berhasil ditambahkan.', $siswa);
+        return $this->respondMutation($request, 'Siswa berhasil ditambahkan.', $siswa);
     }
 
     public function update(Request $request, Siswa $siswa): RedirectResponse|JsonResponse
     {
         $this->guardCabangScope($siswa->cabang_id);
-        $linkedUserId = $siswa->user_id;
-
-        $userEmailUnique = Rule::unique('users', 'email');
-        if ($linkedUserId) {
-            $userEmailUnique = $userEmailUnique->ignore($linkedUserId);
-        }
 
         $data = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'email',
-                Rule::unique('siswas', 'email')->ignore($siswa->id),
-                $userEmailUnique,
-            ],
+            'email' => ['nullable', 'email', Rule::unique('siswas', 'email')->ignore($siswa->id)],
             'jenis_kelamin' => ['required', 'in:laki_laki,perempuan'],
             'nik' => ['nullable', 'string', 'max:30', 'unique:siswas,nik,'.$siswa->id],
             'no_hp' => ['required', 'string', 'max:25'],
             'alamat' => ['required', 'string'],
             'cabang_id' => ['required', 'exists:cabangs,id'],
             'status' => ['required', 'in:aktif,nonaktif,cuti'],
-            'login_password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'cuti_sampai' => ['nullable', 'date', 'required_if:status,cuti'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
             'tanggal_lahir' => ['nullable', 'date'],
             'asal_sekolah' => ['nullable', 'string', 'max:255'],
@@ -187,13 +169,14 @@ class SiswaController extends Controller
             'tanggal_lahir_ibu' => ['nullable', 'date'],
             'pekerjaan_ibu' => ['nullable', 'string', 'max:255'],
             'no_hp_orang_tua' => ['nullable', 'string', 'max:30'],
+            'tanggal_daftar' => ['nullable', 'date'],
         ]);
         $this->forceCabangForAdmin($data);
 
-        DB::transaction(function () use ($siswa, $data, $linkedUserId): void {
+        DB::transaction(function () use ($siswa, $data, $request): void {
             $siswa->update([
                 'nama' => $data['nama'],
-                'email' => $data['email'],
+                'email' => $data['email'] ?? null,
                 'jenis_kelamin' => $data['jenis_kelamin'],
                 'nik' => $data['nik'] ?? null,
                 'no_hp' => $data['no_hp'],
@@ -214,34 +197,28 @@ class SiswaController extends Controller
                 'tanggal_lahir_ibu' => $data['tanggal_lahir_ibu'] ?? null,
                 'pekerjaan_ibu' => $data['pekerjaan_ibu'] ?? null,
                 'no_hp_orang_tua' => $data['no_hp_orang_tua'] ?? null,
+                'cuti_sampai' => $data['cuti_sampai'] ?? null,
             ]);
 
-            if ($linkedUserId) {
-                $user = User::query()->find($linkedUserId);
-                if ($user) {
-                    $user->name = $data['nama'];
-                    $user->email = $data['email'];
-                    if (! empty($data['login_password'])) {
-                        $user->password = $data['login_password'];
-                    }
-                    $user->save();
-                }
+            if ($request->filled('tanggal_daftar')) {
+                $siswa->created_at = $data['tanggal_daftar'];
+                $siswa->save();
             }
 
-            // [LOGIC] Jika status berubah menjadi cuti, tunda tanggal_jatuh_tempo pembayaran yang belum lunas
-            if ($data['status'] === 'cuti') {
+            // Jika status berubah menjadi cuti, tunda tanggal_jatuh_tempo pembayaran yang belum lunas
+            if ($data['status'] === 'cuti' && !empty($data['cuti_sampai'])) {
+                // Update created_at untuk mengubah anchor jatuh tempo bulan depan
+                $siswa->created_at = $data['cuti_sampai'];
+                $siswa->save();
+
                 \App\Models\Payment::where('student_id', $siswa->id)
                     ->where('status', 'belum')
-                    ->each(function ($payment) {
-                        if ($payment->tanggal_jatuh_tempo) {
-                            $oldDate = \Carbon\Carbon::parse($payment->tanggal_jatuh_tempo);
-                            // Tunda 30 hari sebagai default atau sesuaikan kebutuhan
-                            $payment->update([
-                                'tanggal_jatuh_tempo' => $oldDate->addMonth()->format('Y-m-d'),
-                                'due_date' => $oldDate->format('Y-m-d'), // Sinkronkan due_date
-                                'catatan' => ($payment->catatan ? $payment->catatan . "\n" : "") . "Penundaan otomatis karena status siswa CUTI."
-                            ]);
-                        }
+                    ->each(function ($payment) use ($data) {
+                        $payment->update([
+                            'tanggal_jatuh_tempo' => $data['cuti_sampai'],
+                            'due_date' => $data['cuti_sampai'],
+                            'catatan' => ($payment->catatan ? $payment->catatan . "\n" : "") . "Penundaan otomatis sampai akhir cuti: " . $data['cuti_sampai']
+                        ]);
                     });
             }
         });
@@ -266,18 +243,29 @@ class SiswaController extends Controller
         return $this->respondMutation($request, 'Siswa berhasil dihapus.');
     }
 
-    public function exportCsv(Request $request): StreamedResponse
+    public function exportExcel(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
-        $rows = $this->service->siswaIndex($request)->getCollection();
+        $user = auth()->user();
+        $cabangId = $user->hasRole('admin_cabang') 
+            ? \App\Models\Cabang::where('user_id', $user->id)->value('id') 
+            : null;
 
-        return response()->streamDownload(function () use ($rows): void {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Nama', 'Email', 'Cabang', 'No HP', 'Status']);
-            foreach ($rows as $row) {
-                fputcsv($handle, [$row->nama, $row->email, optional($row->cabang)->nama_cabang, $row->no_hp, $row->status]);
-            }
-            fclose($handle);
-        }, 'siswa-export.csv', ['Content-Type' => 'text/csv']);
+        $query = Siswa::query()
+            ->with(['cabang', 'materiLes'])
+            ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
+            ->when(! $cabangId && $request->filled('cabang_id'), fn ($q) => $q->where('cabang_id', $request->integer('cabang_id')))
+            ->when($request->string('search')->toString(), function ($q, $search) {
+                $q->where(function ($w) use ($search) {
+                    $w->where('nama', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('nik', 'like', "%{$search}%");
+                });
+            })
+            ->latest('id');
+
+        $name = 'siswa-export-' . now()->format('Y-m-d-His') . '.xlsx';
+        
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\SiswaExport($query), $name);
     }
 
     private function respondMutation(Request $request, string $message, ?Siswa $siswa = null): RedirectResponse|JsonResponse

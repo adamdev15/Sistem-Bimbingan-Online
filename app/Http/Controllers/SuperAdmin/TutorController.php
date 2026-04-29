@@ -40,91 +40,54 @@ class TutorController extends Controller
         $data = $request->validate([
             'form_context' => ['nullable', 'string', 'max:40'],
             'nama' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:tutors,email', 'unique:users,email'],
+            'email' => ['nullable', 'email', 'unique:tutors,email'],
             'nik' => ['nullable', 'string', 'max:30', 'unique:tutors,nik'],
             'no_hp' => ['required', 'string', 'max:25'],
             'alamat' => ['required', 'string'],
             'cabang_id' => ['required', 'exists:cabangs,id'],
             'status' => ['required', 'in:aktif,nonaktif'],
-            'login_password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
         $this->forceCabangForAdmin($data);
 
-        $tutor = DB::transaction(function () use ($data) {
-            $user = User::query()->create([
-                'name' => $data['nama'],
-                'email' => $data['email'],
-                'password' => $data['login_password'],
-                'email_verified_at' => now(),
-            ]);
-            $user->syncRoles(['tutor']);
+        $tutor = Tutor::query()->create([
+            'nama' => $data['nama'],
+            'email' => $data['email'] ?? null,
+            'nik' => $data['nik'] ?? null,
+            'no_hp' => $data['no_hp'],
+            'alamat' => $data['alamat'],
+            'cabang_id' => $data['cabang_id'],
+            'status' => $data['status'],
+            'user_id' => null,
+        ]);
 
-            return Tutor::query()->create([
-                'nama' => $data['nama'],
-                'email' => $data['email'],
-                'nik' => $data['nik'] ?? null,
-                'no_hp' => $data['no_hp'],
-                'alamat' => $data['alamat'],
-                'cabang_id' => $data['cabang_id'],
-                'status' => $data['status'],
-                'user_id' => $user->id,
-            ]);
-        });
-
-        return $this->respondMutation($request, 'Tutor dan akun login berhasil ditambahkan.', $tutor);
+        return $this->respondMutation($request, 'Tutor berhasil ditambahkan.', $tutor);
     }
 
     public function update(Request $request, Tutor $tutor): RedirectResponse|JsonResponse
     {
         $this->guardCabangScope($tutor->cabang_id);
-        $linkedUserId = $tutor->user_id;
-
-        $userEmailUnique = Rule::unique('users', 'email');
-        if ($linkedUserId) {
-            $userEmailUnique = $userEmailUnique->ignore($linkedUserId);
-        }
 
         $data = $request->validate([
             'form_context' => ['nullable', 'string', 'max:40'],
             'nama' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'email',
-                Rule::unique('tutors', 'email')->ignore($tutor->id),
-                $userEmailUnique,
-            ],
+            'email' => ['nullable', 'email', Rule::unique('tutors', 'email')->ignore($tutor->id)],
             'nik' => ['nullable', 'string', 'max:30', 'unique:tutors,nik,'.$tutor->id],
             'no_hp' => ['required', 'string', 'max:25'],
             'alamat' => ['required', 'string'],
             'cabang_id' => ['required', 'exists:cabangs,id'],
             'status' => ['required', 'in:aktif,nonaktif'],
-            'login_password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
         $this->forceCabangForAdmin($data);
 
-        DB::transaction(function () use ($tutor, $data, $linkedUserId): void {
-            $tutor->update([
-                'nama' => $data['nama'],
-                'email' => $data['email'],
-                'nik' => $data['nik'] ?? null,
-                'no_hp' => $data['no_hp'],
-                'alamat' => $data['alamat'],
-                'cabang_id' => $data['cabang_id'],
-                'status' => $data['status'],
-            ]);
-
-            if ($linkedUserId) {
-                $user = User::query()->find($linkedUserId);
-                if ($user) {
-                    $user->name = $data['nama'];
-                    $user->email = $data['email'];
-                    if (! empty($data['login_password'])) {
-                        $user->password = $data['login_password'];
-                    }
-                    $user->save();
-                }
-            }
-        });
+        $tutor->update([
+            'nama' => $data['nama'],
+            'email' => $data['email'] ?? null,
+            'nik' => $data['nik'] ?? null,
+            'no_hp' => $data['no_hp'],
+            'alamat' => $data['alamat'],
+            'cabang_id' => $data['cabang_id'],
+            'status' => $data['status'],
+        ]);
 
         $tutor->refresh();
 

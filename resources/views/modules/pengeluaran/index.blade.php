@@ -58,7 +58,7 @@
 
                 {{-- BUTTON RIGHT --}}
                 <div class="flex flex-wrap items-center gap-2 ml-auto">
-                    <button @click="printOpen = true" class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+                    <button @click="printOpen = true" class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                         Cetak Laporan
                     </button>
@@ -97,7 +97,7 @@
                                     </div>
                                     <div class="pt-4 flex justify-end gap-3 text-sm font-semibold">
                                         <button type="button" @click="printOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-slate-700 hover:bg-slate-50">Batal</button>
-                                        <button type="submit" class="rounded-xl bg-emerald-600 px-6 py-2.5 text-white shadow-sm hover:bg-emerald-700 transition">Lihat Laporan</button>
+                                        <button type="submit" class="rounded-xl bg-rose-600 px-6 py-2.5 text-white shadow-sm hover:bg-rose-700 transition">Lihat Laporan</button>
                                     </div>
                                 </form>
                             </div>

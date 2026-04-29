@@ -1,4 +1,4 @@
-<x-layouts.dashboard-shell title="Siswa bimbingan — eBimbel">
+<x-layouts.dashboard-shell title="Siswa bimbingan — Jarimatrik">
     <x-module-page-header
         title="Data siswa bimbingan"
         description="Siswa yang pernah tercatat kehadiran di kelas Anda. Gunakan filter untuk menemukan siswa dengan cepat."

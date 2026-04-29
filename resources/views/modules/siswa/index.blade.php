@@ -4,16 +4,19 @@
             createOpen: false,
             editOpen: false,
             deleteOpen: false,
+            printOpen: false,
+            selectedSiswa: { id: null, nama: '' },
+            removeId: null,
             edit: {
                 id: null,
                 nama: '',
-                email: '',
                 jenis_kelamin: 'laki_laki',
                 nik: '',
                 no_hp: '',
                 alamat: '',
                 cabang_id: '',
                 status: 'aktif',
+                cuti_sampai: '',
                 tempat_lahir: '',
                 tanggal_lahir: '',
                 asal_sekolah: '',
@@ -28,10 +31,37 @@
                 tanggal_lahir_ibu: '',
                 pekerjaan_ibu: '',
                 no_hp_orang_tua: '',
+                tanggal_daftar: ''
             },
-            removeId: null,
-            printOpen: false,
-            selectedSiswa: { id: null, nama: '' },
+            doEdit(item) {
+                this.edit = {
+                    id: item.id,
+                    nama: item.nama,
+                    jenis_kelamin: item.jenis_kelamin,
+                    nik: item.nik || '',
+                    no_hp: item.no_hp,
+                    alamat: item.alamat,
+                    cabang_id: item.cabang_id,
+                    status: item.status,
+                    cuti_sampai: item.cuti_sampai || '',
+                    tempat_lahir: item.tempat_lahir || '',
+                    tanggal_lahir: item.tanggal_lahir || '',
+                    asal_sekolah: item.asal_sekolah || '',
+                    nis: item.nis || '',
+                    materi_les_id: item.materi_les_id || '',
+                    nama_ayah: item.nama_ayah || '',
+                    tempat_lahir_ayah: item.tempat_lahir_ayah || '',
+                    tanggal_lahir_ayah: item.tanggal_lahir_ayah || '',
+                    pekerjaan_ayah: item.pekerjaan_ayah || '',
+                    nama_ibu: item.nama_ibu || '',
+                    tempat_lahir_ibu: item.tempat_lahir_ibu || '',
+                    tanggal_lahir_ibu: item.tanggal_lahir_ibu || '',
+                    pekerjaan_ibu: item.pekerjaan_ibu || '',
+                    no_hp_orang_tua: item.no_hp_orang_tua || '',
+                    tanggal_daftar: item.created_at ? item.created_at.substring(0, 10) : ''
+                };
+                this.editOpen = true;
+            }
         }"
         class="space-y-6"
     >
@@ -60,7 +90,7 @@
                 <form method="GET" class="flex flex-wrap items-end gap-3 flex-1">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cari</label>
-                        <input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama / email / NIK" class="mt-1.5 min-w-[220px] rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        <input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama / NIK" class="mt-1.5 min-w-[220px] rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cabang</label>
@@ -76,7 +106,10 @@
 
                 {{-- BUTTON RIGHT --}}
                 <div class="flex items-center gap-2 ml-auto">
-                    <a href="{{ route('siswa.export.csv', request()->query()) }}" class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-emerald-600/20 transition hover:bg-emerald-700">Ekspor CSV</a>
+                    <a href="{{ route('siswa.export.excel', request()->query()) }}" class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        Unduh Data
+                    </a>
                     <button @click="createOpen = true" type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 transition hover:bg-blue-700">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                         Tambah siswa
@@ -103,7 +136,7 @@
                         @forelse ($siswas as $siswa)
                             <tr class="transition hover:bg-slate-50/80">
                                 <td class="px-4 py-3.5 font-mono text-xs text-slate-600">{{ $loop->iteration }}</td>
-                                <td class="px-4 py-3.5 font-m   edium text-slate-900">{{ $siswa->nama }}</td>
+                                <td class="px-4 py-3.5 font-medium text-slate-900">{{ $siswa->nama }}</td>
                                 <td class="px-4 py-3.5 text-slate-600">{{ optional($siswa->cabang)->nama_cabang }}</td>
                                 <td class="px-4 py-3.5 text-slate-600">{{ $siswa->asal_sekolah }}</td>
                                 <td class="px-4 py-3.5 text-slate-600">{{ $siswa->alamat }}</td>
@@ -137,7 +170,6 @@
                                             @click="printOpen = true; selectedSiswa = { id: {{ $siswa->id }}, nama: @js($siswa->nama) }"
                                             class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 p-2 rounded-lg transition-colors"
                                             title="Kartu">
-                                            {{-- ICON CARD --}}
                                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <rect x="2" y="5" width="20" height="14" rx="2" ry="2" stroke-width="2"/>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -147,10 +179,9 @@
 
                                         <button
                                             type="button"
-                                            @click="editOpen = true; edit = { id: {{ $siswa->id }}, nama: @js($siswa->nama), email: @js($siswa->email), jenis_kelamin: @js($siswa->jenis_kelamin), nik: @js($siswa->nik), no_hp: @js($siswa->no_hp), alamat: @js($siswa->alamat), cabang_id: '{{ $siswa->cabang_id }}', status: @js($siswa->status), tempat_lahir: @js($siswa->tempat_lahir), tanggal_lahir: @js($siswa->tanggal_lahir), asal_sekolah: @js($siswa->asal_sekolah), nis: @js($siswa->nis), materi_les_id: '{{ $siswa->materi_les_id }}', nama_ayah: @js($siswa->nama_ayah), tempat_lahir_ayah: @js($siswa->tempat_lahir_ayah), tanggal_lahir_ayah: @js($siswa->tanggal_lahir_ayah), pekerjaan_ayah: @js($siswa->pekerjaan_ayah), nama_ibu: @js($siswa->nama_ibu), tempat_lahir_ibu: @js($siswa->tempat_lahir_ibu), tanggal_lahir_ibu: @js($siswa->tanggal_lahir_ibu), pekerjaan_ibu: @js($siswa->pekerjaan_ibu), no_hp_orang_tua: @js($siswa->no_hp_orang_tua) }"
+                                            @click="doEdit({{ json_encode($siswa) }})"
                                             class="text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 p-2 rounded-lg transition-colors"
                                             title="Edit">
-                                            {{-- ICON EDIT --}}
                                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
@@ -164,7 +195,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-12 text-center text-slate-500">Belum ada data siswa.</td>
+                                <td colspan="8" class="px-4 py-12 text-center text-slate-500">Belum ada data siswa.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -179,7 +210,6 @@
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h3 class="text-lg font-bold tracking-tight text-slate-900">Tambah siswa</h3>
-                        <p class="mt-1 text-sm text-slate-500">Email dipakai untuk login portal siswa dan harus belum terdaftar di tabel pengguna.</p>
                     </div>
                     <button type="button" @click="createOpen = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -189,24 +219,12 @@
                     @csrf
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Nama</label>
+                            <label class="text-xs font-semibold text-slate-500">Nama <span class="text-red-500">*</span></label>
                             <input name="nama" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Email (login)</label>
-                            <input name="email" type="email" required autocomplete="email" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
                         <div>
-                            <label class="text-xs font-semibold text-slate-500">Kata sandi</label>
-                            <input name="login_password" type="password" required autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Konfirmasi kata sandi</label>
-                            <input name="login_password_confirmation" type="password" required autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Jenis kelamin</label>
-                            <select name="jenis_kelamin" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            <label class="text-xs font-semibold text-slate-500">Jenis kelamin <span class="text-red-500">*</span></label>
+                            <select name="jenis_kelamin" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="">Pilih jenis kelamin</option>
                                 <option value="laki_laki">Laki-laki</option>
                                 <option value="perempuan">Perempuan</option>
@@ -217,20 +235,20 @@
                             <input name="nik" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
                         <div>
-                            <label class="text-xs font-semibold text-slate-500">No HP</label>
+                            <label class="text-xs font-semibold text-slate-500">No HP <span class="text-red-500">*</span></label>
                             <input name="no_hp" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
                         <div>
-                            <label class="text-xs font-semibold text-slate-500">Cabang</label>
+                            <label class="text-xs font-semibold text-slate-500">Cabang <span class="text-red-500">*</span></label>
                             <select name="cabang_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                <option value="">Pilih cabang</option>
                                 @foreach ($cabangs as $cabang)
-                                    <option value="">Pilih cabang</option>
                                     <option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Alamat</label>
+                            <label class="text-xs font-semibold text-slate-500">Alamat <span class="text-red-500">*</span></label>
                             <textarea name="alamat" required rows="2" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15"></textarea>
                         </div>
                         <div>
@@ -319,7 +337,7 @@
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h3 class="text-lg font-bold tracking-tight text-slate-900">Edit siswa</h3>
-                        <p class="mt-1 text-sm text-slate-500">Perubahan email akan mengikuti akun login siswa. Kosongkan kata sandi jika tidak diubah.</p>
+                        <p class="mt-1 text-sm text-slate-500">Perbarui data profil dan informasi orang tua siswa.</p>
                     </div>
                     <button type="button" @click="editOpen = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -332,18 +350,6 @@
                         <div class="sm:col-span-2">
                             <label class="text-xs font-semibold text-slate-500">Nama</label>
                             <input name="nama" x-model="edit.nama" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Email (login)</label>
-                            <input name="email" type="email" x-model="edit.email" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Kata sandi baru (opsional)</label>
-                            <input name="login_password" type="password" autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Konfirmasi</label>
-                            <input name="login_password_confirmation" type="password" autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
                         <div>
                             <label class="text-xs font-semibold text-slate-500">Jenis kelamin</label>
@@ -435,12 +441,20 @@
                             <input name="no_hp_orang_tua" x-model="edit.no_hp_orang_tua" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
                         <div>
+                            <label class="text-xs font-semibold text-slate-500">Tanggal Daftar</label>
+                            <input name="tanggal_daftar" type="date" x-model="edit.tanggal_daftar" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
                             <label class="text-xs font-semibold text-slate-500">Status</label>
                             <select name="status" x-model="edit.status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="aktif">Aktif</option>
                                 <option value="cuti">Cuti</option>
                                 <option value="nonaktif">Nonaktif</option>
                             </select>
+                        </div>
+                        <div x-show="edit.status === 'cuti'" x-cloak x-transition class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Cuti Sampai Tanggal <span class="text-red-500">*</span></label>
+                            <input name="cuti_sampai" type="date" x-model="edit.cuti_sampai" :required="edit.status === 'cuti'" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
                     </div>
                     <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">

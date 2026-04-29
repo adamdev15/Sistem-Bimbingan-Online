@@ -13,7 +13,7 @@ class Fee extends Model
 
     protected $fillable = [
         'nama_biaya',
-        'nominal',
+        'deskripsi',
         'tipe',
     ];
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\Siswa\DashboardController as SiswaDashboardController;
 use App\Http\Controllers\SuperAdmin\CabangController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdmin\LaporanKeuanganController;
+use App\Http\Controllers\SuperAdmin\FeeController;
 use App\Http\Controllers\SuperAdmin\MateriLesController;
 use App\Http\Controllers\SuperAdmin\PengeluaranController;
 use App\Http\Controllers\SuperAdmin\PembayaranController;
@@ -49,9 +50,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/pengaturan/whatsapp', [WhatsappSettingsController::class, 'edit'])->name('whatsapp-settings.edit');
         Route::put('/pengaturan/whatsapp', [WhatsappSettingsController::class, 'update'])->name('whatsapp-settings.update');
+        Route::post('/pengaturan/whatsapp/test', [WhatsappSettingsController::class, 'test'])->name('whatsapp-settings.test');
 
         Route::get('/pengaturan/website', [\App\Http\Controllers\SuperAdmin\SettingController::class, 'index'])->name('settings.website');
         Route::put('/pengaturan/website', [\App\Http\Controllers\SuperAdmin\SettingController::class, 'update'])->name('settings.website.update');
+
+        Route::get('/biaya', [FeeController::class, 'index'])->name('fees.index');
+        Route::post('/biaya', [FeeController::class, 'store'])->name('fees.store');
+        Route::put('/biaya/{fee}', [FeeController::class, 'update'])->name('fees.update');
+        Route::delete('/biaya/{fee}', [FeeController::class, 'destroy'])->name('fees.destroy');
     });
 
     Route::middleware('role:super_admin|admin_cabang')->group(function () {
@@ -71,6 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/siswa', [SiswaController::class, 'index'])->name('siswa.index');
         Route::get('/siswa/export/csv', [SiswaController::class, 'exportCsv'])->name('siswa.export.csv');
+        Route::get('/siswa/export/excel', [SiswaController::class, 'exportExcel'])->name('siswa.export.excel');
         Route::get('/siswa/{siswa}', [SiswaController::class, 'show'])->name('siswa.show');
         Route::post('/siswa', [SiswaController::class, 'store'])->name('siswa.store');
         Route::put('/siswa/{siswa}', [SiswaController::class, 'update'])->name('siswa.update');
@@ -127,6 +135,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::middleware('role:super_admin|admin_cabang')->group(function () {
             Route::get('/pembayaran/export/ringkasan.pdf', [PembayaranController::class, 'exportRingkasanPdf'])->name('pembayaran.export.ringkasan.pdf');
             Route::get('/pembayaran/export/ringkasan.xlsx', [PembayaranController::class, 'exportRingkasanExcel'])->name('pembayaran.export.ringkasan.excel');
+            Route::get('/pembayaran/export/excel', [PembayaranController::class, 'exportExcel'])->name('pembayaran.export.excel');
             Route::get('/pembayaran/export/outstanding.pdf', [PembayaranController::class, 'exportOutstandingPdf'])->name('pembayaran.export.outstanding.pdf');
             Route::get('/pembayaran/export/outstanding.xlsx', [PembayaranController::class, 'exportOutstandingExcel'])->name('pembayaran.export.outstanding.excel');
             Route::post('/pembayaran/massal', [PembayaranController::class, 'massStore'])->name('pembayaran.mass.store');

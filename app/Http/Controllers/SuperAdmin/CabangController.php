@@ -33,6 +33,9 @@ class CabangController extends Controller
             'kota' => ['required', 'string', 'max:120'],
             'telepon' => ['nullable', 'string', 'max:25'],
             'status' => ['required', 'in:aktif,nonaktif'],
+            'sistem_hasil' => ['nullable', 'in:bagi_hasil,pusat'],
+            'profit_share_investor' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'profit_share_pusat' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'admin_name' => ['required', 'string', 'max:255'],
             'admin_email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'admin_password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -53,6 +56,9 @@ class CabangController extends Controller
                 'kota' => $data['kota'],
                 'telepon' => $data['telepon'] ?? null,
                 'status' => $data['status'],
+                'sistem_hasil' => $data['sistem_hasil'] ?? 'pusat',
+                'profit_share_investor' => $data['profit_share_investor'] ?? 0,
+                'profit_share_pusat' => $data['profit_share_pusat'] ?? 0,
                 'user_id' => $user->id,
             ]);
         });
@@ -75,6 +81,9 @@ class CabangController extends Controller
             'kota' => ['required', 'string', 'max:120'],
             'telepon' => ['nullable', 'string', 'max:25'],
             'status' => ['required', 'in:aktif,nonaktif'],
+            'sistem_hasil' => ['nullable', 'in:bagi_hasil,pusat'],
+            'profit_share_investor' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'profit_share_pusat' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'admin_name' => ['nullable', 'string', 'max:255'],
             'admin_email' => [
                 'nullable',
@@ -92,6 +101,9 @@ class CabangController extends Controller
                 'kota' => $data['kota'],
                 'telepon' => $data['telepon'] ?? null,
                 'status' => $data['status'],
+                'sistem_hasil' => $data['sistem_hasil'] ?? 'pusat',
+                'profit_share_investor' => $data['profit_share_investor'] ?? 0,
+                'profit_share_pusat' => $data['profit_share_pusat'] ?? 0,
             ]);
 
             if ($linkedUserId) {

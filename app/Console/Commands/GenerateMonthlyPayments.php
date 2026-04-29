@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Siswa;
 use App\Models\Payment;
+use App\Models\Fee;
+use App\Services\WhatsApp\WhatsAppNotifier;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -22,54 +24,87 @@ class GenerateMonthlyPayments extends Command
      *
      * @var string
      */
-    protected $description = 'Generate automatic SPP monthly payments for active students';
+    protected $description = 'Generate SPP invoices H-2 before due date based on student registration date';
+
+    public function __construct(
+        private readonly WhatsAppNotifier $whatsapp
+    ) {
+        parent::__construct();
+    }
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('Starting monthly payment generation...');
-        $count = 0;
-        
-        $siswas = Siswa::with('materiLes.fee')->where('status', 'aktif')->get();
-        // Catatan: Siswa yang berstatus 'cuti' tidak akan degenerate tagihannya.
-        // Jika mereka kembali 'aktif', tagihan bulan berjalan akan degenerate jika belum ada.
-        
-        $now = now();
-        $currentPeriod = $now->format('Y-m');
+        $targetDate = now()->addDays(2);
+        $targetDay = $targetDate->day;
+        $targetMonthYear = $targetDate->format('Y-m');
+
+        $this->info("Checking students with due day: $targetDay for period: $targetMonthYear");
+
+        // Find active students whose created_at day matches the target day
+        $siswas = Siswa::where('status', 'aktif')
+            ->whereNotNull('materi_les_id')
+            ->whereNotNull('created_at')
+            ->get()
+            ->filter(function ($siswa) use ($targetDay) {
+                if (!$siswa->created_at) return false;
+                
+                $anchorDay = $siswa->created_at->day;
+                
+                // Handle cases where anchor day is 31 and target month has fewer days
+                $lastDayOfTargetMonth = now()->addDays(2)->endOfMonth()->day;
+                if ($anchorDay > $lastDayOfTargetMonth) {
+                    return $targetDay === $lastDayOfTargetMonth;
+                }
+                
+                return $anchorDay === $targetDay;
+            });
 
         foreach ($siswas as $siswa) {
-            if (!$siswa->materi_les_id || !$siswa->materiLes || !$siswa->materiLes->fee_id) {
+            $materi = $siswa->materiLes;
+            if (!$materi || $materi->biaya_spp <= 0) {
                 continue;
             }
 
-            // Check if already billed for this period
-            $existing = Payment::where('student_id', $siswa->id)
-                ->where('biaya_id', $siswa->materiLes->fee_id)
-                ->where('invoice_period', $currentPeriod)
+            // Check if invoice already exists for this period
+            $exists = Payment::where('student_id', $siswa->id)
+                ->where('invoice_period', $targetMonthYear)
+                ->whereHas('fee', function ($query) {
+                    $query->where('tipe', 'bulanan');
+                })
                 ->exists();
 
-            if (!$existing) {
-                $dueDate = $now->copy()->addDays(7);
-                
-                Payment::create([
-                    'order_id' => 'SPP-' . time() . rand(1000, 9999),
-                    'student_id' => $siswa->id,
-                    'biaya_id' => $siswa->materiLes->fee_id,
-                    'invoice_period' => $currentPeriod,
-                    'nominal' => $siswa->materiLes->fee->nominal ?? 0,
-                    'tanggal_bayar' => $now->format('Y-m-d'),
-                    'due_date' => $dueDate->format('Y-m-d'),
-                    'tanggal_jatuh_tempo' => $dueDate->format('Y-m-d'),
-                    'status' => 'belum',
-                    'catatan' => 'Tagihan otomatis untuk SPP Bulan ' . $now->translatedFormat('F Y'),
-                ]);
-                $count++;
+            if ($exists) {
+                $this->line("Skipping Siswa {$siswa->nama}: Invoice already exists for $targetMonthYear");
+                continue;
+            }
+
+            // Create the payment
+            $payment = Payment::create([
+                'order_id' => 'SPP-' . time() . rand(1000, 9999),
+                'student_id' => $siswa->id,
+                'biaya_id' => 9, // SPP Bulanan Bimbel Jarimatrik
+                'invoice_period' => $targetMonthYear,
+                'nominal' => $materi->biaya_spp,
+                'tanggal_bayar' => now()->format('Y-m-d'),
+                'due_date' => $targetDate->format('Y-m-d'),
+                'tanggal_jatuh_tempo' => $targetDate->format('Y-m-d'),
+                'status' => 'belum',
+                'catatan' => "Tagihan SPP otomatis untuk periode $targetMonthYear (H-2 Jatuh Tempo).",
+            ]);
+
+            // Notify via WhatsApp
+            try {
+                $this->whatsapp->notifySiswaInvoiceCreated($payment);
+                $this->info("Generated and notified SPP for Siswa {$siswa->nama}");
+            } catch (\Exception $e) {
+                Log::error("Failed to send WhatsApp for SPP Siswa {$siswa->id}: " . $e->getMessage());
+                $this->error("Generated SPP for Siswa {$siswa->nama} but WhatsApp failed.");
             }
         }
-        
-        $this->info("Successfully generated {$count} new payments.");
-        Log::info("sistem:generate-spp ran at {$now->toDateTimeString()}: created {$count} new payments.");
+
+        $this->info("Generation process completed.");
     }
 }

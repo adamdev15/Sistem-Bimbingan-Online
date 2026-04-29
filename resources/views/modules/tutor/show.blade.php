@@ -1,4 +1,4 @@
-<x-layouts.dashboard-shell title="Profil Tutor — eBimbel">
+<x-layouts.dashboard-shell title="Profil Tutor — Jarimatrik">
     <div class="space-y-6">
         {{-- HEADER --}}
         <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-900 to-blue-900 px-6 py-8 text-white shadow-2xl">

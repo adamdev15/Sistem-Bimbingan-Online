@@ -1,4 +1,4 @@
-<x-layouts.dashboard-shell title="Profil Siswa — eBimbel">
+<x-layouts.dashboard-shell title="Profil Siswa — Jarimatrik">
     <div class="space-y-6">
         {{-- HEADER / HERO SECTION --}}
         <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-900 to-blue-900 px-6 py-8 text-white shadow-2xl">
@@ -99,7 +99,7 @@
                             <div class="flex items-center justify-between border-b border-slate-50 pb-3 last:border-0 last:pb-0">
                                 <div>
                                     <p class="text-sm font-bold text-slate-800">{{ optional($pay->fee)->nama_biaya }}</p>
-                                    <p class="text-[10px] font-semibold text-slate-400 capitalize">{{ $pay->status }} • {{ optional($pay->tanggal_bayar)->format('d M') }}</p>
+                                    <p class="text-[10px] font-semibold text-slate-400 capitalize">{{ $pay->status }} • {{ optional($pay->due_date)->format('d M') }}</p>
                                 </div>
                                 <div class="text-right">
                                     <p class="text-sm font-black text-slate-900">Rp {{ number_format($pay->nominal, 0, ',', '.') }}</p>

@@ -1,10 +1,10 @@
 @php
     $openTutorCreate = $errors->any() && old('form_context') === 'tutor_create';
 @endphp
-<x-layouts.dashboard-shell title="Tutor - eBimbel">
+<x-layouts.dashboard-shell title="Tutor - Jarimatrik">
     <div
         x-data="{
-            createOpen: @json($openTutorCreate),
+            createOpen: false,
             editOpen: false,
             deleteOpen: false,
             edit: {
@@ -16,6 +16,19 @@
                 alamat: '',
                 cabang_id: '',
                 status: 'aktif',
+            },
+            doEdit(item) {
+                this.edit = {
+                    id: item.id,
+                    nama: item.nama,
+                    email: item.email || '',
+                    nik: item.nik || '',
+                    no_hp: item.no_hp,
+                    alamat: item.alamat,
+                    cabang_id: item.cabang_id,
+                    status: item.status
+                };
+                this.editOpen = true;
             },
             removeId: null,
         }"
@@ -84,8 +97,8 @@
                     <thead class="bg-slate-50/90 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
                             <th class="px-4 py-3.5">Kode</th>
-                            <th class="px-4 py-3.5">Nama</th>
-                            <th class="px-4 py-3.5">Email login</th>
+                             <th class="px-4 py-3.5">Nama</th>
+                            <th class="px-4 py-3.5">Email (Opsional)</th>
                             <th class="px-4 py-3.5">Cabang</th>
                             <th class="px-4 py-3.5">Total Kehadiran</th>
                             <th class="px-4 py-3.5">Status</th>
@@ -113,18 +126,9 @@
         <path d="M12 14C8.13401 14 5 17.134 5 21H19C19 17.134 15.866 14 12 14Z"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg></a>
-                                        <button @click="edit = {
-                                            id: {{ $tutor->id }},
-                                            nama: '{{ $tutor->nama }}',
-                                            email: '{{ $tutor->email }}',
-                                            nik: '{{ $tutor->nik }}',
-                                            no_hp: '{{ $tutor->no_hp }}',
-                                            alamat: `{!! $tutor->alamat !!}`,
-                                            cabang_id: {{ $tutor->cabang_id }},
-                                            status: '{{ $tutor->status }}',
-                                        }; editOpen = true;" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
+                                         <button @click="doEdit({{ json_encode($tutor) }})" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
-                                        <button @click="removeId = {{ $tutor->id }}; deleteOpen = true;" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
+                                         <button @click="deleteOpen = true; removeId = {{ $tutor->id }}" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
                                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                                     </div>
                                 </td>
@@ -148,9 +152,8 @@
         <div x-show="createOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
             <div @click.outside="createOpen = false" @keydown.escape.window="createOpen = false" class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
                 <div class="flex items-start justify-between gap-4">
-                    <div>
+                     <div>
                         <h3 class="text-lg font-bold tracking-tight text-slate-900">Tambah tutor baru</h3>
-                        <p class="mt-1 text-sm text-slate-500">Email akan digunakan untuk kredensial login portal tutor.</p>
                     </div>
                     <button type="button" @click="createOpen = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -160,32 +163,20 @@
                     @csrf
                     <input type="hidden" name="form_context" value="tutor_create">
                     <div class="grid gap-3 sm:grid-cols-2">
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Nama</label>
+                         <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Nama <span class="text-red-500">*</span></label>
                             <input name="nama" value="{{ old('nama') }}" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Email (login)</label>
-                            <input name="email" type="email" value="{{ old('email') }}" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
                         <div>
-                            <label class="text-xs font-semibold text-slate-500">Kata sandi login</label>
-                            <input name="login_password" type="password" required minlength="8" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Konfirmasi</label>
-                            <input name="login_password_confirmation" type="password" required minlength="8" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">NIK (pilihan)</label>
+                            <label class="text-xs font-semibold text-slate-500">NIK (Pilihan)</label>
                             <input name="nik" value="{{ old('nik') }}" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">No HP</label>
+                         <div>
+                            <label class="text-xs font-semibold text-slate-500">No HP <span class="text-red-500">*</span></label>
                             <input name="no_hp" value="{{ old('no_hp') }}" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Cabang</label>
+                         <div>
+                            <label class="text-xs font-semibold text-slate-500">Cabang <span class="text-red-500">*</span></label>
                             <select name="cabang_id" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="">Pilih cabang</option>
                                 @foreach ($cabangs as $cabang)
@@ -193,15 +184,15 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Status</label>
+                         <div>
+                            <label class="text-xs font-semibold text-slate-500">Status <span class="text-red-500">*</span></label>
                             <select name="status" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="aktif">Aktif</option>
                                 <option value="nonaktif">Nonaktif</option>
                             </select>
                         </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Alamat</label>
+                         <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Alamat <span class="text-red-500">*</span></label>
                             <textarea name="alamat" required rows="2" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">{{ old('alamat') }}</textarea>
                         </div>
                     </div>
@@ -217,9 +208,8 @@
         <div x-show="editOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
             <div @click.outside="editOpen = false" @keydown.escape.window="editOpen = false" class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
                 <div class="flex items-start justify-between gap-4">
-                    <div>
+                     <div>
                         <h3 class="text-lg font-bold tracking-tight text-slate-900">Edit tutor</h3>
-                        <p class="mt-1 text-sm text-slate-500">Perubahan email mengikuti akun login. Kosongkan kata sandi jika tidak diubah.</p>
                     </div>
                     <button type="button" @click="editOpen = false" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -229,47 +219,35 @@
                     @csrf
                     @method('PUT')
                     <div class="grid gap-3 sm:grid-cols-2">
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Nama</label>
+                         <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Nama <span class="text-red-500">*</span></label>
                             <input name="nama" x-model="edit.nama" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Email (login)</label>
-                            <input name="email" type="email" x-model="edit.email" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Kata sandi baru (opsional)</label>
-                            <input name="login_password" type="password" autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Konfirmasi</label>
-                            <input name="login_password_confirmation" type="password" autocomplete="new-password" minlength="8" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
                         <div>
                             <label class="text-xs font-semibold text-slate-500">NIK</label>
                             <input name="nik" x-model="edit.nik" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">No HP</label>
+                         <div>
+                            <label class="text-xs font-semibold text-slate-500">No HP <span class="text-red-500">*</span></label>
                             <input name="no_hp" x-model="edit.no_hp" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Cabang</label>
+                         <div>
+                            <label class="text-xs font-semibold text-slate-500">Cabang <span class="text-red-500">*</span></label>
                             <select name="cabang_id" x-model="edit.cabang_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 @foreach ($cabangs as $cabang)
                                     <option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div>
-                            <label class="text-xs font-semibold text-slate-500">Status</label>
+                         <div>
+                            <label class="text-xs font-semibold text-slate-500">Status <span class="text-red-500">*</span></label>
                             <select name="status" x-model="edit.status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="aktif">Aktif</option>
                                 <option value="nonaktif">Nonaktif</option>
                             </select>
                         </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Alamat</label>
+                         <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Alamat <span class="text-red-500">*</span></label>
                             <textarea name="alamat" x-model="edit.alamat" required rows="2" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15"></textarea>
                         </div>
                     </div>
@@ -285,7 +263,7 @@
         <div x-show="deleteOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
             <div @click.outside="deleteOpen = false" @keydown.escape.window="deleteOpen = false" class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
                 <h3 class="text-lg font-bold text-slate-900">Hapus tutor</h3>
-                <p class="mt-2 text-sm text-slate-600">Tutor dan akun login terkait akan dihapus.</p>
+                 <p class="mt-2 text-sm text-slate-600">Tutor terkait akan dihapus dari sistem.</p>
                 <form method="POST" :action="`{{ url('/tutors') }}/${removeId}`" class="mt-6 flex flex-wrap justify-end gap-2">
                     @csrf
                     @method('DELETE')

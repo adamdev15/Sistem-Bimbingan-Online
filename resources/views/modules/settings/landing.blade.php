@@ -112,7 +112,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-slate-700">Website URL</label>
-                            <input type="url" name="footer_web" value="{{ $settings['footer_web'] ?? 'https://ebimbel.co.id' }}" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm">
+                            <input type="url" name="footer_web" value="{{ $settings['footer_web'] ?? 'https://jarimatrik.co.id' }}" class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm">
                         </div>
                         <div class="sm:col-span-2">
                             <label class="block text-sm font-semibold text-slate-700">Nomor WhatsApp Link Global (CTA Bawah)</label>

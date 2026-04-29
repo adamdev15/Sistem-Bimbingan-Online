@@ -11,12 +11,16 @@ use Illuminate\Validation\Rule;
 
 class MateriLesController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $materiLes = MateriLes::with('fee')->latest()->paginate(10);
-        $fees = Fee::all();
+        $materiLes = MateriLes::query()
+            ->when($request->search, function ($query, $search) {
+                $query->where('nama_materi', 'like', "%{$search}%");
+            })
+            ->latest()
+            ->paginate(10);
 
-        return view('modules.materi-les.index', compact('materiLes', 'fees'));
+        return view('modules.materi-les.index', compact('materiLes'));
     }
 
     public function store(Request $request)
@@ -26,7 +30,8 @@ class MateriLesController extends Controller
             'deskripsi' => ['nullable', 'string'],
             'pertemuan_per_minggu' => ['required', 'integer', 'min:1'],
             'biaya_daftar' => ['nullable', 'numeric', 'min:0'],
-            'fee_id' => ['nullable', 'exists:fees,id'],
+            'biaya_spp' => ['nullable', 'numeric', 'min:0'],
+            'biaya_tutor' => ['nullable', 'numeric', 'min:0'],
             'foto' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ]);
 
@@ -54,7 +59,8 @@ class MateriLesController extends Controller
             'deskripsi' => ['nullable', 'string'],
             'pertemuan_per_minggu' => ['required', 'integer', 'min:1'],
             'biaya_daftar' => ['nullable', 'numeric', 'min:0'],
-            'fee_id' => ['nullable', 'exists:fees,id'],
+            'biaya_spp' => ['nullable', 'numeric', 'min:0'],
+            'biaya_tutor' => ['nullable', 'numeric', 'min:0'],
             'foto' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ]);
 
