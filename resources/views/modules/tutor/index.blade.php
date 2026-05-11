@@ -6,7 +6,6 @@
         x-data="{
             createOpen: false,
             editOpen: false,
-            deleteOpen: false,
             edit: {
                 id: null,
                 nama: '',
@@ -14,8 +13,9 @@
                 nik: '',
                 no_hp: '',
                 alamat: '',
-                cabang_id: '',
+                cabang_ids: [],
                 status: 'aktif',
+                jenis_tutor: 'parttime',
             },
             doEdit(item) {
                 this.edit = {
@@ -25,8 +25,9 @@
                     nik: item.nik || '',
                     no_hp: item.no_hp,
                     alamat: item.alamat,
-                    cabang_id: item.cabang_id,
-                    status: item.status
+                    cabang_ids: item.cabangs.map(c => c.id),
+                    status: item.status,
+                    jenis_tutor: item.jenis_tutor
                 };
                 this.editOpen = true;
             },
@@ -100,6 +101,7 @@
                              <th class="px-4 py-3.5">Nama</th>
                             <th class="px-4 py-3.5">Email (Opsional)</th>
                             <th class="px-4 py-3.5">Cabang</th>
+                            <th class="px-4 py-3.5">Jenis</th>
                             <th class="px-4 py-3.5">Total Kehadiran</th>
                             <th class="px-4 py-3.5">Status</th>
                             <th class="px-4 py-3.5 text-right">Aksi</th>
@@ -111,7 +113,10 @@
                                 <td class="px-4 py-3.5 font-mono text-xs text-slate-600">T-{{ str_pad((string) $tutor->id, 3, '0', STR_PAD_LEFT) }}</td>
                                 <td class="px-4 py-3.5 font-medium text-slate-900">{{ $tutor->nama }}</td>
                                 <td class="px-4 py-3.5 text-slate-600">{{ optional($tutor->user)->email ?? $tutor->email }}</td>
-                                <td class="px-4 py-3.5">{{ optional($tutor->cabang)->nama_cabang }}</td>
+                                <td class="px-4 py-3.5">{{ $tutor->cabangs->pluck('nama_cabang')->implode(', ') }}</td>
+                                <td class="px-4 py-3.5">
+                                    <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider {{ $tutor->jenis_tutor === 'fulltime' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">{{ $tutor->jenis_tutor }}</span>
+                                </td>
                                 <td class="px-4 py-3.5">{{ $tutor->kehadirans_count }}/{{ now()->translatedFormat('F') }}</td>
                                 <td class="px-4 py-3.5">
                                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $tutor->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700' }}">{{ ucfirst($tutor->status) }}</span>
@@ -128,8 +133,12 @@
     </svg></a>
                                          <button @click="doEdit({{ json_encode($tutor) }})" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
-                                         <button @click="deleteOpen = true; removeId = {{ $tutor->id }}" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
-                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                                         <form method="POST" action="{{ route('tutors.destroy', $tutor) }}" class="inline" onsubmit="event.preventDefault(); confirmDelete(this, 'Hapus data tutor?')">
+                                             @csrf @method('DELETE')
+                                             <button type="submit" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
+                                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                             </button>
+                                         </form>
                                     </div>
                                 </td>
                             </tr>
@@ -175,14 +184,71 @@
                             <label class="text-xs font-semibold text-slate-500">No HP <span class="text-red-500">*</span></label>
                             <input name="no_hp" value="{{ old('no_hp') }}" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
-                         <div>
-                            <label class="text-xs font-semibold text-slate-500">Cabang <span class="text-red-500">*</span></label>
-                            <select name="cabang_id" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                                <option value="">Pilih cabang</option>
-                                @foreach ($cabangs as $cabang)
-                                    <option value="{{ $cabang->id }}" @selected(old('cabang_id') == $cabang->id)>{{ $cabang->nama_cabang }}</option>
-                                @endforeach
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Jenis Tutor <span class="text-red-500">*</span></label>
+                            <select name="jenis_tutor" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                <option value="parttime" @selected(old('jenis_tutor') === 'parttime')>Part Time</option>
+                                <option value="fulltime" @selected(old('jenis_tutor') === 'fulltime')>Full Time</option>
                             </select>
+                        </div>
+                         <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Pilih Cabang <span class="text-red-500">*</span></label>
+                            <div x-data="{ 
+                                    open: false, 
+                                    selected: [],
+                                    options: {{ json_encode($cabangs->map(fn($c) => ['id' => $c->id, 'nama' => $c->nama_cabang])) }},
+                                    toggle(id) {
+                                        if (this.selected.includes(id)) {
+                                            this.selected = this.selected.filter(i => i !== id);
+                                        } else {
+                                            this.selected.push(id);
+                                        }
+                                    }
+                                }" 
+                                class="relative mt-1.5">
+                                
+                                <!-- Trigger Button -->
+                                <button type="button" @click="open = !open" 
+                                    class="relative w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15 transition-all">
+                                    <div class="flex flex-wrap gap-1.5 pr-8 min-h-[1.25rem]">
+                                        <template x-if="selected.length === 0">
+                                            <span class="text-slate-400">Pilih satu atau lebih cabang...</span>
+                                        </template>
+                                        <template x-for="id in selected" :key="id">
+                                            <span class="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                                <span x-text="options.find(o => o.id == id)?.nama"></span>
+                                                <svg @click.stop="toggle(id)" class="h-3 w-3 cursor-pointer hover:text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </span>
+                                        </template>
+                                    </div>
+                                    <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </span>
+                                </button>
+
+                                <!-- Dropdown List -->
+                                <div x-show="open" x-cloak @click.outside="open = false" 
+                                    class="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-xl bg-white p-1 shadow-xl ring-1 ring-slate-900/10 transition-all border border-slate-100">
+                                    <div class="p-2">
+                                        <template x-for="opt in options" :key="opt.id">
+                                            <div @click="toggle(opt.id)" 
+                                                class="flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2 text-sm transition-colors hover:bg-slate-50"
+                                                :class="selected.includes(opt.id) ? 'bg-blue-50/50' : ''">
+                                                <div class="flex h-4 w-4 items-center justify-center rounded border transition-colors"
+                                                    :class="selected.includes(opt.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white'">
+                                                    <svg x-show="selected.includes(opt.id)" class="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                                </div>
+                                                <span class="flex-1 font-medium text-slate-700" x-text="opt.nama"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- Hidden Inputs for Form Submission -->
+                                <template x-for="id in selected" :key="'input-'+id">
+                                    <input type="hidden" name="cabang_ids[]" :value="id">
+                                </template>
+                            </div>
                         </div>
                          <div>
                             <label class="text-xs font-semibold text-slate-500">Status <span class="text-red-500">*</span></label>
@@ -231,13 +297,70 @@
                             <label class="text-xs font-semibold text-slate-500">No HP <span class="text-red-500">*</span></label>
                             <input name="no_hp" x-model="edit.no_hp" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
-                         <div>
-                            <label class="text-xs font-semibold text-slate-500">Cabang <span class="text-red-500">*</span></label>
-                            <select name="cabang_id" x-model="edit.cabang_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
-                                @foreach ($cabangs as $cabang)
-                                    <option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }}</option>
-                                @endforeach
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Jenis Tutor <span class="text-red-500">*</span></label>
+                            <select name="jenis_tutor" x-model="edit.jenis_tutor" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                <option value="parttime">Part Time</option>
+                                <option value="fulltime">Full Time</option>
                             </select>
+                        </div>
+                         <div class="sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-500">Pilih Cabang <span class="text-red-500">*</span></label>
+                            <div x-data="{ 
+                                    open: false, 
+                                    options: {{ json_encode($cabangs->map(fn($c) => ['id' => $c->id, 'nama' => $c->nama_cabang])) }},
+                                    toggle(id) {
+                                        if (this.edit.cabang_ids.includes(id)) {
+                                            this.edit.cabang_ids = this.edit.cabang_ids.filter(i => i !== id);
+                                        } else {
+                                            this.edit.cabang_ids.push(id);
+                                        }
+                                    }
+                                }" 
+                                class="relative mt-1.5">
+                                
+                                <!-- Trigger Button -->
+                                <button type="button" @click="open = !open" 
+                                    class="relative w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15 transition-all">
+                                    <div class="flex flex-wrap gap-1.5 pr-8 min-h-[1.25rem]">
+                                        <template x-if="edit.cabang_ids.length === 0">
+                                            <span class="text-slate-400">Pilih satu atau lebih cabang...</span>
+                                        </template>
+                                        <template x-for="id in edit.cabang_ids" :key="id">
+                                            <span class="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                                <span x-text="options.find(o => o.id == id)?.nama"></span>
+                                                <svg @click.stop="toggle(id)" class="h-3 w-3 cursor-pointer hover:text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </span>
+                                        </template>
+                                    </div>
+                                    <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </span>
+                                </button>
+
+                                <!-- Dropdown List -->
+                                <div x-show="open" x-cloak @click.outside="open = false" 
+                                    class="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-xl bg-white p-1 shadow-xl ring-1 ring-slate-900/10 transition-all border border-slate-100">
+                                    <div class="p-2">
+                                        <template x-for="opt in options" :key="opt.id">
+                                            <div @click="toggle(opt.id)" 
+                                                class="flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2 text-sm transition-colors hover:bg-slate-50"
+                                                :class="edit.cabang_ids.includes(opt.id) ? 'bg-blue-50/50' : ''">
+                                                <div class="flex h-4 w-4 items-center justify-center rounded border transition-colors"
+                                                    :class="edit.cabang_ids.includes(opt.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white'">
+                                                    <svg x-show="edit.cabang_ids.includes(opt.id)" class="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                                </div>
+                                                <span class="flex-1 font-medium text-slate-700" x-text="opt.nama"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- Hidden Inputs for Form Submission -->
+                                <template x-for="id in edit.cabang_ids" :key="'edit-input-'+id">
+                                    <input type="hidden" name="cabang_ids[]" :value="id">
+                                </template>
+                            </div>
                         </div>
                          <div>
                             <label class="text-xs font-semibold text-slate-500">Status <span class="text-red-500">*</span></label>
@@ -259,18 +382,5 @@
             </div>
         </div>
 
-        {{-- Modal: delete --}}
-        <div x-show="deleteOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
-            <div @click.outside="deleteOpen = false" @keydown.escape.window="deleteOpen = false" class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
-                <h3 class="text-lg font-bold text-slate-900">Hapus tutor</h3>
-                 <p class="mt-2 text-sm text-slate-600">Tutor terkait akan dihapus dari sistem.</p>
-                <form method="POST" :action="`{{ url('/tutors') }}/${removeId}`" class="mt-6 flex flex-wrap justify-end gap-2">
-                    @csrf
-                    @method('DELETE')
-                    <button type="button" @click="deleteOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
-                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Hapus</button>
-                </form>
-            </div>
-        </div>
     </div>
 </x-layouts.dashboard-shell>

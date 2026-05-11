@@ -50,7 +50,7 @@ class CabangController extends Controller
             ]);
             $user->syncRoles(['admin_cabang']);
 
-            return Cabang::query()->create([
+            $cabang = Cabang::query()->create([
                 'nama_cabang' => $data['nama_cabang'],
                 'alamat' => $data['alamat'],
                 'kota' => $data['kota'],
@@ -61,6 +61,18 @@ class CabangController extends Controller
                 'profit_share_pusat' => $data['profit_share_pusat'] ?? 0,
                 'user_id' => $user->id,
             ]);
+
+            $materiLes = \App\Models\MateriLes::all();
+            foreach ($materiLes as $materi) {
+                \App\Models\BranchMateriPrice::create([
+                    'cabang_id' => $cabang->id,
+                    'materi_les_id' => $materi->id,
+                    'biaya_daftar' => 0,
+                    'biaya_spp' => 0,
+                ]);
+            }
+
+            return $cabang;
         });
 
         return $this->respondMutation($request, 'Cabang dan akun admin cabang berhasil ditambahkan.', $cabang);

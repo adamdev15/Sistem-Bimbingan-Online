@@ -39,6 +39,7 @@ class Siswa extends Model
         'pekerjaan_ibu',
         'no_hp_orang_tua',
         'cuti_sampai',
+        'registration_type',
     ];
 
     public function materiLes(): BelongsTo
@@ -61,9 +62,9 @@ class Siswa extends Model
         return $this->hasMany(Payment::class, 'student_id');
     }
 
-    public function kehadirans(): HasMany
+    public function kehadiranSiswas(): HasMany
     {
-        return $this->hasMany(Kehadiran::class, 'student_id');
+        return $this->hasMany(KehadiranSiswa::class, 'student_id');
     }
 
     public function phoneForNotification(): ?string

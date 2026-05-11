@@ -63,7 +63,7 @@
                 <td width="20"></td>
                 <td class="info-label" style="width: 150px;">Jatuh Tempo tiap tgl</td>
                 <td class="info-dots">:</td>
-                <td style="border-bottom: 1px dotted #333;">{{ $jatuhTempoTgl }}</td>
+                <td style="border-bottom: 1px dotted #333;">{{ $siswa->created_at?->day ?? '-' }}</td>
             </tr>
             <tr>
                 <td class="info-label">Materi Les</td>
@@ -80,43 +80,50 @@
     <table class="card-table">
         <thead>
             <tr>
-                <th width="12%">Bulan</th>
-                <th width="18%">Pembayaran Spp</th>
-                <th width="70%">Tanggal Kehadiran</th>
+                <th width="15%">Bulan</th>
+                <th width="20%">Pembayaran Spp</th>
+                <th width="65%">Tanggal Kehadiran siswa</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($monthsData as $data)
                 @php
                     $payment = $data['payment'];
-                    $sppStatus = '';
+                    $sppStatus = '—';
                     if ($payment) {
                         if ($payment->status === 'lunas') {
-                            $sppStatus = 'LUNAS (' . number_format($payment->nominal, 0, ',', '.') . ')';
+                            $sppStatus = 'Lunas pada tanggal ' . $payment->tanggal_bayar?->format('j M');
                         } else {
-                            $sppStatus = 'BELUM LUNAS';
+                            $sppStatus = 'Belum Lunas';
                         }
                     }
                 @endphp
                 <tr>
-                    <td height="110" class="month-cell">{{ $data['monthName'] }}</td>
-                    <td class="payment-cell">{{ $sppStatus }}</td>
-                    <td>
-                        <table class="date-grid">
+                    <td height="120" class="month-cell" style="font-size: 10px;">
+                        <div style="font-weight: bold; margin-bottom: 5px;">Periode</div>
+                        <div style="font-size: 9px;">{{ $data['periodLabel'] }}</div>
+                    </td>
+                    <td class="payment-cell" style="font-weight: bold;">
+                        {{ $sppStatus }}
+                    </td>
+                    <td style="padding: 2px;">
+                        <table class="date-grid" style="border: 1px solid #000;">
                             @for ($row = 0; $row < 4; $row++)
                                 <tr>
                                     @for ($col = 1; $col <= 8; $col++)
-                                        @php $day = ($row * 8) + $col; @endphp
-                                        @if ($day <= 31)
-                                            @php $isPresent = in_array($day, $data['presenceDays']); @endphp
-                                            <td class="{{ $isPresent ? 'present' : '' }}">
-                                                {{ $day }}
-                                                @if ($isPresent)
-                                                    <span class="present-mark">✔</span>
+                                        @php 
+                                            $cellIdx = ($row * 8) + $col; 
+                                            $dateVal = $data['presenceDates'][$cellIdx - 1] ?? '';
+                                        @endphp
+                                        @if ($cellIdx <= 31)
+                                            <td style="border: 1px solid #999; height: 32px; width: 12.5%;">
+                                                @if($dateVal)
+                                                    <div style="font-size: 12px; font-weight: 900; color: #000; margin-bottom: 2px;">{{ $dateVal }}</div>
                                                 @endif
+                                                <div style="font-size: 7px; color: #999; position: absolute; bottom: 1px; right: 2px;">{{ $cellIdx }}</div>
                                             </td>
                                         @else
-                                            <td></td>
+                                            <td style="border: none;"></td>
                                         @endif
                                     @endfor
                                 </tr>

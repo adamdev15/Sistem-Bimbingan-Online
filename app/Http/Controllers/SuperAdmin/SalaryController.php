@@ -4,7 +4,7 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Exports\GajiTutorLaporanExport;
 use App\Http\Controllers\Controller;
-use App\Models\Kehadiran;
+use App\Models\KehadiranTutor;
 use App\Models\Cabang;
 use App\Models\Salary;
 use App\Models\Tutor;
@@ -26,28 +26,7 @@ class SalaryController extends Controller
 {
     public function exportExcel(Request $request): BinaryFileResponse
     {
-        $user = auth()->user();
-        $cabangId = $user->hasRole('admin_cabang') 
-            ? Cabang::where('user_id', $user->id)->value('id') 
-            : null;
-
-        $query = Salary::query()
-            ->with(['tutor', 'creator'])
-            ->when($cabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $cabangId)))
-            ->when($request->month, function($q) use ($request) {
-                $m = $request->month;
-                if (preg_match('/^\d{4}-\d{2}$/', $m)) {
-                    $date = \Carbon\Carbon::parse($m);
-                    $q->where(function($sub) use ($m, $date) {
-                        $sub->where('periode', $m)
-                            ->orWhere('periode', $date->translatedFormat('F Y'))
-                            ->orWhere('periode', $date->format('F Y'));
-                    });
-                } else {
-                    $q->where('periode', 'like', "%{$m}%");
-                }
-            })
-            ->latest();
+        $query = $this->service->salaryFilteredQuery($request);
 
         $name = 'gaji-tutor-export-' . now()->format('Y-m-d-His') . '.xlsx';
         
@@ -111,7 +90,13 @@ class SalaryController extends Controller
             'periode' => ['required', 'string', 'max:64'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'total_kehadiran' => ['required', 'integer', 'min:0'],
+            'total_kehadiran' => ['required', 'numeric', 'min:0'],
+            'full' => ['required', 'integer', 'min:0'],
+            'pagi_siang' => ['required', 'integer', 'min:0'],
+            'siang_sore' => ['required', 'integer', 'min:0'],
+            'gaji' => ['required', 'numeric', 'min:0'],
+            'insentif_kehadiran' => ['required', 'numeric', 'min:0'],
+            'bonus_lainnya' => ['required', 'numeric', 'min:0'],
             'total_gaji' => ['required', 'numeric', 'min:0'],
             'status' => ['nullable', 'in:pending,dibayar,diterima'],
             'catatan' => ['nullable', 'string'],
@@ -137,6 +122,12 @@ class SalaryController extends Controller
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
             'total_kehadiran' => $data['total_kehadiran'],
+            'full' => $data['full'],
+            'pagi_siang' => $data['pagi_siang'],
+            'siang_sore' => $data['siang_sore'],
+            'gaji' => $data['gaji'],
+            'insentif_kehadiran' => $data['insentif_kehadiran'],
+            'bonus_lainnya' => $data['bonus_lainnya'],
             'total_gaji' => $data['total_gaji'],
             'status' => $data['status'] ?? 'pending',
             'catatan' => $data['catatan'],
@@ -153,16 +144,15 @@ class SalaryController extends Controller
     public function getAttendanceCount(Request $request): JsonResponse
     {
         $tutorId = $request->integer('tutor_id');
-        $periode = $request->string('periode')->toString(); // Expecting YYYY-MM
+        $periode = $request->string('periode')->toString();
         $startDate = $request->string('start_date')->toString();
         $endDate = $request->string('end_date')->toString();
 
         if (!$tutorId) {
-            return response()->json(['count' => 0, 'total_salary' => 0]);
+            return response()->json(['count' => 0, 'full' => 0, 'pagi_siang' => 0, 'siang_sore' => 0]);
         }
 
-        $query = Kehadiran::query()
-            ->with('materiLes')
+        $query = KehadiranTutor::query()
             ->where('tutor_id', $tutorId)
             ->where('status', 'hadir');
 
@@ -173,25 +163,20 @@ class SalaryController extends Controller
             $query->whereYear('tanggal', (int) $year)
                   ->whereMonth('tanggal', (int) $month);
         } else {
-            return response()->json(['count' => 0, 'total_salary' => 0]);
+            return response()->json(['count' => 0, 'full' => 0, 'pagi_siang' => 0, 'siang_sore' => 0]);
         }
 
         $kehadirans = $query->get();
-        // Group by date to handle multiple students on the same day as one attendance session
-        $groupedByDate = $kehadirans->groupBy(function($item) {
-            return $item->tanggal->format('Y-m-d');
-        });
-
-        $count = $groupedByDate->count();
-        $totalSalary = $groupedByDate->sum(function($dailyKehadirans) {
-            // For each day, take the rate from the first attendance record
-            $first = $dailyKehadirans->first();
-            return $first->materiLes->biaya_tutor ?? 0;
-        });
+        $full = $kehadirans->where('kehadiran', 'full')->count();
+        $pagi_siang = $kehadirans->where('kehadiran', 'pagi_siang')->count();
+        $siang_sore = $kehadirans->where('kehadiran', 'siang_sore')->count();
+        $count = $kehadirans->count();
 
         return response()->json([
             'count' => $count,
-            'total_salary' => $totalSalary
+            'full' => $full,
+            'pagi_siang' => $pagi_siang,
+            'siang_sore' => $siang_sore,
         ]);
     }
 

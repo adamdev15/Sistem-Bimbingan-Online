@@ -231,6 +231,14 @@
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
+                                        @if ($isAdmin)
+                                         <form method="POST" action="{{ route('pembayaran.destroy', $pay) }}" class="inline" onsubmit="event.preventDefault(); confirmDelete(this, 'Hapus tagihan ini?')">
+                                             @csrf @method('DELETE')
+                                             <button type="submit" class="rounded-lg bg-rose-50 p-2 text-rose-600 hover:bg-rose-100 hover:text-rose-800 transition shadow-sm" title="Hapus Tagihan">
+                                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                             </button>
+                                         </form>
+                                        @endif
                                         @if ($isSiswa)
                                             @if ($pay->status === "lunas")
                                                 <div class="text-[10px] font-bold text-slate-400 uppercase">Paid {{ $pay->paid_at?->translatedFormat("d/m/y") }}</div>
@@ -277,7 +285,7 @@
                                                 @endphp
                                                 <button @click="openPaymentDetail({{ \Illuminate\Support\Js::from($detailPayload) }})" class="text-xs font-bold text-blue-600 hover:underline">Detail</button>
                                             @else
-                                                <form method="POST" action="{{ route("pembayaran.mark-lunas", $pay) }}" onsubmit="return confirm(\'Tandai lunas secara manual?\');">
+                                                <form method="POST" action="{{ route("pembayaran.mark-lunas", $pay) }}" onsubmit="event.preventDefault(); confirmAction(this, 'Tandai Lunas?', 'Tagihan akan ditandai lunas secara manual.', 'Ya, Lunas');">
                                                     @csrf
                                                     <button type="submit" class="text-xs font-bold text-emerald-600 hover:underline">Tandai Lunas</button>
                                                 </form>
@@ -602,7 +610,6 @@
             </div>
         </div>
     @endif
-    </div>
     
     @if ($isSiswa && $canSnap)
         @push("scripts")
@@ -631,4 +638,6 @@
             </script>
         @endpush
     @endif
+
+    </div>
 </x-layouts.dashboard-shell>

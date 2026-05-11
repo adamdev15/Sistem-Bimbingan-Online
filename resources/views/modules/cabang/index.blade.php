@@ -3,7 +3,7 @@
         x-data="{
             createOpen: false,
             editOpen: false,
-            deleteOpen: false,
+            editOpen: false,
             edit: {
                 id: null,
                 nama_cabang: '',
@@ -395,18 +395,5 @@
             </div>
         </div>
 
-        {{-- Modal: delete --}}
-        <div x-show="deleteOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true">
-            <div @click.outside="deleteOpen = false" @keydown.escape.window="deleteOpen = false" class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
-                <h3 class="text-lg font-bold text-slate-900">Hapus cabang</h3>
-                <p class="mt-2 text-sm text-slate-600">Cabang dan akun admin terkait akan dihapus. Data yang dihapus tidak dapat dikembalikan.</p>
-                <form method="POST" :action="`{{ url('/cabang') }}/${removeId}`" class="mt-6 flex flex-wrap justify-end gap-2">
-                    @csrf
-                    @method('DELETE')
-                    <button type="button" @click="deleteOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
-                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Hapus</button>
-                </form>
-            </div>
-        </div>
     </div>
 </x-layouts.dashboard-shell>

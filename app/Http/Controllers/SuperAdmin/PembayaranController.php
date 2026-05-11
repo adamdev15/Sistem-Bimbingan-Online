@@ -363,6 +363,17 @@ class PembayaranController extends Controller
         return back()->with('status', 'Tagihan ditandai lunas dan siswa menerima notifikasi WhatsApp.');
     }
 
+    public function destroy(Payment $payment): RedirectResponse
+    {
+        $user = auth()->user();
+        abort_unless($user && $user->hasAnyRole(['super_admin', 'admin_cabang']), 403);
+        $this->assertCanManagePayment($user, $payment);
+
+        $payment->delete();
+
+        return back()->with('status', 'Data pembayaran berhasil dihapus.');
+    }
+
     private function assertCanManagePayment(User $user, Payment $payment): void
     {
         if ($user->hasRole('super_admin')) {

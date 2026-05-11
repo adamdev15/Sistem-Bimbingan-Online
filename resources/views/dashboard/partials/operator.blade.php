@@ -124,7 +124,7 @@
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="mb-4 flex items-center justify-between gap-3">
                 <h2 class="text-lg font-semibold text-slate-900">Akses modul</h2>
-                <a href="{{ route('laporan.index') }}" class="text-sm font-medium text-blue-600 hover:text-blue-800">Laporan & ringkasan</a>
+                <a href="{{ route('laporan-keuangan.index') }}" class="text-sm font-medium text-blue-600 hover:text-blue-800">Laporan & ringkasan</a>
             </div>
             <div class="grid gap-4 sm:grid-cols-3">
                 @foreach ([

@@ -14,7 +14,7 @@
         x-data="{
             createOpen: false,
             editOpen: false,
-            deleteOpen: false,
+            editOpen: false,
             roleLabels: @js($roleLabels),
             edit: {
                 id: null,
@@ -34,7 +34,6 @@
                 this.editOpen = true;
             },
             removeId: null,
-            removeName: '',
         }"
         class="space-y-6"
     >
@@ -143,12 +142,12 @@
                                         @if ($u->is(auth()->user()))
                                             <span class="text-xs text-slate-400" title="Akun sedang dipakai">Anda</span>
                                         @else
-                                            <button
-                                                type="button"
-                                                @click="deleteOpen = true; removeId = {{ $u->id }}; removeName = @js($u->name)"
-                                                class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
-                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
+                                             <form method="POST" action="{{ route('users.destroy', $u) }}" class="inline" onsubmit="event.preventDefault(); confirmDelete(this, 'Hapus pengguna {{ $u->name }}?')">
+                                                 @csrf @method('DELETE')
+                                                 <button type="submit" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Hapus">
+                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                 </button>
+                                             </form>
                                         @endif
                                     </div>
                                 </td>
@@ -325,29 +324,5 @@
             </div>
         </div>
 
-        {{-- Modal: delete --}}
-        <div
-            x-show="deleteOpen"
-            x-cloak
-            x-transition.opacity
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]"
-            role="dialog"
-            aria-modal="true"
-        >
-            <div
-                @click.outside="deleteOpen = false"
-                @keydown.escape.window="deleteOpen = false"
-                class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5"
-            >
-                <h3 class="text-lg font-bold text-slate-900">Hapus pengguna</h3>
-                <p class="mt-2 text-sm text-slate-600">Yakin ingin menghapus <span class="font-semibold text-slate-900" x-text="removeName"></span>? Tindakan ini tidak dapat dibatalkan.</p>
-                <form method="POST" :action="`{{ url('/pengguna') }}/${removeId}`" class="mt-6 flex flex-wrap justify-end gap-2">
-                    @csrf
-                    @method('DELETE')
-                    <button type="button" @click="deleteOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
-                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Hapus</button>
-                </form>
-            </div>
-        </div>
     </div>
 </x-layouts.dashboard-shell>

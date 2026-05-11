@@ -65,6 +65,7 @@ class SiswaController extends Controller
             'tanggal_lahir_ibu' => ['nullable', 'date'],
             'pekerjaan_ibu' => ['nullable', 'string', 'max:255'],
             'no_hp_orang_tua' => ['nullable', 'string', 'max:30'],
+            'registration_type' => ['required', 'in:baru,lama'],
         ]);
         $this->forceCabangForAdmin($data);
 
@@ -93,21 +94,25 @@ class SiswaController extends Controller
                 'tanggal_lahir_ibu' => $data['tanggal_lahir_ibu'] ?? null,
                 'pekerjaan_ibu' => $data['pekerjaan_ibu'] ?? null,
                 'no_hp_orang_tua' => $data['no_hp_orang_tua'] ?? null,
+                'registration_type' => $data['registration_type'],
             ]);
 
 
-            if ($newSiswa->materi_les_id) {
-                $materiLes = \App\Models\MateriLes::find($newSiswa->materi_les_id);
-                if ($materiLes) {
+            if ($newSiswa->registration_type === 'baru' && $newSiswa->materi_les_id) {
+                $pricing = \App\Models\BranchMateriPrice::where('cabang_id', $newSiswa->cabang_id)
+                    ->where('materi_les_id', $newSiswa->materi_les_id)
+                    ->first();
+                
+                if ($pricing) {
                     $now = now();
                     
-                    if ($materiLes->biaya_daftar > 0) {
+                    if ($pricing->biaya_daftar > 0) {
                         $paymentReg = \App\Models\Payment::create([
                             'order_id' => 'REG-' . time() . rand(1000, 9999),
                             'student_id' => $newSiswa->id,
                             'biaya_id' => 2, // Pendaftaran Bimbel Jarimatrik
                             'invoice_period' => $now->format('Y-m'),
-                            'nominal' => $materiLes->biaya_daftar,
+                            'nominal' => $pricing->biaya_daftar,
                             'tanggal_bayar' => $now->format('Y-m-d'),
                             'due_date' => $now->format('Y-m-d'),
                             'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
@@ -117,13 +122,13 @@ class SiswaController extends Controller
                         $this->whatsapp->notifySiswaInvoiceCreated($paymentReg);
                     }
 
-                    if ($materiLes->biaya_spp > 0) {
+                    if ($pricing->biaya_spp > 0) {
                         $paymentSpp = \App\Models\Payment::create([
                             'order_id' => 'SPP-' . time() . rand(1000, 9999),
                             'student_id' => $newSiswa->id,
                             'biaya_id' => 9, // SPP Bulanan Bimbel Jarimatrik
                             'invoice_period' => $now->format('Y-m'),
-                            'nominal' => $materiLes->biaya_spp,
+                            'nominal' => $pricing->biaya_spp,
                             'tanggal_bayar' => $now->format('Y-m-d'),
                             'due_date' => $now->format('Y-m-d'),
                             'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
@@ -266,6 +271,32 @@ class SiswaController extends Controller
         $name = 'siswa-export-' . now()->format('Y-m-d-His') . '.xlsx';
         
         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\SiswaExport($query), $name);
+    }
+
+    public function importExcel(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\SiswaImport, $request->file('file'));
+            return back()->with('status', 'Data siswa berhasil diimport.');
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $errorMessages = [];
+            foreach ($failures as $failure) {
+                $errorMessages[] = "Baris {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+            return back()->withErrors(['file' => $errorMessages]);
+        } catch (\Exception $e) {
+            return back()->withErrors(['file' => 'Gagal mengimport data: ' . $e->getMessage()]);
+        }
+    }
+
+    public function downloadTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\SiswaTemplateExport, 'template-import-siswa.xlsx');
     }
 
     private function respondMutation(Request $request, string $message, ?Siswa $siswa = null): RedirectResponse|JsonResponse

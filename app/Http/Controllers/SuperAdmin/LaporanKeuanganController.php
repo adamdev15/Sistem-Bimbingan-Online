@@ -39,7 +39,7 @@ class LaporanKeuanganController extends Controller
         // Simple KPI cards
         $income = Payment::where('status', 'lunas')
             ->whereBetween('tanggal_bayar', [$start, $end])
-            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
+            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
             ->sum('nominal');
 
         $expense = Pengeluaran::whereBetween('tanggal', [$start, $end])
@@ -53,7 +53,7 @@ class LaporanKeuanganController extends Controller
         // Logic for Chart Overview (Daily Data)
         $dailyIncome = Payment::where('status', 'lunas')
             ->whereBetween('tanggal_bayar', [$start, $end])
-            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
+            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
             ->selectRaw('DATE(tanggal_bayar) as date, SUM(nominal) as total')
             ->groupBy('date')
             ->pluck('total', 'date');
@@ -113,7 +113,7 @@ class LaporanKeuanganController extends Controller
         // 1. Get Daily Income
         $dailyIncome = Payment::where('status', 'lunas')
             ->whereBetween('tanggal_bayar', [$start, $end])
-            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
+            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
             ->selectRaw('DATE(tanggal_bayar) as date, SUM(nominal) as total')
             ->groupBy('date')
             ->pluck('total', 'date');
@@ -170,49 +170,23 @@ class LaporanKeuanganController extends Controller
         $end = Carbon::parse($month)->endOfMonth();
         $cabang = Cabang::find($selectedCabangId);
 
-        // Specific categories for income
-        $categories = [
-            'Pendaftaran' => ['pendaftaran'],
-            'SPP Baca' => ['spp baca', 'baca'],
-            'SPP Mapel' => ['spp mapel', 'mapel'],
-            'SPP Jarmat' => ['jarmat', 'jarimatrik'],
-        ];
+        $payments = Payment::with(['siswa.materiLes', 'fee'])
+            ->where('status', 'lunas')
+            ->whereBetween('tanggal_bayar', [$start, $end])
+            ->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $selectedCabangId))
+            ->get();
 
-        $rekapIncome = [];
-        $totalIncome = 0;
+        $aggregated = [];
 
-        foreach ($categories as $label => $terms) {
-            $sum = Payment::where('payments.status', 'lunas')
-                ->whereBetween('payments.tanggal_bayar', [$start, $end])
-                ->whereHas('siswa', fn($s) => $s->where('cabang_id', $selectedCabangId))
-                ->join('fees', 'payments.biaya_id', '=', 'fees.id')
-                ->where(function($q) use ($terms) {
-                    foreach ($terms as $term) {
-                        $q->orWhere('fees.nama_biaya', 'LIKE', "%{$term}%");
-                    }
-                })
-                ->sum('payments.nominal');
-            
-            $rekapIncome[] = ['keterangan' => $label, 'nominal' => $sum];
-            $totalIncome += $sum;
+        foreach ($payments as $pay) {
+            $label = $this->getPaymentLabel($pay);
+            $aggregated[$label] = ($aggregated[$label] ?? 0) + (float) $pay->nominal;
+            $totalIncome += (float) $pay->nominal;
         }
 
-        // Others Income
-        $otherIncome = Payment::where('payments.status', 'lunas')
-            ->whereBetween('payments.tanggal_bayar', [$start, $end])
-            ->whereHas('siswa', fn($s) => $s->where('cabang_id', $selectedCabangId))
-            ->join('fees', 'payments.biaya_id', '=', 'fees.id')
-            ->where(function($q) use ($categories) {
-                foreach ($categories as $terms) {
-                    foreach ($terms as $term) {
-                        $q->where('fees.nama_biaya', 'NOT LIKE', "%{$term}%");
-                    }
-                }
-            })
-            ->sum('payments.nominal');
-        
-        $rekapIncome[] = ['keterangan' => 'Lain-lain', 'nominal' => $otherIncome];
-        $totalIncome += $otherIncome;
+        foreach ($aggregated as $label => $nominal) {
+            $rekapIncome[] = ['keterangan' => $label, 'nominal' => $nominal];
+        }
 
         // EXPENSES (Operasional)
         $totalOperasional = Pengeluaran::whereBetween('tanggal', [$start, $end])
@@ -248,14 +222,19 @@ class LaporanKeuanganController extends Controller
         $end = Carbon::parse($month)->endOfMonth();
         $cabang = Cabang::find($selectedCabangId);
 
-        // INCOME breakdown by Fee type
-        $incomeBreakdown = Payment::where('payments.status', 'lunas')
-            ->whereBetween('payments.tanggal_bayar', [$start, $end])
-            ->whereHas('siswa', fn($s) => $s->where('cabang_id', $selectedCabangId))
-            ->join('fees', 'payments.biaya_id', '=', 'fees.id')
-            ->select('fees.nama_biaya', DB::raw('SUM(payments.nominal) as total'))
-            ->groupBy('fees.nama_biaya')
+        // INCOME breakdown - dynamic by material for SPP
+        $payments = Payment::with(['siswa.materiLes', 'fee'])
+            ->where('status', 'lunas')
+            ->whereBetween('tanggal_bayar', [$start, $end])
+            ->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $selectedCabangId))
             ->get();
+
+        $incomeBreakdown = [];
+        foreach ($payments as $pay) {
+            $label = $this->getPaymentLabel($pay);
+            $incomeBreakdown[$label] = ($incomeBreakdown[$label] ?? 0) + (float) $pay->nominal;
+        }
+        $incomeBreakdown = collect($incomeBreakdown)->map(fn($total, $label) => (object)['nama_biaya' => $label, 'total' => $total])->values();
 
         // EXPENSE breakdown by Category
         $expenseBreakdown = Pengeluaran::whereBetween('tanggal', [$start, $end])
@@ -318,11 +297,10 @@ class LaporanKeuanganController extends Controller
         if ($type === 'harian') {
             $dailyIncome = Payment::where('status', 'lunas')
                 ->whereBetween('tanggal_bayar', [$start, $end])
-                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
+                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
                 ->selectRaw('DATE(tanggal_bayar) as date, SUM(nominal) as total')
                 ->groupBy('date')
                 ->pluck('total', 'date');
-
             $dailyExpense = Pengeluaran::whereBetween('tanggal', [$start, $end])
                 ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
                 ->selectRaw('DATE(tanggal) as date, SUM(nominal) as total')
@@ -342,35 +320,45 @@ class LaporanKeuanganController extends Controller
             $data['ledger'] = $ledger;
             $filename = 'Laporan_Harian_' . $month . '.pdf';
         } elseif ($type === 'bulanan') {
-            $categories = ['Pendaftaran' => ['pendaftaran'], 'SPP Baca' => ['spp baca', 'baca'], 'SPP Mapel' => ['spp mapel', 'mapel'], 'SPP Jarmat' => ['jarmat', 'jarimatrik']];
-            $rekapIncome = [];
+            $payments = Payment::with(['siswa.materiLes', 'fee'])
+                ->where('status', 'lunas')
+                ->whereBetween('tanggal_bayar', [$start, $end])
+                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
+                ->get();
+
+            $aggregated = [];
             $totalIncome = 0;
-            foreach ($categories as $label => $terms) {
-                $sum = Payment::where('payments.status', 'lunas')->whereBetween('payments.tanggal_bayar', [$start, $end])
-                    ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
-                    ->join('fees', 'payments.biaya_id', '=', 'fees.id')
-                    ->where(function($q) use ($terms) { foreach ($terms as $term) { $q->orWhere('fees.nama_biaya', 'LIKE', "%{$term}%"); } })
-                    ->sum('payments.nominal');
-                $rekapIncome[] = ['keterangan' => $label, 'nominal' => $sum];
-                $totalIncome += $sum;
+
+            foreach ($payments as $pay) {
+                $label = $this->getPaymentLabel($pay);
+                $aggregated[$label] = ($aggregated[$label] ?? 0) + (float) $pay->nominal;
+                $totalIncome += (float) $pay->nominal;
             }
-            $otherIncome = Payment::where('payments.status', 'lunas')->whereBetween('payments.tanggal_bayar', [$start, $end])
-                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))
-                ->join('fees', 'payments.biaya_id', '=', 'fees.id')
-                ->where(function($q) use ($categories) { 
-                    foreach ($categories as $terms) { foreach ($terms as $term) { $q->where('fees.nama_biaya', 'NOT LIKE', "%{$term}%"); } } 
-                })->sum('payments.nominal');
-            $rekapIncome[] = ['keterangan' => 'Lain-lain', 'nominal' => $otherIncome];
-            $totalIncome += $otherIncome;
+
+            foreach ($aggregated as $label => $nominal) {
+                $rekapIncome[] = ['keterangan' => $label, 'nominal' => $nominal];
+            }
+
             $totalOperasional = Pengeluaran::whereBetween('tanggal', [$start, $end])->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))->sum('nominal');
             $data['rekapIncome'] = $rekapIncome;
             $data['totalIncome'] = $totalIncome;
             $data['totalOperasional'] = $totalOperasional;
             $filename = 'Laporan_Bulanan_' . $month . '.pdf';
         } elseif ($type === 'mitra') {
-            $incomeBreakdown = Payment::where('payments.status', 'lunas')->whereBetween('payments.tanggal_bayar', [$start, $end])
-                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->where('cabang_id', $filterCabangId)))->join('fees', 'payments.biaya_id', '=', 'fees.id')
-                ->select('fees.nama_biaya', DB::raw('SUM(payments.nominal) as total'))->groupBy('fees.nama_biaya')->get();
+            $payments = Payment::with(['siswa.materiLes', 'fee'])
+                ->where('status', 'lunas')
+                ->whereBetween('tanggal_bayar', [$start, $end])
+                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
+                ->get();
+
+            $incomeBreakdown = [];
+            foreach ($payments as $pay) {
+                $label = $this->getPaymentLabel($pay);
+                $incomeBreakdown[$label] = ($incomeBreakdown[$label] ?? 0) + (float) $pay->nominal;
+            }
+
+            $incomeBreakdown = collect($incomeBreakdown)->map(fn($total, $label) => (object)['nama_biaya' => $label, 'total' => $total])->values();
+
             $expenseBreakdown = Pengeluaran::whereBetween('tanggal', [$start, $end])->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
                 ->join('kategori_pengeluarans', 'pengeluarans.kategori_id', '=', 'kategori_pengeluarans.id')
                 ->select('kategori_pengeluarans.nama_kategori', DB::raw('SUM(pengeluarans.nominal) as total'))->groupBy('kategori_pengeluarans.nama_kategori')->get();
@@ -395,5 +383,28 @@ class LaporanKeuanganController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($view, $data);
         return $pdf->stream($filename);
+    }
+
+    private function getPaymentLabel(Payment $pay): string
+    {
+        $feeName = $pay->fee?->nama_biaya ?? 'Lain-lain';
+        $feeLower = strtolower($feeName);
+
+        $isRegistration = str_contains($feeLower, 'pendaftaran');
+        $isMonthly = str_contains($feeLower, 'spp') ||
+                     str_contains($feeLower, 'matematika intensif') ||
+                     str_contains($feeLower, 'kelas prima') ||
+                     str_contains($feeLower, 'jarimatika') ||
+                     str_contains($feeLower, 'calistung') ||
+                     str_contains($feeLower, 'iec');
+
+        if ($isRegistration) {
+            return $feeName;
+        } elseif ($isMonthly) {
+            $materi = $pay->siswa?->materiLes?->nama_materi ?? 'Lain-lain';
+            return "SPP - " . $materi;
+        }
+
+        return $feeName;
     }
 }

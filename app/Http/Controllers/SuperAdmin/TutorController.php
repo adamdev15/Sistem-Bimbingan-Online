@@ -30,7 +30,7 @@ class TutorController extends Controller
     public function show(Tutor $tutor): View
     {
         $this->guardCabangScope($tutor->cabang_id);
-        $tutor->load(['cabang']);
+        $tutor->load(['cabangs']);
 
         return view('modules.tutor.show', compact('tutor'));
     }
@@ -44,21 +44,29 @@ class TutorController extends Controller
             'nik' => ['nullable', 'string', 'max:30', 'unique:tutors,nik'],
             'no_hp' => ['required', 'string', 'max:25'],
             'alamat' => ['required', 'string'],
-            'cabang_id' => ['required', 'exists:cabangs,id'],
+            'cabang_ids' => ['required', 'array'],
+            'cabang_ids.*' => ['exists:cabangs,id'],
             'status' => ['required', 'in:aktif,nonaktif'],
+            'jenis_tutor' => ['required', 'in:parttime,fulltime'],
         ]);
         $this->forceCabangForAdmin($data);
 
-        $tutor = Tutor::query()->create([
-            'nama' => $data['nama'],
-            'email' => $data['email'] ?? null,
-            'nik' => $data['nik'] ?? null,
-            'no_hp' => $data['no_hp'],
-            'alamat' => $data['alamat'],
-            'cabang_id' => $data['cabang_id'],
-            'status' => $data['status'],
-            'user_id' => null,
-        ]);
+        $tutor = DB::transaction(function () use ($data) {
+            $tutor = Tutor::query()->create([
+                'nama' => $data['nama'],
+                'email' => $data['email'] ?? null,
+                'nik' => $data['nik'] ?? null,
+                'no_hp' => $data['no_hp'],
+                'alamat' => $data['alamat'],
+                'cabang_id' => $data['cabang_ids'][0] ?? null,
+                'status' => $data['status'],
+                'jenis_tutor' => $data['jenis_tutor'],
+                'user_id' => null,
+            ]);
+
+            $tutor->cabangs()->sync($data['cabang_ids']);
+            return $tutor;
+        });
 
         return $this->respondMutation($request, 'Tutor berhasil ditambahkan.', $tutor);
     }
@@ -74,20 +82,27 @@ class TutorController extends Controller
             'nik' => ['nullable', 'string', 'max:30', 'unique:tutors,nik,'.$tutor->id],
             'no_hp' => ['required', 'string', 'max:25'],
             'alamat' => ['required', 'string'],
-            'cabang_id' => ['required', 'exists:cabangs,id'],
+            'cabang_ids' => ['required', 'array'],
+            'cabang_ids.*' => ['exists:cabangs,id'],
             'status' => ['required', 'in:aktif,nonaktif'],
+            'jenis_tutor' => ['required', 'in:parttime,fulltime'],
         ]);
         $this->forceCabangForAdmin($data);
 
-        $tutor->update([
-            'nama' => $data['nama'],
-            'email' => $data['email'] ?? null,
-            'nik' => $data['nik'] ?? null,
-            'no_hp' => $data['no_hp'],
-            'alamat' => $data['alamat'],
-            'cabang_id' => $data['cabang_id'],
-            'status' => $data['status'],
-        ]);
+        DB::transaction(function () use ($tutor, $data) {
+            $tutor->update([
+                'nama' => $data['nama'],
+                'email' => $data['email'] ?? null,
+                'nik' => $data['nik'] ?? null,
+                'no_hp' => $data['no_hp'],
+                'alamat' => $data['alamat'],
+                'cabang_id' => $data['cabang_ids'][0] ?? null,
+                'status' => $data['status'],
+                'jenis_tutor' => $data['jenis_tutor'],
+            ]);
+
+            $tutor->cabangs()->sync($data['cabang_ids']);
+        });
 
         $tutor->refresh();
 
@@ -138,7 +153,7 @@ class TutorController extends Controller
     {
         $user = auth()->user();
         if ($user && $user->hasRole('admin_cabang')) {
-            $data['cabang_id'] = Cabang::query()->where('user_id', $user->id)->value('id');
+            $data['cabang_ids'] = [Cabang::query()->where('user_id', $user->id)->value('id')];
         }
     }
 }

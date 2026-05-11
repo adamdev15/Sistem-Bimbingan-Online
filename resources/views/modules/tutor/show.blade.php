@@ -20,7 +20,7 @@
                             {{ $tutor->status }}
                         </span>
                     </div>
-                    <p class="mt-2 text-slate-400">Bergabung {{ $tutor->created_at->translatedFormat('d F Y') }} • Cabang: {{ optional($tutor->cabang)->nama_cabang }}</p>
+                    <p class="mt-2 text-slate-400">Bergabung {{ $tutor->created_at->translatedFormat('d F Y') }} • Cabang: {{ $tutor->cabangs->pluck('nama_cabang')->implode(', ') }}</p>
                     <div class="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $tutor->no_hp) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition shadow-lg shadow-emerald-900/40">
                             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.542 2.317 2.138-.541c.952.613 1.908.995 3.135.996 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.587-5.766-5.769-5.766zm3.926 8.012c-.145.409-.85.839-1.163.896-.347.063-.71.123-1.148-.107-.439-.23-1.101-.523-1.557-.93-.456-.406-.838-.934-1.121-1.392-.282-.458-.33-.787-.042-1.101.288-.314.439-.387.587-.535.148-.148.19-.254.282-.424.091-.17.042-.314-.021-.458-.063-.144-.542-1.312-.743-1.791-.197-.473-.399-.407-.542-.413-.14-.006-.297-.007-.456-.007s-.408.06-.613.282c-.205.222-.782.764-.782 1.861s.796 2.157.906 2.305c.11.148 1.564 2.506 3.896 3.41.554.215.987.343 1.326.447.555.204 1.061.173 1.46.113.447-.067 1.37-.56 1.564-1.101.194-.542.194-1.006.136-1.101-.057-.095-.213-.145-.456-.263z"/></svg>
@@ -50,6 +50,10 @@
                         <div class="space-y-1 p-4 rounded-xl bg-slate-50 border border-slate-100">
                             <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">No HP (WhatsApp)</p>
                             <p class="font-bold text-slate-900">{{ $tutor->no_hp ?: '—' }}</p>
+                        </div>
+                        <div class="space-y-1 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Jenis Tutor</p>
+                            <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider {{ $tutor->jenis_tutor === 'fulltime' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">{{ $tutor->jenis_tutor }}</span>
                         </div>
                         <div class="sm:col-span-2 space-y-1 p-4 rounded-xl bg-slate-50 border border-slate-100">
                             <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Alamat Lengkap</p>

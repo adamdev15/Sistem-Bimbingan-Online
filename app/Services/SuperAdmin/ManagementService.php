@@ -4,7 +4,8 @@ namespace App\Services\SuperAdmin;
 
 use App\Models\Cabang;
 use App\Models\Fee;
-use App\Models\Kehadiran;
+use App\Models\KehadiranSiswa;
+use App\Models\KehadiranTutor;
 use App\Models\MateriLes;
 use App\Models\Payment;
 use App\Models\Pengeluaran;
@@ -350,8 +351,8 @@ class ManagementService
 
     private function calculatePresensiRate(?int $month, int $year, ?int $cabangId): int
     {
-        $query = Kehadiran::query()
-            ->when($cabangId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
+        $query = KehadiranSiswa::query()
+            ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
             ->whereYear('tanggal', $year);
 
         if ($month) {
@@ -468,22 +469,20 @@ class ManagementService
 
     private function kehadiranHadirCountForCabangOnDate(int $cabangId, Carbon $date): int
     {
-        return (int) Kehadiran::query()
-            ->join('siswas', 'siswas.id', '=', 'kehadirans.student_id')
-            ->where('siswas.cabang_id', $cabangId)
-            ->whereDate('kehadirans.tanggal', $date->toDateString())
-            ->where('kehadirans.status', 'hadir')
+        return (int) KehadiranSiswa::query()
+            ->where('cabang_id', $cabangId)
+            ->whereDate('tanggal', $date->toDateString())
+            ->where('status', 'hadir')
             ->count();
     }
 
     private function kehadiranHadirCountForCabangInMonth(int $cabangId, int $year, int $month): int
     {
-        return (int) Kehadiran::query()
-            ->join('siswas', 'siswas.id', '=', 'kehadirans.student_id')
-            ->where('siswas.cabang_id', $cabangId)
-            ->whereYear('kehadirans.tanggal', $year)
-            ->whereMonth('kehadirans.tanggal', $month)
-            ->where('kehadirans.status', 'hadir')
+        return (int) KehadiranSiswa::query()
+            ->where('cabang_id', $cabangId)
+            ->whereYear('tanggal', $year)
+            ->whereMonth('tanggal', $month)
+            ->where('status', 'hadir')
             ->count();
     }
 
@@ -496,7 +495,7 @@ class ManagementService
 
     private function kehadiranHadirCountForTutorOnDate(int $tutorId, Carbon $date): int
     {
-        return (int) Kehadiran::query()
+        return (int) KehadiranTutor::query()
             ->where('tutor_id', $tutorId)
             ->whereDate('tanggal', $date->toDateString())
             ->where('status', 'hadir')
@@ -505,7 +504,7 @@ class ManagementService
 
     private function kehadiranHadirCountForTutorInMonth(int $tutorId, int $year, int $month): int
     {
-        return (int) Kehadiran::query()
+        return (int) KehadiranTutor::query()
             ->where('tutor_id', $tutorId)
             ->whereYear('tanggal', $year)
             ->whereMonth('tanggal', $month)
@@ -534,60 +533,52 @@ class ManagementService
             ];
         }
 
-        $sesiHariIni = (int) Kehadiran::query()
+        $sesiHariIni = (int) KehadiranTutor::query()
             ->where('tutor_id', $tutorId)
             ->whereDate('tanggal', Carbon::today())
-            ->groupBy('tanggal', 'jam_mulai', 'materi_les_id')
-            ->select('tanggal')
-            ->get()
+            ->where('status', 'hadir')
             ->count();
 
-        $siswaBimbingan = (int) Kehadiran::query()
-            ->where('tutor_id', $tutorId)
+        $siswaBimbingan = (int) KehadiranSiswa::query()
+            ->whereHas('siswa', fn($q) => $q->where('status', 'aktif'))
             ->distinct('student_id')
             ->count('student_id');
 
-        $alfaHariIni = (int) Kehadiran::query()
+        $alfaHariIni = (int) KehadiranTutor::query()
             ->where('tutor_id', $tutorId)
             ->whereDate('tanggal', Carbon::today())
-            ->where('status', 'alfa')
+            ->where('status', 'alpha')
             ->count();
 
-        $hadir7Hari = (int) Kehadiran::query()
+        $hadir7Hari = (int) KehadiranTutor::query()
             ->where('tutor_id', $tutorId)
             ->where('status', 'hadir')
             ->whereDate('tanggal', '>=', Carbon::today()->subDays(6))
             ->count();
 
-        $riwayatSesi = Kehadiran::query()
+        $riwayatSesi = KehadiranTutor::query()
             ->where('tutor_id', $tutorId)
-            ->with(['cabang:id,nama_cabang', 'materiLes:id,nama_materi'])
+            ->with(['cabang:id,nama_cabang'])
             ->latest('tanggal')
             ->limit(10)
             ->get()
-            ->groupBy(function($item) {
-                return $item->tanggal->format('Y-m-d') . $item->jam_mulai . $item->materi_les_id;
-            })
-            ->map(function($group) {
-                $first = $group->first();
+            ->map(function($row) {
                 return [
-                    'tanggal' => $first->tanggal,
-                    'jam_mulai' => $first->jam_mulai,
-                    'jam_selesai' => $first->jam_selesai,
-                    'materi' => $first->materiLes->nama_materi ?? 'Materi Les',
-                    'cabang' => $first->cabang->nama_cabang ?? 'Cabang',
-                    'total_siswa' => $group->count(),
-                    'hadir' => $group->where('status', 'hadir')->count(),
+                    'tanggal' => $row->tanggal,
+                    'jam_mulai' => $row->jam_mulai,
+                    'jam_selesai' => $row->jam_selesai,
+                    'materi' => $row->kehadiran, // Showing attendance type as "Materi" for now in dashboard summary
+                    'cabang' => $row->cabang->nama_cabang ?? 'Cabang',
+                    'total_siswa' => 0, // No direct student count in this table
+                    'hadir' => $row->status === 'hadir' ? 1 : 0,
                 ];
-            })
-            ->values();
+            });
 
-        $siswaPerhatian = Kehadiran::query()
-            ->join('siswas', 'siswas.id', '=', 'kehadirans.student_id')
-            ->join('materi_les', 'materi_les.id', '=', 'kehadirans.materi_les_id')
-            ->where('kehadirans.tutor_id', $tutorId)
-            ->where('kehadirans.status', 'alfa')
-            ->where('kehadirans.tanggal', '>=', Carbon::now()->subDays(30))
+        $siswaPerhatian = KehadiranSiswa::query()
+            ->join('siswas', 'siswas.id', '=', 'kehadiran_siswas.student_id')
+            ->join('materi_les', 'materi_les.id', '=', 'kehadiran_siswas.materi_les_id')
+            ->where('kehadiran_siswas.status', 'alfa')
+            ->where('kehadiran_siswas.tanggal', '>=', Carbon::now()->subDays(30))
             ->select('siswas.nama', 'materi_les.nama_materi as mapel', DB::raw('COUNT(*) as cnt'))
             ->groupBy('siswas.id', 'siswas.nama', 'materi_les.nama_materi')
             ->orderByDesc('cnt')
@@ -599,9 +590,8 @@ class ManagementService
                 'detail' => (int) $r->cnt === 1 ? '1× alpa (30 hari)' : (int) $r->cnt.'× alpa (30 hari)',
             ]);
 
-        $jkRows = Kehadiran::query()
-            ->join('siswas', 'siswas.id', '=', 'kehadirans.student_id')
-            ->where('kehadirans.tutor_id', $tutorId)
+        $jkRows = KehadiranSiswa::query()
+            ->join('siswas', 'siswas.id', '=', 'kehadiran_siswas.student_id')
             ->where('siswas.status', 'aktif')
             ->select('siswas.jenis_kelamin', DB::raw('COUNT(DISTINCT siswas.id) as c'))
             ->groupBy('siswas.jenis_kelamin')
@@ -672,8 +662,8 @@ class ManagementService
 
         return Siswa::query()
             ->with('cabang:id,nama_cabang')
-            ->when($tutorId, function ($q) use ($tutorId) {
-                $q->whereHas('kehadirans', fn ($k) => $k->where('tutor_id', $tutorId));
+            ->when($tutorId, function ($q) {
+                $q->whereHas('kehadiranSiswas');
             }, fn ($q) => $q->whereRaw('1 = 0'))
             ->when($request->string('search')->toString(), function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -710,7 +700,7 @@ class ManagementService
         }
 
         $now = Carbon::now();
-        $monthKehadiran = Kehadiran::query()
+        $monthKehadiran = KehadiranSiswa::query()
             ->where('student_id', $siswaId)
             ->whereYear('tanggal', $now->year)
             ->whereMonth('tanggal', $now->month);
@@ -727,7 +717,7 @@ class ManagementService
 
         $startWeek = Carbon::now()->startOfWeek();
         $endWeek = Carbon::now()->endOfWeek();
-        $sesiMingguIni = (int) Kehadiran::query()
+        $sesiMingguIni = (int) KehadiranSiswa::query()
             ->where('student_id', $siswaId)
             ->whereBetween('tanggal', [$startWeek->toDateString(), $endWeek->toDateString()])
             ->count();
@@ -742,13 +732,13 @@ class ManagementService
             ->limit(6)
             ->get();
 
-        $presensiLines = Kehadiran::query()
+        $presensiLines = KehadiranSiswa::query()
             ->where('student_id', $siswaId)
             ->with(['materiLes:id,nama_materi'])
             ->latest('tanggal')
             ->limit(5)
             ->get()
-            ->map(fn (Kehadiran $k) => [
+            ->map(fn (KehadiranSiswa $k) => [
                 'at' => $k->tanggal,
                 'teks' => 'Presensi — '.(optional($k->materiLes)->nama_materi ?? 'Sesi').' — '.ucfirst((string) $k->status),
             ]);
@@ -869,8 +859,8 @@ class ManagementService
         $tutorId = $this->actorTutorId();
 
         return Tutor::query()
-            ->with(['cabang:id,nama_cabang', 'user:id,name,email'])
-            ->withCount(['kehadirans' => fn($q) => $q->whereMonth('tanggal', now()->month)->whereYear('tanggal', now()->year)])
+            ->with(['cabangs:id,nama_cabang', 'user:id,name,email'])
+            ->withCount(['kehadiranTutors as kehadirans_count' => fn($q) => $q->whereMonth('tanggal', now()->month)->whereYear('tanggal', now()->year)])
             ->when($tutorId, fn ($q) => $q->where('id', $tutorId))
             ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
             ->when($request->string('search')->toString(), function ($q, $s) {
@@ -1137,7 +1127,19 @@ class ManagementService
             ->when(! $cabangId && $request->filled('cabang_id'), fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('tutors.cabang_id', $request->integer('cabang_id'))))
             ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('salaries.status', $s))
             ->when($request->filled('periode'), fn ($q) => $q->where('salaries.periode', $request->string('periode')->toString()))
-            ->when($request->filled('month'), fn ($q) => $q->where('salaries.periode', $request->string('month')->toString())) // For export modal
+            ->when($request->filled('month'), function($q) use ($request) {
+                $m = $request->string('month')->toString();
+                if (preg_match('/^\d{4}-\d{2}$/', $m)) {
+                    $date = \Carbon\Carbon::parse($m);
+                    $q->where(function($sub) use ($m, $date) {
+                        $sub->where('salaries.periode', $m)
+                            ->orWhere('salaries.periode', $date->translatedFormat('F Y'))
+                            ->orWhere('salaries.periode', $date->format('F Y'));
+                    });
+                } else {
+                    $q->where('salaries.periode', 'like', "%{$m}%");
+                }
+            })
             ->when($request->filled('tutor_id'), fn ($q) => $q->where('salaries.tutor_id', $request->integer('tutor_id')));
     }
 

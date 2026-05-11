@@ -105,15 +105,22 @@
         <table width="100%">
             <tr>
                 <td>
-                    <p>Investor Cabang</p>
+                    <p>Penerima,</p>
                     <div class="signature-space"></div>
                     <p>__________________________</p>
+                    <p>Investor Cabang</p>
                 </td>
                 <td>
-                    <p>Tegal, {{ now()->translatedFormat('d F Y') }}</p>
-                    <p>Kepala Pusat</p>
+                    <p>{{ $cabang ? $cabang->kota : 'Tegal' }}, {{ now()->translatedFormat('d F Y') }}</p>
+                    <p>Hormat Kami,</p>
                     <div class="signature-space"></div>
-                    <p><strong>Dr. Nurhayati Sueb</strong></p>
+                    @if($selectedCabangId && $selectedCabangId !== 'all' && $cabang)
+                        <p><strong>{{ $cabang->user->name ?? 'Admin Cabang' }}</strong></p>
+                        <p>Admin Cabang {{ $cabang->nama_cabang }}</p>
+                    @else
+                        <p><strong>Admin Pusat Jarimatrik</strong></p>
+                        <p>Pusat Jarimatrik</p>
+                    @endif
                 </td>
             </tr>
         </table>

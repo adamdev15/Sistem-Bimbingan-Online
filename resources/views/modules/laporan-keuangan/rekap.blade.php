@@ -77,13 +77,18 @@
             {{-- Signature section for professional look --}}
             <div class="p-8 grid grid-cols-2 gap-8 text-center text-sm font-bold text-slate-900 border-t border-slate-200">
                 <div class="flex flex-col items-center">
-                    <p class="mb-20">Admin Cabang</p>
+                    <p class="mb-20">Investor {{ $cabang ? 'Cabang ' . $cabang->nama_cabang : 'Seluruh Cabang' }}</p>
                     <div class="w-48 border-b-2 border-slate-900"></div>
                 </div>
                 <div class="flex flex-col items-center">
-                    <p class="mb-2 text-slate-400 font-normal">Tegal, {{ now()->translatedFormat('d F Y') }}</p>
-                    <p class="mb-20">Kepala Pusat</p>
+                    <p class="mb-2 text-slate-400 font-normal">{{ $cabang ? $cabang->kota : 'Tegal' }}, {{ now()->translatedFormat('d F Y') }}</p>
+                    <p class="mb-20">{{ $cabang ? 'Admin Cabang' : 'Pusat' }}</p>
                     <div class="w-48 border-b-2 border-slate-900"></div>
+                    @if($cabang && $cabang->user)
+                        <p class="mt-2 uppercase font-black text-xs">{{ $cabang->user->name }}</p>
+                    @else
+                        <p class="mt-2 uppercase font-black text-xs">Admin Pusat Jarimatrik</p>
+                    @endif
                 </div>
             </div>
         </div>

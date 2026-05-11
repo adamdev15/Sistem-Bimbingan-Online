@@ -78,15 +78,18 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 10%;">ID</th>
-                <th style="width: 15%;">Periode</th>
-                <th style="width: 25%;">Nama Tutor</th>
+                <th style="width: 5%;">ID</th>
+                <th style="width: 10%;">Periode</th>
+                <th style="width: 15%;">Nama Tutor</th>
                 @if ($is_super_admin)
-                    <th style="width: 15%;">Cabang</th>
+                    <th style="width: 10%;">Cabang</th>
                 @endif
-                <th class="num" style="width: 15%;">Kehadiran</th>
-                <th class="num" style="width: 20%;">Total Gaji</th>
-                <th style="width: 10%;">Status</th>
+                <th class="num" style="width: 8%;">Hadir</th>
+                <th class="num" style="width: 10%;">Insentif</th>
+                <th class="num" style="width: 10%;">Bonus</th>
+                <th class="num" style="width: 12%;">Total Gaji</th>
+                <th style="width: 8%;">Status</th>
+                <th style="width: 12%;">Catatan</th>
             </tr>
         </thead>
         <tbody>
@@ -98,20 +101,25 @@
                     @if ($is_super_admin)
                         <td>{{ optional(optional($s->tutor)->cabang)->nama_cabang ?? '—' }}</td>
                     @endif
-                    <td class="num">{{ (int) $s->total_kehadiran }} Sesi</td>
+                    <td class="num">{{ $s->total_kehadiran }}</td>
+                    <td class="num">Rp {{ number_format((float) $s->insentif_kehadiran, 0, ',', '.') }}</td>
+                    <td class="num">Rp {{ number_format((float) $s->bonus_lainnya, 0, ',', '.') }}</td>
                     <td class="num font-bold text-emerald">Rp {{ number_format((float) $s->total_gaji, 0, ',', '.') }}</td>
                     <td style="text-align: center;">
                         <span class="badge badge-{{ $s->status }}">{{ $s->status }}</span>
                     </td>
+                    <td style="font-size: 8px; color: #64748b;">{{ $s->catatan ?? '—' }}</td>
                 </tr>
             @endforeach
         </tbody>
         <tfoot>
             <tr class="bg-slate font-bold">
                 <td colspan="{{ $is_super_admin ? 4 : 3 }}" style="text-align: right; text-transform: uppercase;">Total Keseluruhan</td>
-                <td class="num">{{ $total_kehadiran }} Sesi</td>
+                <td class="num">{{ $total_kehadiran }}</td>
+                <td class="num">Rp {{ number_format($detail_rows->sum('insentif_kehadiran'), 0, ',', '.') }}</td>
+                <td class="num">Rp {{ number_format($detail_rows->sum('bonus_lainnya'), 0, ',', '.') }}</td>
                 <td class="num text-emerald">Rp {{ number_format((float) $total_gaji, 0, ',', '.') }}</td>
-                <td></td>
+                <td colspan="2"></td>
             </tr>
         </tfoot>
     </table>

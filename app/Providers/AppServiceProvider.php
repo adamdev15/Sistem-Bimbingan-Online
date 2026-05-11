@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use App\Models\Kehadiran;
+use App\Models\KehadiranSiswa;
 use App\Models\UserNotification;
-use App\Observers\KehadiranObserver;
+use App\Observers\KehadiranSiswaObserver;
 use App\Services\Settings\SettingStore;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Kehadiran::observe(KehadiranObserver::class);
+        KehadiranSiswa::observe(KehadiranSiswaObserver::class);
 
         View::composer('components.layouts.dashboard-shell', function ($view): void {
             if (! Auth::check()) {

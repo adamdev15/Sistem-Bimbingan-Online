@@ -41,7 +41,7 @@ class Payment extends Model
 
     public function siswa(): BelongsTo
     {
-        return $this->belongsTo(Siswa::class, 'student_id');
+        return $this->belongsTo(Siswa::class, 'student_id')->withTrashed();
     }
 
     public function fee(): BelongsTo

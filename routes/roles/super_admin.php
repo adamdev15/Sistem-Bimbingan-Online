@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\AdminCabang\DashboardController as AdminCabangDashboardController;
 use App\Http\Controllers\Siswa\DashboardController as SiswaDashboardController;
+use App\Http\Controllers\SuperAdmin\BranchPriceController;
 use App\Http\Controllers\SuperAdmin\CabangController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
+use App\Http\Controllers\SuperAdmin\KehadiranTutorController;
 use App\Http\Controllers\SuperAdmin\LaporanKeuanganController;
 use App\Http\Controllers\SuperAdmin\FeeController;
 use App\Http\Controllers\SuperAdmin\MateriLesController;
@@ -79,6 +81,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/siswa', [SiswaController::class, 'index'])->name('siswa.index');
         Route::get('/siswa/export/csv', [SiswaController::class, 'exportCsv'])->name('siswa.export.csv');
         Route::get('/siswa/export/excel', [SiswaController::class, 'exportExcel'])->name('siswa.export.excel');
+        Route::post('/siswa/import', [SiswaController::class, 'importExcel'])->name('siswa.import');
+        Route::get('/siswa/template/download', [SiswaController::class, 'downloadTemplate'])->name('siswa.template');
         Route::get('/siswa/{siswa}', [SiswaController::class, 'show'])->name('siswa.show');
         Route::post('/siswa', [SiswaController::class, 'store'])->name('siswa.store');
         Route::put('/siswa/{siswa}', [SiswaController::class, 'update'])->name('siswa.update');
@@ -89,6 +93,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/tutors', [TutorController::class, 'store'])->name('tutors.store');
         Route::put('/tutors/{tutor}', [TutorController::class, 'update'])->name('tutors.update');
         Route::delete('/tutors/{tutor}', [TutorController::class, 'destroy'])->name('tutors.destroy');
+
+        Route::get('/harga-cabang', [BranchPriceController::class, 'index'])->name('branch-prices.index');
+        Route::put('/harga-cabang', [BranchPriceController::class, 'update'])->name('branch-prices.update');
     });
 
     Route::middleware('role:super_admin|admin_cabang|tutor|siswa')->group(function () {
@@ -103,6 +110,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/presensi/generate-kartu', [PresensiController::class, 'printCard'])->name('presensi.print-card');
         Route::get('/api/cabang/{cabang}/tutors', [PresensiController::class, 'getTutorsByCabang'])->name('api.cabang.tutors');
         Route::get('/api/cabang/{cabang}/students', [PresensiController::class, 'getStudentsByCabang'])->name('api.cabang.students');
+        Route::patch('/presensi/{presensi}', [PresensiController::class, 'update'])->name('presensi.update');
+        Route::delete('/presensi/{presensi}', [PresensiController::class, 'destroy'])->name('presensi.destroy');
+
+        // KEHADIRAN TUTOR
+        Route::get('/kehadiran-tutor', [KehadiranTutorController::class, 'index'])->name('kehadiran-tutor.index');
+        Route::post('/kehadiran-tutor', [KehadiranTutorController::class, 'store'])->name('kehadiran-tutor.store');
+        Route::put('/kehadiran-tutor/{kehadiranTutor}', [KehadiranTutorController::class, 'update'])->name('kehadiran-tutor.update');
+        Route::delete('/kehadiran-tutor/{kehadiranTutor}', [KehadiranTutorController::class, 'destroy'])->name('kehadiran-tutor.destroy');
+        Route::get('/kehadiran-tutor/export', [KehadiranTutorController::class, 'export'])->name('kehadiran-tutor.export');
 
         // PENGELUARAN
         Route::get('/pengeluaran', [PengeluaranController::class, 'index'])->name('pengeluaran.index');
@@ -141,12 +157,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/pembayaran/massal', [PembayaranController::class, 'massStore'])->name('pembayaran.mass.store');
             Route::post('/pembayaran/notify-due-bulk', [PembayaranController::class, 'notifyDueBulk'])->name('pembayaran.notify-due-bulk');
             Route::post('/pembayaran/{payment}/mark-lunas', [PembayaranController::class, 'markLunas'])->name('pembayaran.mark-lunas');
+            Route::delete('/pembayaran/{payment}', [PembayaranController::class, 'destroy'])->name('pembayaran.destroy');
         });
     });
 
-    Route::middleware('role:super_admin|admin_cabang')->group(function () {
-        Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
-        Route::get('/laporan/export/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.export.pdf');
-        Route::get('/laporan/export/excel', [LaporanController::class, 'exportExcel'])->name('laporan.export.excel');
-    });
 });

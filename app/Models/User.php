@@ -82,11 +82,19 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasMany<Kehadiran, $this>
+     * @return HasMany<KehadiranSiswa, $this>
      */
-    public function kehadiransCreated(): HasMany
+    public function kehadiranSiswasCreated(): HasMany
     {
-        return $this->hasMany(Kehadiran::class, 'created_by');
+        return $this->hasMany(KehadiranSiswa::class, 'created_by');
+    }
+
+    /**
+     * @return HasMany<KehadiranTutor, $this>
+     */
+    public function kehadiranTutorsCreated(): HasMany
+    {
+        return $this->hasMany(KehadiranTutor::class, 'created_by');
     }
 
     /**

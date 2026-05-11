@@ -64,9 +64,21 @@ class DashboardNavigation
             [
                 'label' => 'Absensi',
                 'icon' => 'presensi',
-                'route' => 'presensi.index',
                 'roles' => ['super_admin', 'admin_cabang', 'tutor', 'siswa'],
-                'patterns' => ['presensi.*'],
+                'children' => [
+                    [
+                        'label' => 'Absensi Siswa',
+                        'route' => 'presensi.index',
+                        'roles' => ['super_admin', 'admin_cabang', 'tutor', 'siswa'],
+                        'patterns' => ['presensi.*'],
+                    ],
+                    [
+                        'label' => 'Absensi Tutor',
+                        'route' => 'kehadiran-tutor.index',
+                        'roles' => ['super_admin', 'admin_cabang'],
+                        'patterns' => ['kehadiran-tutor.*'],
+                    ],
+                ]
             ],
             [
                 'label' => 'Keuangan',
@@ -156,6 +168,7 @@ class DashboardNavigation
                         'Siswa', 'Siswa (Tutor)' => 'Siswa',
                         'Tutor' => 'Tutor',
                         'Materi Les' => 'Materi Les',
+                        'Absensi Siswa', 'Absensi Tutor' => 'Presensi',
                         'Biaya' => 'Biaya',
                         'Pembayaran' => 'Pembayaran',
                         'Pengeluaran' => 'Pengeluaran',

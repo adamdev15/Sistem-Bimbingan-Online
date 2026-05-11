@@ -14,8 +14,10 @@ class MateriLes extends Model
         'deskripsi',
         'foto',
         'pertemuan_per_minggu',
-        'biaya_tutor',
-        'biaya_daftar',
-        'biaya_spp',
     ];
+
+    public function branchPrices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BranchMateriPrice::class, 'materi_les_id');
+    }
 }

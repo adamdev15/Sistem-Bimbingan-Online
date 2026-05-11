@@ -106,23 +106,29 @@
                                 <td class="px-4 py-3.5">{{ $s->total_kehadiran }} Sesi</td>
                                 <td class="px-4 py-3.5">Rp {{ number_format((float) $s->total_gaji, 0, ',', '.') }}</td>
                                 <td class="px-4 py-3.5">
-                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold @class([
-                                        'bg-amber-100 text-amber-900' => $s->status === 'pending',
-                                        'bg-blue-100 text-blue-900' => $s->status === 'dibayar',
-                                        'bg-emerald-100 text-emerald-900' => $s->status === 'diterima',
-                                    ])">{{ ucfirst($s->status) }}</span>
+                                    @php
+                                        $stCfg = match($s->status) {
+                                            'pending' => ['color' => 'bg-amber-50 text-amber-700 border-amber-100', 'dot' => 'bg-amber-500'],
+                                            'dibayar' => ['color' => 'bg-blue-50 text-blue-700 border-blue-100', 'dot' => 'bg-blue-500'],
+                                            'diterima' => ['color' => 'bg-emerald-50 text-emerald-700 border-emerald-100', 'dot' => 'bg-emerald-500'],
+                                            default => ['color' => 'bg-slate-50 text-slate-700 border-slate-100', 'dot' => 'bg-slate-500'],
+                                        };
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border {{ $stCfg['color'] }}">
+                                        <span class="h-1.5 w-1.5 rounded-full {{ $stCfg['dot'] }}"></span>
+                                        {{ $s->status }}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-3.5 text-slate-600">{{ optional($s->creator)->name ?? '—' }}</td>
                                 <td class="px-4 py-3.5">
-                                    <form method="POST" action="{{ route('salaries.update', $s) }}" class="flex flex-wrap items-center gap-2">
+                                    <form method="POST" action="{{ route('salaries.update', $s) }}">
                                         @csrf
                                         @method('PATCH')
-                                        <select name="status" class="rounded-lg border border-slate-200 px-2 py-1.5 text-xs shadow-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                                        <select name="status" onchange="this.form.submit()" class="rounded-lg border border-slate-200 px-2 py-1.5 text-xs shadow-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer hover:bg-slate-50 transition-colors">
                                             <option value="pending" @selected($s->status === 'pending')>Pending</option>
                                             <option value="dibayar" @selected($s->status === 'dibayar')>Dibayar</option>
                                             <option value="diterima" @selected($s->status === 'diterima')>Diterima</option>
                                         </select>
-                                        <button type="submit" class="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-900">OK</button>
                                     </form>
                                 </td>
                             </tr>
@@ -142,16 +148,30 @@
                 startDate: '',
                 endDate: '',
                 totalKehadiran: {{ old('total_kehadiran', 0) }},
+                gaji: {{ old('gaji', 0) }},
+                insentifKehadiran: {{ old('insentif_kehadiran', 0) }},
+                bonusLainnya: {{ old('bonus_lainnya', 0) }},
                 totalGaji: {{ old('total_gaji', 0) }},
+                full: {{ old('full', 0) }},
+                pagiSiang: {{ old('pagi_siang', 0) }},
+                siangSore: {{ old('siang_sore', 0) }},
                 isLoading: false,
+                calculateTotal() {
+                    let base = (parseFloat(this.gaji) || 0) / 25;
+                    let calculated = (base * (parseFloat(this.totalKehadiran) || 0)) + (parseFloat(this.insentifKehadiran) || 0) + (parseFloat(this.bonusLainnya) || 0);
+                    this.totalGaji = Math.round(calculated);
+                },
                 async fetchAttendance() {
                     if (!this.tutorId || !this.startDate || !this.endDate) return;
                     this.isLoading = true;
                     try {
                         const res = await fetch(`{{ route('api.salaries.attendance-count') }}?tutor_id=${this.tutorId}&start_date=${this.startDate}&end_date=${this.endDate}`);
                         const data = await res.json();
-                        this.totalKehadiran = data.count || 0;
-                        this.totalGaji = data.total_salary || 0;
+                        this.full = data.full || 0;
+                        this.pagiSiang = data.pagi_siang || 0;
+                        this.siangSore = data.siang_sore || 0;
+                        this.totalKehadiran = (this.full) + (this.pagiSiang + this.siangSore) * 0.5;
+                        this.calculateTotal();
                     } catch (e) {
                         console.error(e);
                     } finally {
@@ -170,7 +190,7 @@
             <div
                 @click.outside="salaryModalOpen = false"
                 @keydown.escape.window="salaryModalOpen = false"
-                class="max-h-[min(90vh,640px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5"
+                class="max-h-[min(90vh,750px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5"
             >
                 <div class="flex items-start justify-between gap-4">
                     <div>
@@ -209,30 +229,54 @@
                             <label for="sal-periode" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Label Periode (ex: April 2024)</label>
                             <input id="sal-periode" name="periode" type="text" required value="{{ old('periode', date('F Y')) }}" placeholder="April 2024" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
+
+                        {{-- BREAKDOWN SESI --}}
+                        <div class="sm:col-span-2 bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-3">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Rekap Sesi Kehadiran</p>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full</label>
+                                    <input type="number" name="full" x-model="full" readonly class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pagi-Siang</label>
+                                    <input type="number" name="pagi_siang" x-model="pagiSiang" readonly class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Siang-Sore</label>
+                                    <input type="number" name="siang_sore" x-model="siangSore" readonly class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
-                            <label for="sal-hadir" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total kehadiran</label>
+                            <label for="sal-hadir" class="text-xs font-semibold uppercase tracking-wide text-slate-500 font-bold text-emerald-600">Total kehadiran</label>
                             <div class="relative mt-1.5">
-                                <input id="sal-hadir" name="total_kehadiran" type="number" min="0" required x-model="totalKehadiran" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15" :class="isLoading ? 'opacity-50' : ''">
+                                <input id="sal-hadir" name="total_kehadiran" type="number" min="0" step="0.5" required x-model="totalKehadiran" @input="calculateTotal()" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15" :class="isLoading ? 'opacity-50' : ''">
                                 <div x-show="isLoading" class="absolute right-3 top-2.5">
                                     <svg class="h-4 w-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 </div>
                             </div>
-                            <p class="mt-1 text-[10px] text-slate-400">Dihitung otomatis dari presensi.</p>
-                            @error('total_kehadiran')
-                                <p class="mt-1.5 text-xs font-medium text-rose-600">{{ $message }}</p>
-                            @enderror
+                            <p class="mt-1 text-[10px] text-slate-400">Total terhitung otomatis.</p>
                         </div>
                         <div>
-                            <label for="sal-gaji" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Gaji (Otomatis)</label>
+                            <label for="sal-base" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gaji Pokok (Rp)</label>
+                            <input id="sal-base" name="gaji" type="number" min="0" required x-model="gaji" @input="calculateTotal()" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label for="sal-insentif" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Insentif Kehadiran (Rp)</label>
+                            <input id="sal-insentif" name="insentif_kehadiran" type="number" min="0" required x-model="insentifKehadiran" @input="calculateTotal()" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div>
+                            <label for="sal-bonus" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bonus Lainnya (Rp)</label>
+                            <input id="sal-bonus" name="bonus_lainnya" type="number" min="0" required x-model="bonusLainnya" @input="calculateTotal()" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="sal-gaji" class="text-xs font-semibold uppercase tracking-wide text-slate-500 font-bold text-blue-600">Total Gaji (Dihitung Otomatis)</label>
                             <div class="relative mt-1.5">
-                                <input id="sal-gaji" name="total_gaji" type="number" min="0" step="0.01" required x-model="totalGaji" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15" :class="isLoading ? 'opacity-50' : ''">
-                                <div x-show="isLoading" class="absolute right-3 top-2.5">
-                                    <svg class="h-4 w-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                </div>
+                                <input id="sal-gaji" name="total_gaji" type="number" min="0" step="0.01" required x-model="totalGaji" readonly class="w-full rounded-xl border border-blue-100 bg-blue-50/30 px-3 py-2.5 text-sm font-bold text-blue-700 shadow-sm outline-none">
                             </div>
-                            @error('total_gaji')
-                                <p class="mt-1.5 text-xs font-medium text-rose-600">{{ $message }}</p>
-                            @enderror
+                            <p class="mt-1 text-[10px] text-slate-400 font-medium">(Gaji / 25 hari kerja) &times; Kehadiran + Insentif + Bonus</p>
                         </div>
                     </div>
                     <div>

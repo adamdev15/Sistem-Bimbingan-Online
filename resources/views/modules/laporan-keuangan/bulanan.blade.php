@@ -111,16 +111,20 @@
             <!-- Signatures Section -->
             <div class="p-8 mt-4 grid grid-cols-2 gap-8 text-center text-sm font-bold text-slate-900 border-t border-slate-200">
                 <div class="flex flex-col items-center">
-                    <p class="mb-20">Investor</p>
+                    <p class="mb-20 uppercase font-black tracking-widest text-slate-400 text-[10px]">Investor {{ $cabang ? 'Cabang ' . $cabang->nama_cabang : 'Seluruh Cabang' }}</p>
                     <div class="w-48 border-b-2 border-slate-900"></div>
-                    <p class="mt-2 uppercase">Investor {{ $cabang ? 'Cabang ' . $cabang->nama_cabang : 'Seluruh Cabang' }}</p>
                 </div>
                 <div class="flex flex-col items-center">
-                    <p class="mb-2 text-slate-400 font-normal">Tegal, {{ now()->translatedFormat('d F Y') }}</p>
-                    <p class="mb-20">Pusat</p>
+                    <p class="mb-2 text-slate-400 font-normal">{{ $cabang ? $cabang->kota : 'Tegal' }}, {{ now()->translatedFormat('d F Y') }}</p>
+                    <p class="mb-20 uppercase font-black tracking-widest text-slate-400 text-[10px]">{{ $cabang ? 'Admin Cabang' : 'Pusat' }}</p>
                     <div class="w-48 border-b-2 border-slate-900"></div>
-                    <p class="mt-2 uppercase font-black">Dr. Nurhayati Sueb</p>
-                    <p class="text-xs font-normal text-slate-500">Pusat Jarimatrik</p>
+                    @if($cabang && $cabang->user)
+                        <p class="mt-2 uppercase font-black">{{ $cabang->user->name }}</p>
+                        <p class="text-xs font-normal text-slate-500">{{ $cabang->nama_cabang }}</p>
+                    @else
+                        <p class="mt-2 uppercase font-black">Admin Pusat Jarimatrik</p>
+                        <p class="text-xs font-normal text-slate-500">Pusat Jarimatrik</p>
+                    @endif
                 </div>
             </div>
         </div>

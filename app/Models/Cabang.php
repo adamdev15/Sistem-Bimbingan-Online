@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -40,9 +41,18 @@ class Cabang extends Model
         return $this->hasMany(Tutor::class);
     }
 
+    public function manyTutors(): BelongsToMany
+    {
+        return $this->belongsToMany(Tutor::class, 'cabang_tutor');
+    }
+
     public function pengeluarans(): HasMany
     {
         return $this->hasMany(Pengeluaran::class);
     }
 
+    public function branchPrices(): HasMany
+    {
+        return $this->hasMany(BranchMateriPrice::class);
+    }
 }
