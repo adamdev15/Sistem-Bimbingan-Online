@@ -38,12 +38,13 @@
             biaya_spp: 0,
             nama_materi: ''
         },
-        openPriceModal(price, namaMateri) {
+        openPriceModal(price, item) {
             this.priceData = {
-                id: price.id,
-                biaya_daftar: parseInt(price.biaya_daftar),
-                biaya_spp: parseInt(price.biaya_spp),
-                nama_materi: namaMateri
+                id: price ? price.id : '',
+                materi_les_id: item.id,
+                biaya_daftar: price ? parseInt(price.biaya_daftar) : 0,
+                biaya_spp: price ? parseInt(price.biaya_spp) : 0,
+                nama_materi: item.nama_materi
             };
             this.showPriceModal = true;
         },
@@ -171,8 +172,11 @@
                                         </td>
                                         @role('admin_cabang')
                                         <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-700">
-                                            @php $price = $item->branchPrices->first(); @endphp
-                                            @if($price)
+                                            @php 
+                                                $price = $item->branchPrices->first(); 
+                                                $isSet = $price && ($price->biaya_daftar > 0 || $price->biaya_spp > 0);
+                                            @endphp
+                                            @if($isSet)
                                                 <div class="flex flex-col">
                                                     <div class="flex items-center gap-1.5">
                                                         <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -182,13 +186,19 @@
                                                         <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                                                         <span class="font-semibold text-slate-700 text-xs">SPP: Rp{{ number_format($price->biaya_spp, 0, ',', '.') }}</span>
                                                     </div>
-                                                    <button type="button" @click="openPriceModal({{ json_encode($price) }}, '{{ $item->nama_materi }}')" class="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-50 text-[10px] text-blue-600 font-bold uppercase hover:bg-blue-100 transition-colors">
+                                                    <button type="button" @click="openPriceModal({{ json_encode($price) }}, {{ json_encode($item) }})" class="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-50 text-[10px] text-blue-600 font-bold uppercase hover:bg-blue-100 transition-colors">
                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                                         Edit Harga
                                                     </button>
                                                 </div>
                                             @else
-                                                <span class="text-slate-400 italic">Belum diatur</span>
+                                                <div class="flex flex-col gap-2">
+                                                    <span class="text-slate-400 italic text-xs">Belum diatur</span>
+                                                    <button type="button" @click="openPriceModal({{ json_encode($price) }}, {{ json_encode($item) }})" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-bold hover:bg-emerald-100 transition-all border border-emerald-100">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                                                        Atur Harga
+                                                    </button>
+                                                </div>
                                             @endif
                                         </td>
                                         @endrole
@@ -265,7 +275,7 @@
                                             <input type="number" name="pertemuan_per_minggu" id="pertemuan_per_minggu" x-model="formData.pertemuan_per_minggu" required min="1" class="block w-full rounded-xl border-0 py-2.5 px-3.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
                                         </div>
                                     </div>
-                                </div>
+                                
 
                                 <div>
                                     <label for="foto" class="block text-sm font-medium leading-6 text-slate-900">Gambar Cover/Brosur Materi</label>
@@ -309,10 +319,11 @@
                         <form action="{{ route('branch-prices.update') }}" method="POST" class="divide-y divide-slate-100">
                             @csrf
                             @method('PUT')
-                            <input type="hidden" :name="'prices[' + priceData.id + '][id]'" :value="priceData.id">
+                            <input type="hidden" :name="'prices[' + priceData.materi_les_id + '][id]'" :value="priceData.id">
+                            <input type="hidden" :name="'prices[' + priceData.materi_les_id + '][materi_les_id]'" :value="priceData.materi_les_id">
                             
                             <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                                <h3 class="text-base font-bold text-slate-900" id="modal-title">Edit Harga Materi</h3>
+                                <h3 class="text-base font-bold text-slate-900" id="modal-title" x-text="priceData.id ? 'Edit Harga Materi' : 'Atur Harga Cabang'"></h3>
                                 <button type="button" @click="showPriceModal = false" class="text-slate-400 hover:text-slate-500">
                                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
@@ -328,7 +339,7 @@
                                     <label class="block text-sm font-bold text-slate-700 mb-2">Biaya Pendaftaran (Rp)</label>
                                     <div class="relative">
                                         <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 font-bold">Rp</span>
-                                        <input type="number" :name="'prices[' + priceData.id + '][biaya_daftar]'" x-model="priceData.biaya_daftar" required min="0" class="block w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                                        <input type="number" :name="'prices[' + priceData.materi_les_id + '][biaya_daftar]'" x-model="priceData.biaya_daftar" required min="0" class="block w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                                     </div>
                                 </div>
 
@@ -336,7 +347,7 @@
                                     <label class="block text-sm font-bold text-slate-700 mb-2">Biaya SPP Bulanan (Rp)</label>
                                     <div class="relative">
                                         <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 font-bold">Rp</span>
-                                        <input type="number" :name="'prices[' + priceData.id + '][biaya_spp]'" x-model="priceData.biaya_spp" required min="0" class="block w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                                        <input type="number" :name="'prices[' + priceData.materi_les_id + '][biaya_spp]'" x-model="priceData.biaya_spp" required min="0" class="block w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                                     </div>
                                 </div>
                             </div>

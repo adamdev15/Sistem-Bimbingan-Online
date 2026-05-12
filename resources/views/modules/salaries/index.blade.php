@@ -156,6 +156,11 @@
                 pagiSiang: {{ old('pagi_siang', 0) }},
                 siangSore: {{ old('siang_sore', 0) }},
                 isLoading: false,
+                recalculateAttendance() {
+                    let attendance = (parseFloat(this.full) * 1) + (parseFloat(this.pagiSiang) * 0.5) + (parseFloat(this.siangSore) * 0.42);
+                    this.totalKehadiran = parseFloat(attendance.toFixed(2));
+                    this.calculateTotal();
+                },
                 calculateTotal() {
                     let base = (parseFloat(this.gaji) || 0) / 25;
                     let calculated = (base * (parseFloat(this.totalKehadiran) || 0)) + (parseFloat(this.insentifKehadiran) || 0) + (parseFloat(this.bonusLainnya) || 0);
@@ -170,7 +175,8 @@
                         this.full = data.full || 0;
                         this.pagiSiang = data.pagi_siang || 0;
                         this.siangSore = data.siang_sore || 0;
-                        this.totalKehadiran = (this.full) + (this.pagiSiang + this.siangSore) * 0.5;
+                        this.totalKehadiran = (this.full * 1) + (this.pagiSiang * 0.5) + (this.siangSore * 0.42);
+                        this.totalKehadiran = parseFloat(this.totalKehadiran.toFixed(2));
                         this.calculateTotal();
                     } catch (e) {
                         console.error(e);
@@ -236,15 +242,15 @@
                             <div class="grid grid-cols-3 gap-3">
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full</label>
-                                    <input type="number" name="full" x-model="full" readonly class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                                    <input type="number" name="full" x-model="full" @input="recalculateAttendance()" class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pagi-Siang</label>
-                                    <input type="number" name="pagi_siang" x-model="pagiSiang" readonly class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                                    <input type="number" name="pagi_siang" x-model="pagiSiang" @input="recalculateAttendance()" class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Siang-Sore</label>
-                                    <input type="number" name="siang_sore" x-model="siangSore" readonly class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                                    <input type="number" name="siang_sore" x-model="siangSore" @input="recalculateAttendance()" class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
                                 </div>
                             </div>
                         </div>
@@ -257,7 +263,7 @@
                                     <svg class="h-4 w-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 </div>
                             </div>
-                            <p class="mt-1 text-[10px] text-slate-400">Total terhitung otomatis.</p>
+                            <p class="mt-1 text-[10px] text-slate-400">Total terhitung otomatis dan bisa diedit manual.</p>
                         </div>
                         <div>
                             <label for="sal-base" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gaji Pokok (Rp)</label>
@@ -276,7 +282,7 @@
                             <div class="relative mt-1.5">
                                 <input id="sal-gaji" name="total_gaji" type="number" min="0" step="0.01" required x-model="totalGaji" readonly class="w-full rounded-xl border border-blue-100 bg-blue-50/30 px-3 py-2.5 text-sm font-bold text-blue-700 shadow-sm outline-none">
                             </div>
-                            <p class="mt-1 text-[10px] text-slate-400 font-medium">(Gaji / 25 hari kerja) &times; Kehadiran + Insentif + Bonus</p>
+                            <p class="mt-1 text-[10px] text-slate-400 font-medium">(Gaji Pokok / 25) &times; Total Kehadiran + Insentif + Bonus</p>
                         </div>
                     </div>
                     <div>

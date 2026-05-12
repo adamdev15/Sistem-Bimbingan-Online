@@ -116,19 +116,23 @@ class SalaryController extends Controller
                 ->with('error', "Gaji tutor {$tutor->nama} periode {$data['periode']} telah diinputkan, cek data terlebih dahulu.");
         }
 
+        $total_kehadiran = ($data['full'] * 1.0) + ($data['pagi_siang'] * 0.5) + ($data['siang_sore'] * 0.42);
+        $base_salary = ($data['gaji'] / 25) * $total_kehadiran;
+        $total_gaji = round($base_salary + $data['insentif_kehadiran'] + $data['bonus_lainnya']);
+
         $salary = Salary::query()->create([
             'tutor_id' => $data['tutor_id'],
             'periode' => $data['periode'],
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
-            'total_kehadiran' => $data['total_kehadiran'],
+            'total_kehadiran' => $total_kehadiran,
             'full' => $data['full'],
             'pagi_siang' => $data['pagi_siang'],
             'siang_sore' => $data['siang_sore'],
             'gaji' => $data['gaji'],
             'insentif_kehadiran' => $data['insentif_kehadiran'],
             'bonus_lainnya' => $data['bonus_lainnya'],
-            'total_gaji' => $data['total_gaji'],
+            'total_gaji' => $total_gaji,
             'status' => $data['status'] ?? 'pending',
             'catatan' => $data['catatan'],
             'created_by' => $request->user()?->id,

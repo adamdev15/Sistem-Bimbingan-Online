@@ -31,26 +31,38 @@ class BranchPriceController extends Controller
     {
         $data = $request->validate([
             'prices' => ['required', 'array'],
-            'prices.*.id' => ['required', 'exists:branch_materi_prices,id'],
+            'prices.*.id' => ['nullable'],
+            'prices.*.materi_les_id' => ['required', 'exists:materi_les,id'],
             'prices.*.biaya_daftar' => ['required', 'numeric', 'min:0'],
             'prices.*.biaya_spp' => ['required', 'numeric', 'min:0'],
         ]);
 
-        foreach ($data['prices'] as $priceData) {
-            $price = BranchMateriPrice::find($priceData['id']);
-            
-            // Security check for Branch Admin
-            if (auth()->user()->hasRole('admin_cabang')) {
-                $myCabangId = DB::table('cabangs')->where('user_id', auth()->id())->value('id');
-                if ($price->cabang_id != $myCabangId) {
-                    continue;
-                }
+        $user = auth()->user();
+        $myCabangId = null;
+        if ($user->hasRole('admin_cabang')) {
+            $myCabangId = DB::table('cabangs')->where('user_id', $user->id)->value('id');
+        }
+
+        foreach ($data['prices'] as $materiId => $priceData) {
+            $cabangId = $myCabangId;
+
+            // If super_admin, we might need to get cabang_id from the record if id exists
+            if (!$cabangId && !empty($priceData['id'])) {
+                $cabangId = BranchMateriPrice::where('id', $priceData['id'])->value('cabang_id');
             }
 
-            $price->update([
-                'biaya_daftar' => $priceData['biaya_daftar'],
-                'biaya_spp' => $priceData['biaya_spp'],
-            ]);
+            if (!$cabangId) continue;
+
+            BranchMateriPrice::updateOrCreate(
+                [
+                    'cabang_id' => $cabangId,
+                    'materi_les_id' => $priceData['materi_les_id'],
+                ],
+                [
+                    'biaya_daftar' => $priceData['biaya_daftar'],
+                    'biaya_spp' => $priceData['biaya_spp'],
+                ]
+            );
         }
 
         return back()->with('success', 'Harga materi berhasil diperbarui.');
