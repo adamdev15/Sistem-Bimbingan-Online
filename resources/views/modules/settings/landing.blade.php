@@ -89,6 +89,54 @@
                     </div>
                 </div>
 
+                <!-- FAQ Settings -->
+                <div class="border-b border-slate-200 pb-8" x-data="{ 
+                    faqs: {{ isset($settings['landing_faq']) ? $settings['landing_faq'] : '[]' }},
+                    addFaq() {
+                        this.faqs.push({ question: '', answer: '' });
+                    },
+                    removeFaq(index) {
+                        this.faqs.splice(index, 1);
+                    }
+                }">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-800">Pengaturan Pertanyaan (FAQ)</h2>
+                            <p class="text-sm text-slate-500">Daftar pertanyaan yang sering diajukan pada halaman landing.</p>
+                        </div>
+                        <button type="button" @click="addFaq()" class="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-100 transition">
+                            + Tambah Pertanyaan
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="landing_faq" :value="JSON.stringify(faqs)">
+
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <template x-for="(faq, index) in faqs" :key="index">
+                            <div class="rounded-2xl border border-slate-200 p-4 bg-slate-50/30">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Pertanyaan <span x-text="index + 1"></span></span>
+                                    <button type="button" @click="removeFaq(index)" class="text-xs font-bold text-rose-500 hover:text-rose-700">Hapus</button>
+                                </div>
+                                <div class="grid gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 mb-1">Pertanyaan</label>
+                                        <input type="text" x-model="faq.question" placeholder="Contoh: Apa itu Bimbel Jarimatrik?" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 mb-1">Jawaban</label>
+                                        <textarea x-model="faq.answer" rows="2" placeholder="Tulis jawaban lengkap di sini..." class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="faqs.length === 0" class="text-center py-8 rounded-2xl border-2 border-dashed border-slate-200">
+                        <p class="text-sm text-slate-400">Belum ada pertanyaan. Klik tombol di atas untuk menambah.</p>
+                    </div>
+                </div>
+
                 <!-- Footer & Kontak -->
                 <div class="pb-2">
                     <h2 class="text-lg font-bold text-slate-800">Kontak & Footer</h2>

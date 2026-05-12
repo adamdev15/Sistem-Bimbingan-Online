@@ -23,6 +23,7 @@ class SettingController extends Controller
             'hero_title' => 'nullable|string',
             'hero_desc' => 'nullable|string',
             'tagline' => 'nullable|string',
+            'nama_bimbel' => 'nullable|string',
             'about_us' => 'nullable|string',
             'registration_terms' => 'nullable|string',
             'footer_address' => 'nullable|string',
@@ -31,6 +32,7 @@ class SettingController extends Controller
             'footer_email' => 'nullable|string|email',
             'footer_web' => 'nullable|string|url',
             'whatsapp_number' => 'nullable|string',
+            'landing_faq' => 'nullable|string',
         ]);
 
         foreach ($validated as $key => $value) {

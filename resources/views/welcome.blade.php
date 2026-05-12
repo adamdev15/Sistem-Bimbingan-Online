@@ -263,11 +263,7 @@
                                 <div class="p-2 sm:p-3">
                                 <h3 class="font-bold text-blue-900 text-lg">{{ $program->nama_materi }}</h3>
                                 <p class="mt-2 text-sm text-slate-500 line-clamp-2" title="{{ $program->deskripsi }}">{{ $program->deskripsi ?? 'Belum ada deskripsi.' }}</p>
-                                <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                                    <div>
-                                        <span class="text-xs text-slate-500 block">Biaya Pendaftaran</span>
-                                        <span class="font-semibold text-blue-900 text-sm">{{ $program->biaya_daftar > 0 ? 'Rp ' . number_format($program->biaya_daftar, 0, ',', '.') : 'Gratis' }}</span>
-                                    </div>
+                                <div class="border-t border-slate-100 flex items-center justify-end">
                                     <a href="{{ route('register') }}" class="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 transition">Pilih</a>
                                 </div>
                                 </div>
@@ -316,38 +312,26 @@
             </section>
 
             <section id="faq" class="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8" x-data="{active: 0}">
-    <h2 class="text-center text-3xl font-bold text-blue-950">Pertanyaan yang Sering Diajukan</h2>
-    <div class="mt-8 space-y-3">
-        @foreach ([
-            [
-                'q' => 'Berapa rata-rata biaya pendaftaran di lembaga ini?',
-                'a' => 'Biaya pendaftaran cukup terjangkau dan kami memberikan promo diskon spesial setiap pendaftaran semester baru. Silakan hubungi admin kami (WhatsApp) untuk detail pricelist program.'
-            ],
-            [
-                'q' => 'Bagaimana jadwal belajarnya?',
-                'a' => 'Jadwal sangat fleksibel menyesuaikan jam sekolah anak Anda (sistem ganjil-genap pagi/sore hari).'
-            ],
-            [
-                'q' => 'Lokasi bimbel berada dimana saja?',
-                'a' => 'Pusat kami berlokasi di area strategis tengah kota. Segera buka peta / panduan alamat di laman informasi pendaftaran cabang.'
-            ],
-            [
-                'q' => 'Bagaimana progres anak dipantau?',
-                'a' => 'Tutor secara periodik mengevaluasi hasil Try Out dan latihan mandiri, lalu melaporkannya secara digital kepada orang tua untuk dievaluasi.'
-            ],
-        ] as $index => $faq)
-            <div class="overflow-hidden rounded-xl border border-blue-100 bg-white">
-                <button @click="active = active === {{ $index }} ? -1 : {{ $index }}" class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold text-blue-900">
-                    <span>{{ $faq['q'] }}</span>
-                    <span x-text="active === {{ $index }} ? '-' : '+'"></span>
-                </button>
-                <div x-show="active === {{ $index }}" x-transition class="border-t border-blue-50 px-5 py-4 text-sm text-slate-600">
-                    {{ $faq['a'] }}
+                <h2 class="text-center text-3xl font-bold text-blue-950">Pertanyaan yang Sering Diajukan</h2>
+                <div class="mt-8 space-y-3">
+                    @php
+                        $faqs = json_decode($settings['landing_faq'] ?? '[]', true);
+                    @endphp
+                    @forelse ($faqs as $index => $faq)
+                        <div class="overflow-hidden rounded-xl border border-blue-100 bg-white">
+                            <button @click="active = active === {{ $index }} ? -1 : {{ $index }}" class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold text-blue-900">
+                                <span>{{ $faq['question'] }}</span>
+                                <span x-text="active === {{ $index }} ? '-' : '+'"></span>
+                            </button>
+                            <div x-show="active === {{ $index }}" x-transition class="border-t border-blue-50 px-5 py-4 text-sm text-slate-600">
+                                {{ $faq['answer'] }}
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-center text-slate-500 py-10">Belum ada pertanyaan yang tersedia.</p>
+                    @endforelse
                 </div>
-            </div>
-        @endforeach
-    </div>
-</section>
+            </section>
         </main>
 
         <footer class="bg-[#060b16] py-10 text-slate-300">
