@@ -22,14 +22,14 @@ class TutorController extends Controller
     {
         return view('modules.tutor.index', [
             'tutors' => $this->service->tutorIndex($request),
-            'cabangs' => $this->service->cabangForSelect(),
+            'cabangs' => Cabang::query()->orderBy('nama_cabang')->get(),
             'filters' => $request->only(['search', 'cabang_id', 'status']),
         ]);
     }
 
     public function show(Tutor $tutor): View
     {
-        $this->guardCabangScope($tutor->cabang_id);
+        // $this->guardCabangScope($tutor->cabang_id);
         $tutor->load(['cabangs']);
 
         return view('modules.tutor.show', compact('tutor'));
@@ -73,7 +73,7 @@ class TutorController extends Controller
 
     public function update(Request $request, Tutor $tutor): RedirectResponse|JsonResponse
     {
-        $this->guardCabangScope($tutor->cabang_id);
+        // $this->guardCabangScope($tutor->cabang_id);
 
         $data = $request->validate([
             'form_context' => ['nullable', 'string', 'max:40'],
@@ -111,7 +111,7 @@ class TutorController extends Controller
 
     public function destroy(Request $request, Tutor $tutor): RedirectResponse|JsonResponse
     {
-        $this->guardCabangScope($tutor->cabang_id);
+        // $this->guardCabangScope($tutor->cabang_id);
         $userId = $tutor->user_id;
 
         DB::transaction(function () use ($tutor, $userId): void {
@@ -151,9 +151,9 @@ class TutorController extends Controller
 
     private function forceCabangForAdmin(array &$data): void
     {
-        $user = auth()->user();
-        if ($user && $user->hasRole('admin_cabang')) {
-            $data['cabang_ids'] = [Cabang::query()->where('user_id', $user->id)->value('id')];
-        }
+        // $user = auth()->user();
+        // if ($user && $user->hasRole('admin_cabang')) {
+        //     $data['cabang_ids'] = [Cabang::query()->where('user_id', $user->id)->value('id')];
+        // }
     }
 }

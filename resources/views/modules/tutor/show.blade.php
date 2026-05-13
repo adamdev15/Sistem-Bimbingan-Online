@@ -69,22 +69,38 @@
                         <a href="{{ route('presensi.index', ['tutor_id' => $tutor->id]) }}" class="text-xs font-bold text-blue-600 hover:text-blue-700">Lihat Semua</a>
                     </div>
                     <div class="space-y-4">
-                        @forelse($tutor->kehadirans()->with('materiLes')->latest('tanggal')->limit(5)->get() as $sesi)
-                            <div class="flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100">
-                                <div class="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        @php
+                            $typeMap = [
+                                'full' => 'Sesi Full',
+                                'pagi_siang' => 'Shift Pagi-Siang',
+                                'siang_sore' => 'Shift Siang-Sore',
+                            ];
+                        @endphp
+                        @forelse($tutor->kehadiranTutors()->latest('tanggal')->limit(5)->get() as $sesi)
+                            <div class="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-white font-mono text-xs font-bold text-slate-400 shadow-sm ring-1 ring-slate-200">
+                                        {{ $sesi->tanggal->format('d') }}
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-900">{{ $typeMap[$sesi->kehadiran] ?? 'Sesi Belajar' }}</div>
+                                        <div class="text-[10px] text-slate-500">{{ $sesi->tanggal->translatedFormat('d F Y') }}</div>
+                                    </div>
                                 </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="font-bold text-slate-900 truncate">{{ optional($sesi->materiLes)->nama_materi }}</p>
-                                    <p class="text-xs text-slate-500">{{ $sesi->tanggal->translatedFormat('d F Y') }} • {{ substr($sesi->jam_mulai,0,5) }}-{{ substr($sesi->jam_selesai,0,5) }}</p>
-                                </div>
-                                <div class="text-right">
-                                    <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-700">Selesai</span>
-                                </div>
+                                @php
+                                    $statusColor = match($sesi->status) {
+                                        'hadir' => 'bg-emerald-100 text-emerald-700',
+                                        'izin' => 'bg-amber-100 text-amber-700',
+                                        'sakit' => 'bg-blue-100 text-blue-700',
+                                        'alpha' => 'bg-rose-100 text-rose-700',
+                                        default => 'bg-slate-100 text-slate-700'
+                                    };
+                                @endphp
+                                <span class="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase {{ $statusColor }}">{{ $sesi->status }}</span>
                             </div>
                         @empty
-                            <div class="py-12 text-center">
-                                <p class="text-sm text-slate-400 italic">Belum ada riwayat sesi mengajar.</p>
+                            <div class="py-10 text-center">
+                                <p class="text-xs text-slate-400 italic">Belum ada riwayat sesi tercatat.</p>
                             </div>
                         @endforelse
                     </div>
@@ -94,20 +110,37 @@
             <div class="space-y-6">
                 {{-- STATS CARD --}}
                 <div class="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm ring-1 ring-slate-900/5">
-                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Performa Mengajar</h3>
-                    <div class="space-y-6">
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-bold text-slate-600">Total Sesi Bulan Ini</span>
-                                <span class="text-lg font-black text-slate-900">{{ $tutor->kehadirans()->whereMonth('tanggal', now())->count() }}</span>
-                            </div>
-                            <div class="h-1.5 w-full rounded-full bg-slate-100">
-                                <div class="h-1.5 rounded-full bg-blue-500" style="width: 65%"></div>
-                            </div>
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Performa Mengajar ({{ now()->translatedFormat('F') }})</h3>
+                    @php
+                        $currentMonthKehadiran = $tutor->kehadiranTutors()
+                            ->whereMonth('tanggal', now()->month)
+                            ->whereYear('tanggal', now()->year)
+                            ->where('status', 'hadir')
+                            ->get();
+
+                        $fullCount = $currentMonthKehadiran->where('kehadiran', 'full')->count();
+                        $pagiSiangCount = $currentMonthKehadiran->where('kehadiran', 'pagi_siang')->count();
+                        $siangSoreCount = $currentMonthKehadiran->where('kehadiran', 'siang_sore')->count();
+
+                        $totalWeighted = ($fullCount * 1.0) + ($pagiSiangCount * 0.5) + ($siangSoreCount * 0.42);
+                    @endphp
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500">Full (100%)</span>
+                            <span class="text-sm font-black text-slate-900">{{ $fullCount }} Kali</span>
                         </div>
-                        <div class="pt-6 border-t border-slate-100">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Penghasilan (Estimasi)</p>
-                            <p class="mt-1 text-2xl font-black text-slate-900">Rp {{ number_format($tutor->salaries()->sum('total_gaji'), 0, ',', '.') }}</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500">Pagi-Siang (50%)</span>
+                            <span class="text-sm font-black text-slate-900">{{ $pagiSiangCount }} Kali</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500">Siang-Sore (42%)</span>
+                            <span class="text-sm font-black text-slate-900">{{ $siangSoreCount }} Kali</span>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-xs font-black uppercase tracking-widest text-emerald-600">Total Kehadiran</span>
+                            <span class="text-lg font-black text-emerald-700">{{ number_format($totalWeighted, 2) }} Kali</span>
                         </div>
                     </div>
                 </div>

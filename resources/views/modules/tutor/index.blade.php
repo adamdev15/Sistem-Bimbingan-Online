@@ -195,8 +195,12 @@
                             <label class="text-xs font-semibold text-slate-500">Pilih Cabang <span class="text-red-500">*</span></label>
                             <div x-data="{ 
                                     open: false, 
+                                    search: '',
                                     selected: [],
                                     options: {{ json_encode($cabangs->map(fn($c) => ['id' => $c->id, 'nama' => $c->nama_cabang])) }},
+                                    get filteredOptions() {
+                                        return this.options.filter(o => o.nama.toLowerCase().includes(this.search.toLowerCase()));
+                                    },
                                     toggle(id) {
                                         if (this.selected.includes(id)) {
                                             this.selected = this.selected.filter(i => i !== id);
@@ -228,9 +232,13 @@
 
                                 <!-- Dropdown List -->
                                 <div x-show="open" x-cloak @click.outside="open = false" 
-                                    class="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-xl bg-white p-1 shadow-xl ring-1 ring-slate-900/10 transition-all border border-slate-100">
-                                    <div class="p-2">
-                                        <template x-for="opt in options" :key="opt.id">
+                                    class="absolute z-10 mt-2 max-h-64 w-full overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-900/10 transition-all border border-slate-100">
+                                    <div class="p-2 border-b border-slate-50 bg-slate-50/50">
+                                        <input type="text" x-model="search" placeholder="Cari cabang..." 
+                                            class="w-full rounded-lg border-slate-200 bg-white px-3 py-1.5 text-xs outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/10">
+                                    </div>
+                                    <div class="max-h-48 overflow-y-auto p-1">
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
                                             <div @click="toggle(opt.id)" 
                                                 class="flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2 text-sm transition-colors hover:bg-slate-50"
                                                 :class="selected.includes(opt.id) ? 'bg-blue-50/50' : ''">
@@ -240,6 +248,9 @@
                                                 </div>
                                                 <span class="flex-1 font-medium text-slate-700" x-text="opt.nama"></span>
                                             </div>
+                                        </template>
+                                        <template x-if="filteredOptions.length === 0">
+                                            <div class="px-3 py-4 text-center text-xs text-slate-400">Tidak ada cabang ditemukan</div>
                                         </template>
                                     </div>
                                 </div>
@@ -308,7 +319,11 @@
                             <label class="text-xs font-semibold text-slate-500">Pilih Cabang <span class="text-red-500">*</span></label>
                             <div x-data="{ 
                                     open: false, 
+                                    search: '',
                                     options: {{ json_encode($cabangs->map(fn($c) => ['id' => $c->id, 'nama' => $c->nama_cabang])) }},
+                                    get filteredOptions() {
+                                        return this.options.filter(o => o.nama.toLowerCase().includes(this.search.toLowerCase()));
+                                    },
                                     toggle(id) {
                                         if (this.edit.cabang_ids.includes(id)) {
                                             this.edit.cabang_ids = this.edit.cabang_ids.filter(i => i !== id);
@@ -340,9 +355,13 @@
 
                                 <!-- Dropdown List -->
                                 <div x-show="open" x-cloak @click.outside="open = false" 
-                                    class="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-xl bg-white p-1 shadow-xl ring-1 ring-slate-900/10 transition-all border border-slate-100">
-                                    <div class="p-2">
-                                        <template x-for="opt in options" :key="opt.id">
+                                    class="absolute z-10 mt-2 max-h-64 w-full overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-900/10 transition-all border border-slate-100">
+                                    <div class="p-2 border-b border-slate-50 bg-slate-50/50">
+                                        <input type="text" x-model="search" placeholder="Cari cabang..." 
+                                            class="w-full rounded-lg border-slate-200 bg-white px-3 py-1.5 text-xs outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/10">
+                                    </div>
+                                    <div class="max-h-48 overflow-y-auto p-1">
+                                        <template x-for="opt in filteredOptions" :key="opt.id">
                                             <div @click="toggle(opt.id)" 
                                                 class="flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2 text-sm transition-colors hover:bg-slate-50"
                                                 :class="edit.cabang_ids.includes(opt.id) ? 'bg-blue-50/50' : ''">
@@ -352,6 +371,9 @@
                                                 </div>
                                                 <span class="flex-1 font-medium text-slate-700" x-text="opt.nama"></span>
                                             </div>
+                                        </template>
+                                        <template x-if="filteredOptions.length === 0">
+                                            <div class="px-3 py-4 text-center text-xs text-slate-400">Tidak ada cabang ditemukan</div>
                                         </template>
                                     </div>
                                 </div>

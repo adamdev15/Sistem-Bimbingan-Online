@@ -862,7 +862,7 @@ class ManagementService
             ->with(['cabangs:id,nama_cabang', 'user:id,name,email'])
             ->withCount(['kehadiranTutors as kehadirans_count' => fn($q) => $q->whereMonth('tanggal', now()->month)->whereYear('tanggal', now()->year)])
             ->when($tutorId, fn ($q) => $q->where('id', $tutorId))
-            ->when($cabangId, fn ($q) => $q->where('cabang_id', $cabangId))
+            ->when($cabangId && !auth()->user()->hasRole('admin_cabang'), fn ($q) => $q->where('cabang_id', $cabangId))
             ->when($request->string('search')->toString(), function ($q, $s) {
                 $like = "%{$s}%";
                 $q->where(function ($w) use ($like) {
