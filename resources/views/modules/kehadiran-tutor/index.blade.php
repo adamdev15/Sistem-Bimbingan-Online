@@ -134,8 +134,13 @@
             cabangId: '{{ $cabangId }}',
             tutors: @js($tutors),
             kehadiran: 'full',
+            tutorSearch: '',
             get filteredTutors() {
-                return this.tutors.filter(t => t.cabang_id == this.cabangId);
+                let list = this.tutors.filter(t => t.cabang_id == this.cabangId);
+                if (this.tutorSearch) {
+                    list = list.filter(t => t.nama.toLowerCase().includes(this.tutorSearch.toLowerCase()));
+                }
+                return list;
             },
             get jamMulai() {
                 if (this.kehadiran === 'full' || this.kehadiran === 'pagi_siang') return '09:00';
@@ -202,8 +207,14 @@
 
                     <!-- Dropdown -->
                     <div x-show="tutorOpen" x-cloak @click.outside="tutorOpen = false" 
-                        class="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-xl bg-white p-1 shadow-xl ring-1 ring-slate-900/10 transition-all border border-slate-100">
-                        <div class="p-2 space-y-1">
+                        class="absolute z-[60] mt-2 max-h-80 w-full overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10 transition-all border border-slate-100">
+                        <div class="p-2 border-b border-slate-50 bg-slate-50/50">
+                            <div class="relative">
+                                <input type="text" x-model="tutorSearch" placeholder="Cari nama tutor..." class="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-xs font-semibold focus:border-blue-500 outline-none transition-all">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </div>
+                        </div>
+                        <div class="max-h-60 overflow-y-auto p-2 space-y-1 scrollbar-thin scrollbar-thumb-slate-200">
                             <template x-if="filteredTutors.length === 0">
                                 <p class="p-2 text-xs text-slate-500 text-center">Tidak ada tutor di cabang ini.</p>
                             </template>
@@ -215,7 +226,13 @@
                                         :class="selectedTutors.includes(t.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white'">
                                         <svg x-show="selectedTutors.includes(t.id)" class="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                                     </div>
-                                    <span class="flex-1 font-medium text-slate-700" x-text="t.nama"></span>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between">
+                                            <span class="block font-medium text-slate-700 truncate" x-text="t.nama"></span>
+                                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded" x-text="t.jenis_tutor || 'Parttime'"></span>
+                                        </div>
+                                        <span class="block text-[10px] text-slate-400 uppercase tracking-tight" x-text="t.cabang?.nama_cabang || 'Cabang tidak diketahui'"></span>
+                                    </div>
                                 </div>
                             </template>
                         </div>
@@ -239,6 +256,7 @@
                         <option value="full">Full Day</option>
                         <option value="pagi_siang">Pagi - Siang (09:00-11:30)</option>
                         <option value="siang_sore">Siang - Sore (13:30-17:00)</option>
+                        <option value="kelas_malam">Kelas Malam</option>
                     </select>
                 </div>
             </div>
@@ -277,7 +295,8 @@
                 <textarea name="catatan" rows="2" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-blue-500 outline-none placeholder:text-slate-400" placeholder="Tambahkan catatan jika ada..."></textarea>
             </div>
 
-            <div class="pt-4">
+            <div class="pt-4 flex items-center gap-3">
+                <button type="button" @click="$dispatch('close-modal', 'modal-add')" class="w-full rounded-xl border border-slate-200 px-6 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">Batal</button>
                 <button type="submit" class="w-full rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">Simpan Absensi</button>
             </div>
         </form>
@@ -296,9 +315,12 @@
             }
         }">
             @csrf @method('PUT')
-            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 mb-4">
+            <div class="p-4 rounded-xl bg-blue-50 border border-slate-200 mb-4">
                 <p class="text-xs text-slate-500 uppercase font-bold tracking-wider">Tutor</p>
-                <p class="text-sm font-black text-slate-900" x-text="editData.tutor?.nama"></p>
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-black text-slate-900" x-text="editData.tutor?.nama"></p>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-white bg-blue-400 px-1.5 py-0.5 rounded" x-text="editData.tutor?.jenis_tutor || 'Parttime'"></span>
+                </div>
                 <p class="text-[10px] text-slate-400" x-text="editData.cabang?.nama_cabang"></p>
             </div>
 
@@ -313,6 +335,7 @@
                         <option value="full">Full Day</option>
                         <option value="pagi_siang">Pagi - Siang</option>
                         <option value="siang_sore">Siang - Sore</option>
+                        <option value="kelas_malam">Kelas Malam</option>
                     </select>
                 </div>
             </div>
@@ -351,7 +374,8 @@
                 <textarea name="catatan" x-text="editData.catatan" rows="2" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-blue-500 outline-none placeholder:text-slate-400" placeholder="Tambahkan catatan jika ada..."></textarea>
             </div>
 
-            <div class="pt-4">
+            <div class="pt-4 flex items-center gap-3">
+                <button type="button" @click="$dispatch('close-modal', 'modal-edit')" class="w-full rounded-xl border border-slate-200 px-6 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">Batal</button>
                 <button type="submit" class="w-full rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-blue-800">Simpan Perubahan</button>
             </div>
         </form>

@@ -30,7 +30,7 @@
                 <th class="text-center">FULL DAY</th>
                 <th class="text-center">PAGI-SIANG</th>
                 <th class="text-center">SIANG-SORE</th>
-                <th class="text-center">TOTAL SESI</th>
+                <th class="text-center">KELAS MALEM</th>
             </tr>
         </thead>
         <tbody>
@@ -46,9 +46,7 @@
                         <td class="text-center">{{ $row['full'] }}x</td>
                         <td class="text-center">{{ $row['pagi_siang'] }}x</td>
                         <td class="text-center">{{ $row['siang_sore'] }}x</td>
-                        <td class="text-center font-bold">
-                            {{ $row['full'] + ($row['pagi_siang'] + $row['siang_sore']) * 0.5 }}
-                        </td>
+                        <td class="text-center">{{ $row['kelas_malam'] ?? 0 }}x</td>
                     </tr>
                 @endforeach
             @endforeach

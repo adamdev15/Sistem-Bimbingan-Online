@@ -15,16 +15,10 @@ class Salary extends Model
         'tutor_id',
         'periode',
         'status',
-        'total_kehadiran',
-        'full',
-        'pagi_siang',
-        'siang_sore',
-        'gaji',
-        'insentif_kehadiran',
-        'bonus_lainnya',
+        'bonus',
+        'lain_lainnya',
         'total_gaji',
         'created_by',
-        'status',
         'catatan',
         'start_date',
         'end_date',
@@ -33,10 +27,8 @@ class Salary extends Model
     protected function casts(): array
     {
         return [
-            'total_kehadiran' => 'float',
-            'gaji' => 'decimal:2',
-            'insentif_kehadiran' => 'decimal:2',
-            'bonus_lainnya' => 'decimal:2',
+            'bonus' => 'decimal:2',
+            'lain_lainnya' => 'decimal:2',
             'total_gaji' => 'decimal:2',
             'start_date' => 'date',
             'end_date' => 'date',
@@ -51,5 +43,10 @@ class Salary extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(SalaryItem::class);
     }
 }

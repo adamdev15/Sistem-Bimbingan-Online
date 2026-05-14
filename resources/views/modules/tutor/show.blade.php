@@ -121,8 +121,10 @@
                         $fullCount = $currentMonthKehadiran->where('kehadiran', 'full')->count();
                         $pagiSiangCount = $currentMonthKehadiran->where('kehadiran', 'pagi_siang')->count();
                         $siangSoreCount = $currentMonthKehadiran->where('kehadiran', 'siang_sore')->count();
+                        $malamCount = $currentMonthKehadiran->where('kehadiran', 'kelas_malam')->count();
 
-                        $totalWeighted = ($fullCount * 1.0) + ($pagiSiangCount * 0.5) + ($siangSoreCount * 0.42);
+                        // Rumus bobot kehadiran
+                        $totalWeighted = ($fullCount * 1.0) + ($pagiSiangCount * 0.5) + ($siangSoreCount * 0.42) + ($malamCount * 1.0);
                     @endphp
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
@@ -136,6 +138,10 @@
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-bold text-slate-500">Siang-Sore (42%)</span>
                             <span class="text-sm font-black text-slate-900">{{ $siangSoreCount }} Kali</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500">Kelas Malam (100%)</span>
+                            <span class="text-sm font-black text-slate-900">{{ $malamCount }} Kali</span>
                         </div>
                         
                         <div class="pt-4 border-t border-slate-100 flex items-center justify-between">

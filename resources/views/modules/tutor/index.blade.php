@@ -97,12 +97,12 @@
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50/90 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
-                            <th class="px-4 py-3.5">Kode</th>
+                            <th class="px-4 py-3.5">No.</th>
                              <th class="px-4 py-3.5">Nama</th>
-                            <th class="px-4 py-3.5">Email (Opsional)</th>
+                            <th class="px-4 py-3.5">Email</th>
                             <th class="px-4 py-3.5">Cabang</th>
-                            <th class="px-4 py-3.5">Jenis</th>
-                            <th class="px-4 py-3.5">Total Kehadiran</th>
+                            <th class="px-4 py-3.5">Jabatan</th>
+                            <th class="px-4 py-3.5">Jenis Tutor</th>
                             <th class="px-4 py-3.5">Status</th>
                             <th class="px-4 py-3.5 text-right">Aksi</th>
                         </tr>
@@ -110,14 +110,16 @@
                     <tbody class="divide-y divide-slate-100 text-slate-700">
                         @forelse ($tutors as $tutor)
                             <tr class="transition hover:bg-slate-50/80">
-                                <td class="px-4 py-3.5 font-mono text-xs text-slate-600">T-{{ str_pad((string) $tutor->id, 3, '0', STR_PAD_LEFT) }}</td>
-                                <td class="px-4 py-3.5 font-medium text-slate-900">{{ $tutor->nama }}</td>
+                                <td class="px-4 py-3.5 font-mono text-xs text-slate-600">{{ str_pad((string) $loop->iteration, STR_PAD_LEFT) }}</td>
+                                <td class="px-4 py-3.5 font-medium text-slate-900">{{ $tutor->nama }} <p class="text-[10px] text-blue-500 font-bold italic">{{ $tutor->jenis_tutor }}</p></td>
                                 <td class="px-4 py-3.5 text-slate-600">{{ optional($tutor->user)->email ?? $tutor->email }}</td>
                                 <td class="px-4 py-3.5">{{ $tutor->cabangs->pluck('nama_cabang')->implode(', ') }}</td>
                                 <td class="px-4 py-3.5">
+                                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $tutor->jabatan === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700' }}">{{ ucfirst($tutor->jabatan) }}</span>
+                                </td>
+                                <td class="px-4 py-3.5">
                                     <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider {{ $tutor->jenis_tutor === 'fulltime' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">{{ $tutor->jenis_tutor }}</span>
                                 </td>
-                                <td class="px-4 py-3.5">{{ $tutor->kehadirans_count }}/{{ now()->translatedFormat('F') }}</td>
                                 <td class="px-4 py-3.5">
                                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $tutor->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700' }}">{{ ucfirst($tutor->status) }}</span>
                                 </td>

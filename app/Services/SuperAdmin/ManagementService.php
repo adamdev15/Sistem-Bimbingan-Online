@@ -116,7 +116,7 @@ class ManagementService
         $salaryYear = Salary::query()
             ->when($cabangId, fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId)))
             ->whereIn('status', ['diterima', 'dibayar'])
-            ->where('periode', 'like', now()->year . '-%')
+            ->whereYear('start_date', now()->year)
             ->sum('total_gaji');
 
         $saldoTahunIni = $incomeYear - $expenseYear - $salaryYear;
@@ -140,7 +140,8 @@ class ManagementService
         $salaryMonth = (float) Salary::query()
             ->when($cabangId, fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId)))
             ->whereIn('status', ['diterima', 'dibayar'])
-            ->where('periode', now()->format('Y-m'))
+            ->whereYear('start_date', now()->year)
+            ->whereMonth('start_date', now()->month)
             ->sum('total_gaji');
 
         $pengeluaranMonthVal = $operasionalMonth + $salaryMonth;
@@ -288,8 +289,9 @@ class ManagementService
             $salaryData = Salary::query()
                 ->when($cabangId, fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId)))
                 ->whereIn('status', ['diterima', 'dibayar'])
-                ->where('periode', now()->format('Y-m'))
-                ->selectRaw('DAY(LAST_DAY(CONCAT(periode, "-01"))) as day, SUM(total_gaji) as total')
+                ->whereYear('start_date', $year)
+                ->whereMonth('start_date', $month)
+                ->selectRaw('DAY(LAST_DAY(start_date)) as day, SUM(total_gaji) as total')
                 ->groupBy('day')
                 ->pluck('total', 'day');
 
@@ -320,8 +322,8 @@ class ManagementService
             $salaryData = Salary::query()
                 ->when($cabangId, fn ($q) => $q->whereHas('tutor', fn ($t) => $t->where('cabang_id', $cabangId)))
                 ->whereIn('status', ['diterima', 'dibayar'])
-                ->where('periode', 'like', $year . '-%')
-                ->selectRaw('CAST(SUBSTR(periode, 6, 2) AS UNSIGNED) as month, SUM(total_gaji) as total')
+                ->whereYear('start_date', $year)
+                ->selectRaw('MONTH(start_date) as month, SUM(total_gaji) as total')
                 ->groupBy('month')
                 ->pluck('total', 'month');
 
@@ -1131,10 +1133,16 @@ class ManagementService
                 $m = $request->string('month')->toString();
                 if (preg_match('/^\d{4}-\d{2}$/', $m)) {
                     $date = \Carbon\Carbon::parse($m);
-                    $q->where(function($sub) use ($m, $date) {
-                        $sub->where('salaries.periode', $m)
-                            ->orWhere('salaries.periode', $date->translatedFormat('F Y'))
-                            ->orWhere('salaries.periode', $date->format('F Y'));
+                    $q->where(function($sq) use ($date) {
+                        $sq->whereYear('salaries.start_date', $date->year)
+                           ->whereMonth('salaries.start_date', $date->month);
+                        
+                        // Also try to match the periode string in Indonesian and English
+                        $monthNameId = $date->translatedFormat('F');
+                        $monthNameEn = $date->format('F');
+                        $year = $date->year;
+                        $sq->orWhere('salaries.periode', 'like', "%{$monthNameId}%{$year}%")
+                           ->orWhere('salaries.periode', 'like', "%{$monthNameEn}%{$year}%");
                     });
                 } else {
                     $q->where('salaries.periode', 'like', "%{$m}%");
@@ -1161,36 +1169,45 @@ class ManagementService
         $perTutor = (clone $base)
             ->join('tutors', 'tutors.id', '=', 'salaries.tutor_id')
             ->leftJoin('cabangs', 'cabangs.id', '=', 'tutors.cabang_id')
+            ->leftJoin('salary_items', 'salary_items.salary_id', '=', 'salaries.id')
             ->select([
                 'tutors.id as tutor_id',
                 'tutors.nama as tutor_nama',
                 'cabangs.nama_cabang',
-                DB::raw('SUM(salaries.total_kehadiran) as total_kehadiran'),
-                DB::raw('SUM(salaries.total_gaji) as total_gaji'),
-                DB::raw('COUNT(salaries.id) as entri_count'),
+                DB::raw('COALESCE(SUM(salaries.total_gaji), 0) as total_gaji'),
+                DB::raw('COALESCE(SUM(salary_items.qty), 0) as total_kehadiran'),
+                DB::raw('COUNT(DISTINCT salaries.id) as entri_count'),
             ])
             ->groupBy('tutors.id', 'tutors.nama', 'cabangs.id', 'cabangs.nama_cabang')
-            ->orderByDesc(DB::raw('SUM(salaries.total_kehadiran)'))
+            ->orderByDesc(DB::raw('COALESCE(SUM(salary_items.qty), 0)'))
             ->get();
 
         $perPeriode = (clone $base)
+            ->leftJoin('salary_items', 'salary_items.salary_id', '=', 'salaries.id')
             ->select([
                 'salaries.periode',
-                DB::raw('SUM(salaries.total_kehadiran) as total_kehadiran'),
-                DB::raw('SUM(salaries.total_gaji) as total_gaji'),
-                DB::raw('COUNT(salaries.id) as entri_count'),
+                DB::raw('COALESCE(SUM(salaries.total_gaji), 0) as total_gaji'),
+                DB::raw('COALESCE(SUM(salary_items.qty), 0) as total_kehadiran'),
+                DB::raw('COUNT(DISTINCT salaries.id) as entri_count'),
             ])
             ->groupBy('salaries.periode')
             ->orderBy('salaries.periode')
             ->get();
 
         $detailRows = (clone $base)
-            ->with(['tutor.cabang:id,nama_cabang', 'creator:id,name'])
+            ->with(['tutor.cabang:id,nama_cabang', 'creator:id,name', 'items'])
             ->orderByDesc('salaries.id')
-            ->get();
+            ->get()
+            ->map(function ($row) {
+                $row->count_full = $row->items->where('nama_item', 'Full')->sum('subtotal');
+                $row->count_pagi_siang = $row->items->where('nama_item', 'Pagi-Siang')->sum('subtotal');
+                $row->count_siang_sore = $row->items->where('nama_item', 'Siang-Sore')->sum('subtotal');
+                $row->count_kelas_malam = $row->items->where('nama_item', 'Kelas Malam')->sum('subtotal');
+                return $row;
+            });
 
         $totalGaji = (float) (clone $base)->sum('salaries.total_gaji');
-        $totalKehadiran = (int) (clone $base)->sum('salaries.total_kehadiran');
+        $totalKehadiran = (float) \App\Models\SalaryItem::whereIn('salary_id', (clone $base)->pluck('id'))->sum('qty') ?: 0;
 
         $topHadir = $perTutor->sortByDesc('total_kehadiran')->first();
         $topGaji = $perTutor->sortByDesc('total_gaji')->first();
@@ -1217,9 +1234,9 @@ class ManagementService
             'total_gaji' => $totalGaji,
             'total_kehadiran' => $totalKehadiran,
             'entri_count' => $detailRows->count(),
-            'insight_aktif' => $topHadir
-                ? 'Tutor paling aktif (total kehadiran pada filter): '.$topHadir->tutor_nama.' ('.(int) $topHadir->total_kehadiran.' sesi).'
-                : 'Belum ada data kehadiran pada filter ini.',
+            'insight_aktif' => $topGaji
+                ? 'Tutor dengan akumulasi gaji tertinggi pada filter: '.$topGaji->tutor_nama.' (Rp '.number_format($topGaji->total_gaji, 0, ',', '.').').'
+                : 'Belum ada data pada filter ini.',
             'insight_biaya' => $totalGaji > 0
                 ? 'Total beban gaji (operasional tutor) pada filter: Rp '.number_format((int) round($totalGaji), 0, ',', '.').' — pantau proporsi terhadap pendapatan di menu Laporan.'
                 : 'Tidak ada nominal gaji pada filter ini.',

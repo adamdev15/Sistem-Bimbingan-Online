@@ -76,6 +76,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/gaji-tutor/export/excel', [SalaryController::class, 'exportExcel'])->name('salaries.export.excel');
         Route::post('/gaji-tutor', [SalaryController::class, 'store'])->name('salaries.store');
         Route::patch('/gaji-tutor/{salary}', [SalaryController::class, 'update'])->name('salaries.update');
+        Route::delete('/gaji-tutor/{salary}', [SalaryController::class, 'destroy'])->name('salaries.destroy');
+        Route::get('/gaji-tutor/{salary}/slip', [SalaryController::class, 'printSlip'])->name('salaries.print-slip');
         Route::get('/api/salaries/attendance-count', [SalaryController::class, 'getAttendanceCount'])->name('api.salaries.attendance-count');
 
         Route::get('/siswa', [SiswaController::class, 'index'])->name('siswa.index');

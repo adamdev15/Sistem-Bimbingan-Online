@@ -50,28 +50,11 @@
             </thead>
             <tbody>
                 <tr>
-                    <td style="color: #64748b;">Total Entri</td>
+                    <td style="color: #64748b;">Total Data Masuk</td>
                     <td class="num font-bold">{{ $entri_count }}</td>
-                </tr>
-                <tr>
-                    <td style="color: #64748b;">Total Kehadiran</td>
-                    <td class="num font-bold">{{ $total_kehadiran }} Sesi</td>
-                </tr>
-                <tr>
-                    <td style="color: #64748b;">Total Nominal Gaji</td>
-                    <td class="num font-bold text-emerald" style="font-size: 11px;">Rp {{ number_format((float) $total_gaji, 0, ',', '.') }}</td>
                 </tr>
             </tbody>
         </table>
-    </div>
-
-    <div class="insight-box">
-        <div style="font-size: 8px; font-weight: bold; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Analisa Operasional</div>
-        <div style="font-size: 9px; color: #334155;">
-            • {{ $insight_aktif }}<br>
-            • {{ $insight_biaya }}
-            @if($insight_top_gaji !== '')<br>• {{ $insight_top_gaji }}@endif
-        </div>
     </div>
 
     <div style="font-size: 11px; font-weight: bold; color: #0f172a; margin-bottom: 10px;">Detail Rincian Gaji</div>
@@ -79,15 +62,18 @@
         <thead>
             <tr>
                 <th style="width: 5%;">ID</th>
-                <th style="width: 10%;">Periode</th>
-                <th style="width: 15%;">Nama Tutor</th>
+                <th style="width: 15%;">Periode</th>
+                <th style="width: 12%;">Nama Tutor</th>
                 @if ($is_super_admin)
                     <th style="width: 10%;">Cabang</th>
                 @endif
-                <th class="num" style="width: 8%;">Hadir</th>
-                <th class="num" style="width: 10%;">Insentif</th>
-                <th class="num" style="width: 10%;">Bonus</th>
-                <th class="num" style="width: 12%;">Total Gaji</th>
+                <th class="num">Full (Rp)</th>
+                <th class="num">P-S (Rp)</th>
+                <th class="num">S-S (Rp)</th>
+                <th class="num">MLM (Rp)</th>
+                <th class="num">Bonus</th>
+                <th class="num">Lainnya</th>
+                <th class="num" style="width: 10%;">Total Gaji</th>
                 <th style="width: 8%;">Status</th>
                 <th style="width: 12%;">Catatan</th>
             </tr>
@@ -101,9 +87,12 @@
                     @if ($is_super_admin)
                         <td>{{ optional(optional($s->tutor)->cabang)->nama_cabang ?? '—' }}</td>
                     @endif
-                    <td class="num">{{ $s->total_kehadiran }}</td>
-                    <td class="num">Rp {{ number_format((float) $s->insentif_kehadiran, 0, ',', '.') }}</td>
-                    <td class="num">Rp {{ number_format((float) $s->bonus_lainnya, 0, ',', '.') }}</td>
+                    <td class="num">Rp {{ number_format((float) $s->count_full, 0, ',', '.') }}</td>
+                    <td class="num">Rp {{ number_format((float) $s->count_pagi_siang, 0, ',', '.') }}</td>
+                    <td class="num">Rp {{ number_format((float) $s->count_siang_sore, 0, ',', '.') }}</td>
+                    <td class="num">Rp {{ number_format((float) $s->count_kelas_malam, 0, ',', '.') }}</td>
+                    <td class="num">Rp {{ number_format((float) $s->bonus, 0, ',', '.') }}</td>
+                    <td class="num">Rp {{ number_format((float) $s->lain_lainnya, 0, ',', '.') }}</td>
                     <td class="num font-bold text-emerald">Rp {{ number_format((float) $s->total_gaji, 0, ',', '.') }}</td>
                     <td style="text-align: center;">
                         <span class="badge badge-{{ $s->status }}">{{ $s->status }}</span>
@@ -114,10 +103,8 @@
         </tbody>
         <tfoot>
             <tr class="bg-slate font-bold">
-                <td colspan="{{ $is_super_admin ? 4 : 3 }}" style="text-align: right; text-transform: uppercase;">Total Keseluruhan</td>
-                <td class="num">{{ $total_kehadiran }}</td>
-                <td class="num">Rp {{ number_format($detail_rows->sum('insentif_kehadiran'), 0, ',', '.') }}</td>
-                <td class="num">Rp {{ number_format($detail_rows->sum('bonus_lainnya'), 0, ',', '.') }}</td>
+                <td colspan="{{ $is_super_admin ? 6 : 5 }}"></td>
+                <td colspan="4" style="text-align: right; text-transform: uppercase;">Total Gaji Keseluruhan</td>
                 <td class="num text-emerald">Rp {{ number_format((float) $total_gaji, 0, ',', '.') }}</td>
                 <td colspan="2"></td>
             </tr>

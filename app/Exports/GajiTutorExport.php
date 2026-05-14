@@ -21,7 +21,7 @@ class GajiTutorExport implements FromCollection, WithHeadings, WithMapping, With
 
     public function collection()
     {
-        return $this->query->with(['tutor', 'creator'])->get();
+        return $this->query->with(['tutor', 'creator', 'items'])->get();
     }
 
     public function headings(): array
@@ -32,13 +32,15 @@ class GajiTutorExport implements FromCollection, WithHeadings, WithMapping, With
             'Start Date',
             'End Date',
             'Status',
-            'Gaji Pokok',
-            'Insentif Kehadiran',
-            'Bonus Lainnya',
+            'Full Day',
+            'Pagi-Siang',
+            'Siang-Sore',
+            'Kelas Malam',
+            'Bonus',
+            'Lain-lainnya',
             'Total Gaji',
             'Dicatat Oleh',
             'Tanggal Input',
-            'Total Kehadiran',
             'Catatan'
         ];
     }
@@ -48,16 +50,18 @@ class GajiTutorExport implements FromCollection, WithHeadings, WithMapping, With
         return [
             $salary->tutor?->nama,
             $salary->periode,
-            $salary->start_date,
-            $salary->end_date,
+            $salary->start_date?->format('Y-m-d'),
+            $salary->end_date?->format('Y-m-d'),
             $salary->status,
-            $salary->gaji,
-            $salary->insentif_kehadiran,
-            $salary->bonus_lainnya,
+            $salary->items->where('nama_item', 'Full')->sum('subtotal'),
+            $salary->items->where('nama_item', 'Pagi-Siang')->sum('subtotal'),
+            $salary->items->where('nama_item', 'Siang-Sore')->sum('subtotal'),
+            $salary->items->where('nama_item', 'Kelas Malam')->sum('subtotal'),
+            $salary->bonus,
+            $salary->lain_lainnya,
             $salary->total_gaji,
             $salary->creator?->name,
             $salary->created_at->format('Y-m-d H:i:s'),
-            $salary->total_kehadiran,
             $salary->catatan
         ];
     }

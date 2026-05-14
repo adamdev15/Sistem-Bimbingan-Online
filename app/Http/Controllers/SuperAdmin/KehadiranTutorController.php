@@ -60,6 +60,8 @@ class KehadiranTutorController extends Controller
         }
 
         $tutors = Tutor::where('status', 'aktif')
+            ->with('cabang:id,nama_cabang')
+            ->select('id', 'nama', 'cabang_id', 'jenis_tutor')
             ->when($cabangId, fn($q) => $q->where('cabang_id', $cabangId))
             ->get();
 
@@ -73,7 +75,7 @@ class KehadiranTutorController extends Controller
             'tutor_ids' => 'required|array',
             'tutor_ids.*' => 'exists:tutors,id',
             'tanggal' => 'required|date',
-            'kehadiran' => 'required|in:full,pagi_siang,siang_sore',
+            'kehadiran' => 'required|in:full,pagi_siang,siang_sore,kelas_malam',
             'jam_mulai' => 'required',
             'jam_selesai' => 'nullable',
             'status' => 'required|in:hadir,izin,sakit,alpha',
@@ -105,7 +107,7 @@ class KehadiranTutorController extends Controller
     {
         $validated = $request->validate([
             'tanggal' => 'required|date',
-            'kehadiran' => 'required|in:full,pagi_siang,siang_sore',
+            'kehadiran' => 'required|in:full,pagi_siang,siang_sore,kelas_malam',
             'jam_mulai' => 'required',
             'jam_selesai' => 'nullable',
             'status' => 'required|in:hadir,izin,sakit,alpha',
@@ -157,6 +159,7 @@ class KehadiranTutorController extends Controller
                     'full' => $tutorGroup->where('kehadiran', 'full')->count(),
                     'pagi_siang' => $tutorGroup->where('kehadiran', 'pagi_siang')->count(),
                     'siang_sore' => $tutorGroup->where('kehadiran', 'siang_sore')->count(),
+                    'kelas_malam' => $tutorGroup->where('kehadiran', 'kelas_malam')->count(),
                 ];
             });
         });
@@ -186,7 +189,7 @@ class KehadiranTutorController extends Controller
                 return $rows;
             }
             public function headings(): array {
-                return ['Periode', 'Cabang', 'Nama Tutor', 'Full', 'Pagi-Siang', 'Siang-Sore'];
+                return ['Periode', 'Cabang', 'Nama Tutor', 'Full', 'Pagi-Siang', 'Siang-Sore', 'Kelas Malam'];
             }
             public function map($row): array {
                 return [
@@ -196,6 +199,7 @@ class KehadiranTutorController extends Controller
                     $row['full'] . 'X',
                     $row['pagi_siang'] . 'X',
                     $row['siang_sore'] . 'X',
+                    $row['kelas_malam'] . 'X',
                 ];
             }
         }, "Laporan-Kehadiran-Tutor-{$period}.xlsx");

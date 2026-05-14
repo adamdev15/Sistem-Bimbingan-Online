@@ -90,14 +90,14 @@ class SalaryController extends Controller
             'periode' => ['required', 'string', 'max:64'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'total_kehadiran' => ['required', 'numeric', 'min:0'],
-            'full' => ['required', 'integer', 'min:0'],
-            'pagi_siang' => ['required', 'integer', 'min:0'],
-            'siang_sore' => ['required', 'integer', 'min:0'],
-            'gaji' => ['required', 'numeric', 'min:0'],
-            'insentif_kehadiran' => ['required', 'numeric', 'min:0'],
-            'bonus_lainnya' => ['required', 'numeric', 'min:0'],
-            'total_gaji' => ['required', 'numeric', 'min:0'],
+            'bonus' => ['nullable', 'numeric', 'min:0'],
+            'lain_lainnya' => ['nullable', 'numeric', 'min:0'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.nama_item' => ['required', 'string'],
+            'items.*.qty' => ['required', 'numeric', 'min:0'],
+            'items.*.tarif' => ['required', 'numeric', 'min:0'],
+            'items.*.subtotal' => ['required', 'numeric', 'min:0'],
+            'items.*.keterangan' => ['nullable', 'string'],
             'status' => ['nullable', 'in:pending,dibayar,diterima'],
             'catatan' => ['nullable', 'string'],
         ]);
@@ -116,44 +116,53 @@ class SalaryController extends Controller
                 ->with('error', "Gaji tutor {$tutor->nama} periode {$data['periode']} telah diinputkan, cek data terlebih dahulu.");
         }
 
-        $total_kehadiran = ($data['full'] * 1.0) + ($data['pagi_siang'] * 0.5) + ($data['siang_sore'] * 0.42);
-        $base_salary = ($data['gaji'] / 25) * $total_kehadiran;
-        $total_gaji = round($base_salary + $data['insentif_kehadiran'] + $data['bonus_lainnya']);
-
-        $salary = Salary::query()->create([
+        $itemsTotal = 0;
+        $salaryData = [
             'tutor_id' => $data['tutor_id'],
             'periode' => $data['periode'],
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
-            'total_kehadiran' => $total_kehadiran,
-            'full' => $data['full'],
-            'pagi_siang' => $data['pagi_siang'],
-            'siang_sore' => $data['siang_sore'],
-            'gaji' => $data['gaji'],
-            'insentif_kehadiran' => $data['insentif_kehadiran'],
-            'bonus_lainnya' => $data['bonus_lainnya'],
-            'total_gaji' => $total_gaji,
+            'bonus' => (float) ($data['bonus'] ?? 0),
+            'lain_lainnya' => (float) ($data['lain_lainnya'] ?? 0),
             'status' => $data['status'] ?? 'pending',
-            'catatan' => $data['catatan'],
+            'catatan' => $data['catatan'] ?? null,
             'created_by' => $request->user()?->id,
-        ]);
+        ];
+
+        // We'll calculate the total_gaji properly by summing items
+        foreach ($data['items'] as $item) {
+            $itemsTotal += (float) $item['qty'] * (float) $item['tarif'];
+        }
+        
+        $salaryData['total_gaji'] = $itemsTotal + $salaryData['bonus'] + $salaryData['lain_lainnya'];
+
+        $salary = Salary::query()->create($salaryData);
+
+        foreach ($data['items'] as $item) {
+            $salary->items()->create([
+                'nama_item' => $item['nama_item'],
+                'qty' => $item['qty'],
+                'tarif' => $item['tarif'],
+                'subtotal' => (float) $item['qty'] * (float) $item['tarif'],
+                'keterangan' => $item['keterangan'] ?? null,
+            ]);
+        }
 
         if (in_array($salary->status, ['dibayar', 'diterima'])) {
             $this->whatsapp->notifyTutorSalaryPaid($salary);
         }
 
-        return back()->with('status', 'Data gaji disimpan.');
+        return back()->with('status', 'Data gaji tutor berhasildisimpan.');
     }
 
     public function getAttendanceCount(Request $request): JsonResponse
     {
         $tutorId = $request->integer('tutor_id');
-        $periode = $request->string('periode')->toString();
         $startDate = $request->string('start_date')->toString();
         $endDate = $request->string('end_date')->toString();
 
         if (!$tutorId) {
-            return response()->json(['count' => 0, 'full' => 0, 'pagi_siang' => 0, 'siang_sore' => 0]);
+            return response()->json(['items' => []]);
         }
 
         $query = KehadiranTutor::query()
@@ -162,25 +171,34 @@ class SalaryController extends Controller
 
         if ($startDate && $endDate) {
             $query->whereBetween('tanggal', [$startDate, $endDate]);
-        } elseif ($periode && preg_match('/^\d{4}-\d{2}$/', $periode)) {
-            [$year, $month] = explode('-', $periode);
-            $query->whereYear('tanggal', (int) $year)
-                  ->whereMonth('tanggal', (int) $month);
         } else {
-            return response()->json(['count' => 0, 'full' => 0, 'pagi_siang' => 0, 'siang_sore' => 0]);
+             return response()->json(['items' => []]);
         }
 
-        $kehadirans = $query->get();
-        $full = $kehadirans->where('kehadiran', 'full')->count();
-        $pagi_siang = $kehadirans->where('kehadiran', 'pagi_siang')->count();
-        $siang_sore = $kehadirans->where('kehadiran', 'siang_sore')->count();
-        $count = $kehadirans->count();
+        $counts = $query->selectRaw('kehadiran, count(*) as qty')
+            ->groupBy('kehadiran')
+            ->pluck('qty', 'kehadiran')
+            ->toArray();
+
+        $types = [
+            'full' => 'Full',
+            'pagi_siang' => 'Pagi-Siang',
+            'siang_sore' => 'Siang-Sore',
+            'kelas_malam' => 'Kelas Malam',
+        ];
+
+        $items = [];
+        foreach ($types as $key => $label) {
+            $items[] = [
+                'nama_item' => $label,
+                'qty' => (float) ($counts[$key] ?? 0),
+                'tarif' => 0,
+                'subtotal' => 0,
+            ];
+        }
 
         return response()->json([
-            'count' => $count,
-            'full' => $full,
-            'pagi_siang' => $pagi_siang,
-            'siang_sore' => $siang_sore,
+            'items' => $items,
         ]);
     }
 
@@ -189,18 +207,77 @@ class SalaryController extends Controller
         $this->guardSalaryCabang($salary);
 
         $data = $request->validate([
+            'tutor_id' => ['required', 'exists:tutors,id'],
+            'periode' => ['required', 'string', 'max:64'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'bonus' => ['nullable', 'numeric', 'min:0'],
+            'lain_lainnya' => ['nullable', 'numeric', 'min:0'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.nama_item' => ['required', 'string'],
+            'items.*.qty' => ['required', 'numeric', 'min:0'],
+            'items.*.tarif' => ['required', 'numeric', 'min:0'],
+            'items.*.keterangan' => ['nullable', 'string'],
             'status' => ['required', 'in:pending,dibayar,diterima'],
+            'catatan' => ['nullable', 'string'],
         ]);
 
-        $before = $salary->status;
-        $salary->update($data);
-        $salary->refresh();
+        $itemsTotal = 0;
+        foreach ($data['items'] as $item) {
+            $itemsTotal += (float) $item['qty'] * (float) $item['tarif'];
+        }
 
-        if ($before !== $salary->status && in_array($salary->status, ['dibayar', 'diterima'])) {
+        $salaryData = [
+            'tutor_id' => $data['tutor_id'],
+            'periode' => $data['periode'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'bonus' => (float) ($data['bonus'] ?? 0),
+            'lain_lainnya' => (float) ($data['lain_lainnya'] ?? 0),
+            'total_gaji' => $itemsTotal + (float) ($data['bonus'] ?? 0) + (float) ($data['lain_lainnya'] ?? 0),
+            'status' => $data['status'],
+            'catatan' => $data['catatan'] ?? null,
+        ];
+
+        $beforeStatus = $salary->status;
+        $salary->update($salaryData);
+
+        // Replace items
+        $salary->items()->delete();
+        foreach ($data['items'] as $item) {
+            $salary->items()->create([
+                'nama_item' => $item['nama_item'],
+                'qty' => $item['qty'],
+                'tarif' => $item['tarif'],
+                'subtotal' => (float) $item['qty'] * (float) $item['tarif'],
+                'keterangan' => $item['keterangan'] ?? null,
+            ]);
+        }
+
+        if ($beforeStatus !== $salary->status && in_array($salary->status, ['dibayar', 'diterima'])) {
             $this->whatsapp->notifyTutorSalaryPaid($salary);
         }
 
-        return back()->with('status', 'Status gaji diperbarui.');
+        return back()->with('status', 'Data gaji tutor berhasil diperbarui.');
+    }
+
+    public function destroy(Salary $salary): RedirectResponse
+    {
+        $this->guardSalaryCabang($salary);
+        $salary->delete();
+        return back()->with('status', 'Data gaji tutor berhasil dihapus.');
+    }
+
+    public function printSlip(Salary $salary): Response
+    {
+        $this->guardSalaryCabang($salary);
+        $salary->load(['tutor.cabang', 'items', 'creator']);
+        
+        $name = 'slip-gaji-' . str_replace(' ', '-', strtolower($salary->tutor->nama)) . '-' . $salary->periode . '.pdf';
+
+        return Pdf::loadView('exports.slip-gaji-pdf', compact('salary'))
+            ->setPaper('a5', 'landscape')
+            ->stream($name);
     }
 
     private function tutorsForSalaryForm(): Collection
@@ -208,7 +285,8 @@ class SalaryController extends Controller
         $cabangId = Cabang::query()->where('user_id', auth()->id())->value('id');
 
         return Tutor::query()
-            ->select('id', 'nama', 'cabang_id')
+            ->with('cabang:id,nama_cabang')
+            ->select('id', 'nama', 'cabang_id', 'jenis_tutor')
             ->when(
                 auth()->user()?->hasRole('admin_cabang') && $cabangId,
                 fn ($q) => $q->where('cabang_id', $cabangId)

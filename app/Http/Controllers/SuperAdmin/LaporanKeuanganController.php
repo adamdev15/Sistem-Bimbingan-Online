@@ -46,39 +46,62 @@ class LaporanKeuanganController extends Controller
             ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
             ->sum('nominal');
 
-        $salaries = Salary::where('periode', $month)
+        $date = Carbon::parse($month);
+        $monthNameId = $date->translatedFormat('F');
+        $monthNameEn = $date->format('F');
+        $year = $date->year;
+
+        $salaries = Salary::whereIn('status', ['dibayar', 'diterima'])
+            ->where(function($q) use ($month, $monthNameId, $monthNameEn, $year) {
+                $q->where('periode', $month)
+                  ->orWhere('periode', 'like', "%{$monthNameId}%{$year}%")
+                  ->orWhere('periode', 'like', "%{$monthNameEn}%{$year}%");
+            })
             ->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))
             ->sum('total_gaji');
 
-        // Logic for Chart Overview (Daily Data)
-        $dailyIncome = Payment::where('status', 'lunas')
-            ->whereBetween('tanggal_bayar', [$start, $end])
-            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
-            ->selectRaw('DATE(tanggal_bayar) as date, SUM(nominal) as total')
-            ->groupBy('date')
-            ->pluck('total', 'date');
-
-        $dailyExpense = Pengeluaran::whereBetween('tanggal', [$start, $end])
-            ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
-            ->selectRaw('DATE(tanggal) as date, SUM(nominal) as total')
-            ->groupBy('date')
-            ->pluck('total', 'date');
-
-        $chartLabels = [];
+        // Logic for Chart Overview (Annual Data - 12 Months)
+        $chartLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
         $incomeSeries = [];
         $expenseSeries = [];
         $profitSeries = [];
 
-        for ($date = $start->copy(); $date <= $end; $date->addDay()) {
-            $currentDate = $date->format('Y-m-d');
-            $chartLabels[] = $date->format('d M');
+        for ($m = 1; $m <= 12; $m++) {
+            $mDate = Carbon::create($year, $m, 1);
+            $mStart = $mDate->copy()->startOfMonth();
+            $mEnd = $mDate->copy()->endOfMonth();
             
-            $inc = $dailyIncome->get($currentDate, 0);
-            $exp = $dailyExpense->get($currentDate, 0);
+            // 1. Monthly Income
+            $inc = Payment::where('status', 'lunas')
+                ->whereBetween('tanggal_bayar', [$mStart, $mEnd])
+                ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
+                ->sum('nominal');
+
+            // 2. Monthly Operational Expenses
+            $expOp = Pengeluaran::whereBetween('tanggal', [$mStart, $mEnd])
+                ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
+                ->sum('nominal');
+
+            // 3. Monthly Tutor Salaries
+            $mNameId = $mDate->translatedFormat('F');
+            $mNameEn = $mDate->format('F');
+            $pSearch = "%{$mNameId}%{$year}%";
+            $pSearchEn = "%{$mNameEn}%{$year}%";
             
-            $incomeSeries[] = $inc;
-            $expenseSeries[] = $exp;
-            $profitSeries[] = $inc - $exp;
+            $expSal = Salary::whereIn('status', ['dibayar', 'diterima'])
+                ->where(function($q) use ($mDate, $pSearch, $pSearchEn) {
+                    $q->where('periode', $mDate->format('Y-m'))
+                      ->orWhere('periode', 'like', $pSearch)
+                      ->orWhere('periode', 'like', $pSearchEn);
+                })
+                ->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))
+                ->sum('total_gaji');
+
+            $totalExp = (float)$expOp + (float)$expSal;
+            
+            $incomeSeries[] = (float)$inc;
+            $expenseSeries[] = $totalExp;
+            $profitSeries[] = (float)$inc - $totalExp;
         }
 
         return view('modules.laporan-keuangan.index', [
@@ -140,7 +163,7 @@ class LaporanKeuanganController extends Controller
                 'tanggal' => $date->copy(),
                 'pemasukan' => $income,
                 'pengeluaran' => $expense,
-                'jumlah' => $net,
+                'jumlah' => $income - $expense,
                 'saldo' => $runningBalance
             ];
         }
@@ -177,6 +200,8 @@ class LaporanKeuanganController extends Controller
             ->get();
 
         $aggregated = [];
+        $rekapIncome = [];
+        $totalIncome = 0;
 
         foreach ($payments as $pay) {
             $label = $this->getPaymentLabel($pay);
@@ -193,6 +218,20 @@ class LaporanKeuanganController extends Controller
             ->where('cabang_id', $selectedCabangId)
             ->sum('nominal');
 
+        $date = Carbon::parse($month);
+        $monthNameId = $date->translatedFormat('F');
+        $monthNameEn = $date->format('F');
+        $year = $date->year;
+
+        $totalSalaries = Salary::whereIn('status', ['dibayar', 'diterima'])
+            ->where(function($q) use ($month, $monthNameId, $monthNameEn, $year) {
+                $q->where('periode', $month)
+                  ->orWhere('periode', 'like', "%{$monthNameId}%{$year}%")
+                  ->orWhere('periode', 'like', "%{$monthNameEn}%{$year}%");
+            })
+            ->whereHas('tutor', fn($t) => $t->where('cabang_id', $selectedCabangId))
+            ->sum('total_gaji');
+
         // Total Expenses might include salaries too, but based on image, "Operasional" is the main one shown.
         // We'll follow the image structure.
         
@@ -201,6 +240,7 @@ class LaporanKeuanganController extends Controller
             'cabang' => $cabang,
             'rekapIncome' => $rekapIncome,
             'totalOperasional' => $totalOperasional,
+            'totalSalaries' => $totalSalaries,
             'totalIncome' => $totalIncome,
             'selectedCabangId' => $selectedCabangId
         ]);
@@ -245,7 +285,17 @@ class LaporanKeuanganController extends Controller
             ->get();
 
         // SALARIES (Honor Guru)
-        $totalSalaries = Salary::where('periode', $month)
+        $date = Carbon::parse($month);
+        $monthNameId = $date->translatedFormat('F');
+        $monthNameEn = $date->format('F');
+        $year = $date->year;
+
+        $totalSalaries = Salary::whereIn('status', ['dibayar', 'diterima'])
+            ->where(function($q) use ($month, $monthNameId, $monthNameEn, $year) {
+                $q->where('periode', $month)
+                  ->orWhere('periode', 'like', "%{$monthNameId}%{$year}%")
+                  ->orWhere('periode', 'like', "%{$monthNameEn}%{$year}%");
+            })
             ->whereHas('tutor', fn($t) => $t->where('cabang_id', $selectedCabangId))
             ->sum('total_gaji');
 
@@ -327,6 +377,7 @@ class LaporanKeuanganController extends Controller
                 ->get();
 
             $aggregated = [];
+            $rekapIncome = [];
             $totalIncome = 0;
 
             foreach ($payments as $pay) {
@@ -340,9 +391,25 @@ class LaporanKeuanganController extends Controller
             }
 
             $totalOperasional = Pengeluaran::whereBetween('tanggal', [$start, $end])->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))->sum('nominal');
+            
+            $date = Carbon::parse($month);
+            $monthNameId = $date->translatedFormat('F');
+            $monthNameEn = $date->format('F');
+            $year = $date->year;
+
+            $totalSalaries = Salary::whereIn('status', ['dibayar', 'diterima'])
+                ->where(function($q) use ($month, $monthNameId, $monthNameEn, $year) {
+                    $q->where('periode', $month)
+                      ->orWhere('periode', 'like', "%{$monthNameId}%{$year}%")
+                      ->orWhere('periode', 'like', "%{$monthNameEn}%{$year}%");
+                })
+                ->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))
+                ->sum('total_gaji');
+
             $data['rekapIncome'] = $rekapIncome;
             $data['totalIncome'] = $totalIncome;
             $data['totalOperasional'] = $totalOperasional;
+            $data['totalSalaries'] = $totalSalaries;
             $filename = 'Laporan_Bulanan_' . $month . '.pdf';
         } elseif ($type === 'mitra') {
             $payments = Payment::with(['siswa.materiLes', 'fee'])
@@ -362,7 +429,20 @@ class LaporanKeuanganController extends Controller
             $expenseBreakdown = Pengeluaran::whereBetween('tanggal', [$start, $end])->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
                 ->join('kategori_pengeluarans', 'pengeluarans.kategori_id', '=', 'kategori_pengeluarans.id')
                 ->select('kategori_pengeluarans.nama_kategori', DB::raw('SUM(pengeluarans.nominal) as total'))->groupBy('kategori_pengeluarans.nama_kategori')->get();
-            $totalSalaries = Salary::where('periode', $month)->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))->sum('total_gaji');
+            
+            $date = Carbon::parse($month);
+            $monthNameId = $date->translatedFormat('F');
+            $monthNameEn = $date->format('F');
+            $year = $date->year;
+
+            $totalSalaries = Salary::whereIn('status', ['dibayar', 'diterima'])
+                ->where(function($q) use ($month, $monthNameId, $monthNameEn, $year) {
+                    $q->where('periode', $month)
+                      ->orWhere('periode', 'like', "%{$monthNameId}%{$year}%")
+                      ->orWhere('periode', 'like', "%{$monthNameEn}%{$year}%");
+                })
+                ->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))
+                ->sum('total_gaji');
             $totalIncome = $incomeBreakdown->sum('total');
             $totalExpenses = $expenseBreakdown->sum('total') + $totalSalaries;
             $netProfit = $totalIncome - $totalExpenses;

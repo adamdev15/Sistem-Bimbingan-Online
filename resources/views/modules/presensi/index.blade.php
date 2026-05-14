@@ -98,7 +98,7 @@
                 @if($isStaffRekap)
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Pilih Materi Les</label>
-                        <select name="materi_les_id" class="mt-1.5 px-6 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300">
+                        <select name="materi_les_id" class="mt-1.5 px-6 rounded-xl border border-slate-200 px-3 py-2.5 text-sm w-[145px] outline-none focus:border-blue-300">
                             <option value="">Semua Materi</option>
                             @foreach ($materis as $m)
                                 <option value="{{ $m->id }}" @selected(($filters['materi_les_id'] ?? '') == (string) $m->id)>{{ $m->nama_materi }}</option>

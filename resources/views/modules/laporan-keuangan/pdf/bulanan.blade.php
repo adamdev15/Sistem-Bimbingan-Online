@@ -67,10 +67,21 @@
                 <td class="text-right font-bold">Rp {{ number_format($running, 0, ',', '.') }}</td>
             </tr>
 
+            @php $running -= $totalSalaries; @endphp
+            <tr>
+                <td class="text-center">{{ $no++ }}.</td>
+                <td>Honor Guru (Gaji)</td>
+                <td class="text-right" style="color: #94a3b8;">—</td>
+                <td class="text-right font-bold" style="color: #dc2626;">
+                    {{ $totalSalaries > 0 ? 'Rp ' . number_format($totalSalaries, 0, ',', '.') : '—' }}
+                </td>
+                <td class="text-right font-bold">Rp {{ number_format($running, 0, ',', '.') }}</td>
+            </tr>
+
             <tr class="total-row">
                 <td colspan="2" class="text-center">JUMLAH TOTAL</td>
                 <td class="text-right">Rp {{ number_format($totalIncome, 0, ',', '.') }}</td>
-                <td class="text-right">Rp {{ number_format($totalOperasional, 0, ',', '.') }}</td>
+                <td class="text-right">Rp {{ number_format($totalOperasional + $totalSalaries, 0, ',', '.') }}</td>
                 <td class="text-right">Rp {{ number_format($running, 0, ',', '.') }}</td>
             </tr>
         </tbody>

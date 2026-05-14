@@ -1,4 +1,4 @@
-﻿<x-layouts.dashboard-shell title="Laporan Keuangan — Bimbel Jarimatrik">
+<x-layouts.dashboard-shell title="Laporan Keuangan — Bimbel Jarimatrik">
     <x-module-page-header title="Analisa Keuangan" description="Pusat kendali analisa data keuangan bimbel untuk memantau pendapatan dan laba bersih bimbel.">
     </x-module-page-header>
 
@@ -87,9 +87,9 @@
                 <div class="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/5 transition hover:shadow-md">
                     <div class="flex items-center justify-between mb-8">
                         <div>
-                            <h3 class="text-lg font-black text-slate-900 tracking-tight">Grafik Keuangan</h3>
+                            <h3 class="text-lg font-black text-slate-900 tracking-tight">Grafik Keuangan Tahunan</h3>
                             <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                Overview Pemasukan vs Pengeluaran 
+                                Analisa Bulanan Periode {{ \Carbon\Carbon::parse($month)->year }}
                                 @if($selectedCabangId === 'all')
                                     <span class="text-blue-600">(Semua Cabang)</span>
                                 @endif
@@ -103,6 +103,10 @@
                             <div class="flex items-center gap-1.5">
                                 <span class="h-2 w-2 rounded-full bg-amber-500"></span>
                                 <span class="text-[10px] font-black uppercase text-slate-400">Pengeluaran</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="h-2 w-2 rounded-full bg-blue-500"></span>
+                                <span class="text-[10px] font-black uppercase text-slate-400">Laba Bersih</span>
                             </div>
                         </div>
                     </div>
@@ -187,7 +191,7 @@
                                     backgroundColor: 'transparent',
                                     borderWidth: 3,
                                     tension: 0.4,
-                                    pointRadius: 0,
+                                    pointRadius: 4,
                                     pointHoverRadius: 6,
                                     z: 3
                                 },
@@ -204,7 +208,7 @@
                                     fill: true,
                                     tension: 0.4,
                                     borderWidth: 2,
-                                    pointRadius: 0,
+                                    pointRadius: 4,
                                     pointHoverRadius: 4,
                                     z: 1
                                 },
@@ -222,7 +226,7 @@
                                     tension: 0.4,
                                     borderWidth: 2,
                                     borderDash: [5, 5],
-                                    pointRadius: 0,
+                                    pointRadius: 4,
                                     pointHoverRadius: 4,
                                     z: 2
                                 }

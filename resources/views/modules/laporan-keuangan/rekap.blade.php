@@ -58,6 +58,20 @@
                         </td>
                     </tr>
 
+                    {{-- PENGELUARAN (Gaji Tutor) --}}
+                    @php $runningSum -= $totalSalaries; @endphp
+                    <tr class="text-slate-700">
+                        <td class="border-r border-slate-200 px-6 py-4 text-center text-slate-400 font-mono">{{ $no++ }}.</td>
+                        <td class="border-r border-slate-200 px-6 py-4 font-medium">Honor Guru (Gaji)</td>
+                        <td class="border-r border-slate-200 px-6 py-4 text-right text-slate-300">—</td>
+                        <td class="border-r border-slate-200 px-6 py-4 text-right font-semibold text-rose-700">
+                            {{ $totalSalaries > 0 ? 'Rp ' . number_format($totalSalaries, 0, ',', '.') : '-' }}
+                        </td>
+                        <td class="px-6 py-4 text-right font-medium text-slate-900 border-l border-slate-100">
+                            Rp {{ number_format($runningSum, 0, ',', '.') }}
+                        </td>
+                    </tr>
+
                     {{-- TOTAL AKHIR --}}
                     <tr class="text-slate-900 font-black">
                         <td colspan="2" class="border-r border-slate-700 px-6 py-5 text-center text-xs uppercase tracking-widest">JUMLAH TOTAL</td>
@@ -65,7 +79,7 @@
                             Rp {{ number_format($totalIncome, 0, ',', '.') }}
                         </td>
                         <td class="border-r border-slate-700 px-6 py-5 text-right">
-                            Rp {{ number_format($totalOperasional, 0, ',', '.') }}
+                            Rp {{ number_format($totalOperasional + $totalSalaries, 0, ',', '.') }}
                         </td>
                         <td class="px-6 py-5 text-right">
                             Rp {{ number_format($runningSum, 0, ',', '.') }}
