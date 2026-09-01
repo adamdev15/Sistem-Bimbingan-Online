@@ -85,6 +85,18 @@
         <div class="flex flex-wrap items-end gap-3 p-4 border-b border-slate-100 mb-6">
             <form method="GET" class="flex flex-wrap items-end gap-3 flex-1">
                 @if($isStaffRekap && $isSuperAdmin)
+                <div class="flex-1 min-w-[220px]">
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Cari Nama Siswa
+                        </label>
+                        <input
+                            type="text"
+                            name="nama"
+                            value="{{ $filters['nama'] ?? '' }}"
+                            placeholder="Masukkan nama siswa..."
+                            class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300"
+                        >
+                    </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cabang</label>
                         <select name="cabang_id" x-model="cabangId" class="mt-1.5 px-6 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300">
@@ -122,22 +134,33 @@
                 </div>
                 <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">Filter</button>
             </form>
-
-            {{-- BUTTON RIGHT --}}
-            <div class="flex flex-wrap items-center gap-2 ml-auto">
-                @if ($isStaffRekap)
-                    <button @click="printOpen = true" class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        Cetak Kartu
-                    </button>
-
-                    <a href="{{ route('presensi.create') }}" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 hover:bg-blue-700 transition-all">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                        Absensi
-                    </a>
-                @endif
-            </div>
         </div>
+        {{-- BUTTON RIGHT --}}
+<div class="w-full flex flex-wrap justify-end items-center gap-2 mb-5">
+    @if ($isStaffRekap)
+        <button
+            @click="printOpen = true"
+            class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+        >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                </path>
+            </svg>
+            Cetak Kartu
+        </button>
+
+        <a
+            href="{{ route('presensi.create') }}"
+            class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 hover:bg-blue-700 transition-all"
+        >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            Absensi
+        </a>
+    @endif
+</div>
 
         {{-- TABLE --}}
         <div class="overflow-x-auto">

@@ -29,6 +29,20 @@
             <p class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</p>
         @endif
 
+        @if ($errors->any())
+            <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+                <div class="flex items-center gap-3">
+                    <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <h3 class="text-sm font-semibold text-red-800">Terdapat kesalahan pada isian form:</h3>
+                </div>
+                <ul class="mt-2 list-inside list-disc text-sm text-red-700 pl-8">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5 p-5">
 
             {{-- FILTER + ACTION --}}

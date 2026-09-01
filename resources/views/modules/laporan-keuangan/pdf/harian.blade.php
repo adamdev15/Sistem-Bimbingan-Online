@@ -72,6 +72,6 @@
         </tfoot>
     </table>
 
-    <p style="font-style: italic; font-size: 9px; margin-top: 20px;">* Laporan ini dihasilkan secara otomatis oleh sistem eBimbel.</p>
+    <p style="font-style: italic; font-size: 9px; margin-top: 20px;">* Laporan ini dihasilkan secara otomatis oleh sistem.</p>
 </body>
 </html>

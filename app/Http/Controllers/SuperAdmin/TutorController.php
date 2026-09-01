@@ -13,6 +13,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\TutorExport;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TutorController extends Controller
 {
@@ -46,8 +49,11 @@ class TutorController extends Controller
             'alamat' => ['required', 'string'],
             'cabang_ids' => ['required', 'array'],
             'cabang_ids.*' => ['exists:cabangs,id'],
-            'status' => ['required', 'in:aktif,nonaktif'],
+            'status' => ['required', 'in:aktif,inaktif'],
             'jenis_tutor' => ['required', 'in:parttime,fulltime'],
+            'nama_bank' => ['nullable', 'string', 'max:255'],
+            'atas_nama' => ['nullable', 'string', 'max:255'],
+            'nomor_rekening' => ['nullable', 'string', 'max:255'],
         ]);
         $this->forceCabangForAdmin($data);
 
@@ -61,6 +67,9 @@ class TutorController extends Controller
                 'cabang_id' => $data['cabang_ids'][0] ?? null,
                 'status' => $data['status'],
                 'jenis_tutor' => $data['jenis_tutor'],
+                'nama_bank' => $data['nama_bank'] ?? null,
+                'atas_nama' => $data['atas_nama'] ?? null,
+                'nomor_rekening' => $data['nomor_rekening'] ?? null,
                 'user_id' => null,
             ]);
 
@@ -84,8 +93,11 @@ class TutorController extends Controller
             'alamat' => ['required', 'string'],
             'cabang_ids' => ['required', 'array'],
             'cabang_ids.*' => ['exists:cabangs,id'],
-            'status' => ['required', 'in:aktif,nonaktif'],
+            'status' => ['required', 'in:aktif,inaktif'],
             'jenis_tutor' => ['required', 'in:parttime,fulltime'],
+            'nama_bank' => ['nullable', 'string', 'max:255'],
+            'atas_nama' => ['nullable', 'string', 'max:255'],
+            'nomor_rekening' => ['nullable', 'string', 'max:255'],
         ]);
         $this->forceCabangForAdmin($data);
 
@@ -99,6 +111,9 @@ class TutorController extends Controller
                 'cabang_id' => $data['cabang_ids'][0] ?? null,
                 'status' => $data['status'],
                 'jenis_tutor' => $data['jenis_tutor'],
+                'nama_bank' => $data['nama_bank'] ?? null,
+                'atas_nama' => $data['atas_nama'] ?? null,
+                'nomor_rekening' => $data['nomor_rekening'] ?? null,
             ]);
 
             $tutor->cabangs()->sync($data['cabang_ids']);
@@ -122,6 +137,25 @@ class TutorController extends Controller
         });
 
         return $this->respondMutation($request, 'Tutor berhasil dihapus.');
+    }
+
+    public function updateStatus(Request $request, Tutor $tutor): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', 'in:aktif,inaktif'],
+        ]);
+        
+        $tutor->update(['status' => $data['status']]);
+
+        return response()->json([
+            'message' => 'Status tutor berhasil diperbarui.',
+            'data' => $tutor,
+        ]);
+    }
+
+    public function exportExcel(Request $request): BinaryFileResponse
+    {
+        return Excel::download(new TutorExport($this->service, $request), 'Laporan_Tutor_' . date('Ymd_His') . '.xlsx');
     }
 
     private function respondMutation(Request $request, string $message, ?Tutor $tutor = null): RedirectResponse|JsonResponse

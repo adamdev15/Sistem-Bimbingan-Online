@@ -92,6 +92,12 @@ class DashboardNavigation
                         'patterns' => ['salaries.*'],
                     ],
                     [
+                        'label' => 'Tarif Persesi',
+                        'route' => 'tarif-persesi-cabang.index',
+                        'roles' => ['super_admin', 'admin_cabang'],
+                        'patterns' => ['tarif-persesi-cabang.*'],
+                    ],
+                    [
                         'label' => 'Biaya',
                         'route' => 'fees.index',
                         'roles' => ['super_admin'],

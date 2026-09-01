@@ -864,7 +864,11 @@ class ManagementService
             ->with(['cabangs:id,nama_cabang', 'user:id,name,email'])
             ->withCount(['kehadiranTutors as kehadirans_count' => fn($q) => $q->whereMonth('tanggal', now()->month)->whereYear('tanggal', now()->year)])
             ->when($tutorId, fn ($q) => $q->where('id', $tutorId))
-            ->when($cabangId && !auth()->user()->hasRole('admin_cabang'), fn ($q) => $q->where('cabang_id', $cabangId))
+            ->when($cabangId && auth()->user()->hasRole('admin_cabang'),
+    fn ($q) => $q->whereHas('cabangs', function ($sub) use ($cabangId) {
+        $sub->where('cabangs.id', $cabangId);
+    })
+)
             ->when($request->string('search')->toString(), function ($q, $s) {
                 $like = "%{$s}%";
                 $q->where(function ($w) use ($like) {
@@ -943,10 +947,21 @@ class ManagementService
 
         return Payment::query()
             ->when($cabangId && ! $siswaId, fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $cabangId)))
-            ->when(! $cabangId && ! $siswaId && $request->filled('cabang_id'), fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $request->integer('cabang_id'))))
+            ->when(! $cabangId && ! $siswaId && $request->filled('cabang_id') && $request->cabang_id !== 'all', fn ($q) => $q->whereHas('siswa', fn ($s) => $s->where('cabang_id', $request->integer('cabang_id'))))
             ->when($siswaId, fn ($q) => $q->where('payments.student_id', $siswaId))
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('payments.status', $status))
             ->when($request->filled('student_id') && ! $siswaId, fn ($q) => $q->where('payments.student_id', $request->integer('student_id')))
+            ->when($request->string('search')->toString(), function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('siswa', function ($s) use ($search) {
+                        $s->where('nama', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('nik', 'like', "%{$search}%");
+                    })
+                    ->orWhere('order_id', 'like', "%{$search}%")
+                    ->orWhere('catatan', 'like', "%{$search}%");
+                });
+            })
             ->when($request->filled('bulan'), function ($q) use ($request) {
                 $b = $request->string('bulan')->toString();
                 if (preg_match('/^(\d{4})-(\d{2})$/', $b, $m)) {
@@ -1103,6 +1118,16 @@ class ManagementService
 
     public function cabangForSelect(): Collection
     {
+        $user = Auth::user();
+
+        if ($user && $user->hasRole('admin_cabang')) {
+            return Cabang::query()
+                ->select('id', 'nama_cabang')
+                ->where('user_id', $user->id)
+                ->orderBy('nama_cabang')
+                ->get();
+        }
+
         $cabangId = $this->actorCabangId();
 
         return Cabang::query()

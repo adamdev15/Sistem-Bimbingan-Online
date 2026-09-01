@@ -55,4 +55,8 @@ class Cabang extends Model
     {
         return $this->hasMany(BranchMateriPrice::class);
     }
+    public function tarifPersesiCabang()
+    {
+        return $this->hasOne(TarifPersesiCabang::class);
+    }
 }

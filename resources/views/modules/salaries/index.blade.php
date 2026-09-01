@@ -57,27 +57,48 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="flex-1 min-w-[150px]">
+                            <label for="cabang_id" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cabang</label>
+                            <select name="cabang_id" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                                <option value="">Semua cabang</option>
+                                @if(isset($cabangs))
+                                    @foreach ($cabangs as $cabang)
+                                        <option value="{{ $cabang->id }}" @selected(($filters['cabang_id'] ?? null) == $cabang->id)>{{ $cabang->nama_cabang }}</option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
                         <button type="submit" class="rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">Filter</button>
                         <a href="{{ route('salaries.index') }}" class="rounded-xl border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reset</a>
                     </form>
 
                     {{-- BUTTON RIGHT --}}
-                    <div class="flex flex-wrap items-center gap-2 ml-auto">
-                        <button type="button" @click="$dispatch('open-export-salary-modal')" class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 transition-all">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                            Cetak Laporan
-                        </button>
-                        <button
-                            type="button"
-                            @click="resetForm(); salaryModalOpen = true"
-                            @if (! $hasTutors) disabled @endif
-                            class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                            Gaji Tutor
-                        </button>
-                    </div>
+                    
                 </div>
+                <div class="flex justify-end items-end gap-2 mb-5">
+    <button
+        type="button"
+        @click="$dispatch('open-export-salary-modal')"
+        class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 transition-all">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+            </path>
+        </svg>
+        Cetak
+    </button>
+
+    <button
+        type="button"
+        @click="resetForm(); salaryModalOpen = true"
+        @if (! $hasTutors) disabled @endif
+        class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+        </svg>
+        Gaji Tutor
+    </button>
+</div>
 
                 {{-- TABLE --}}
                 <div class="overflow-x-auto">
@@ -540,11 +561,12 @@
                     try {
                         const res = await fetch(`{{ route('api.salaries.attendance-count') }}?tutor_id=${this.tutorId}&start_date=${this.startDate}&end_date=${this.endDate}`);
                         const data = await res.json();
+                        const tarif = data.tarif_persesi || 0;
                         this.items = data.items.map(i => ({
                             nama_item: i.nama_item,
                             qty: i.qty,
-                            tarif: 0,
-                            subtotal: 0,
+                            tarif: tarif,
+                            subtotal: i.qty * tarif,
                             keterangan: ''
                         }));
                         this.calculateTotal();

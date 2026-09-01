@@ -63,7 +63,8 @@ class PembayaranController extends Controller
             'summary' => $this->service->pembayaranSummary($request),
             'fees' => $this->service->feesForSelect(),
             'students' => $this->service->studentsForSelect(),
-            'filters' => $request->only(['status', 'student_id', 'bulan']),
+            'cabangs' => $user->hasRole('super_admin') ? Cabang::query()->select('id', 'nama_cabang')->orderBy('nama_cabang')->get() : collect(),
+            'filters' => $request->only(['status', 'student_id', 'bulan', 'search', 'cabang_id']),
             'midtransClientKey' => config('midtrans.client_key'),
             'midtransSnapJsUrl' => config('midtrans.is_production')
                 ? 'https://app.midtrans.com/snap/snap.js'
@@ -351,9 +352,12 @@ class PembayaranController extends Controller
 
         abort_if($payment->isLunas(), 422);
 
+        $tanggalBayar = $request->input('tanggal_bayar');
+
         $payment->forceFill([
             'status' => 'lunas',
             'paid_at' => now(),
+            'tanggal_bayar' => $tanggalBayar ?: $payment->tanggal_bayar,
             'midtrans_transaction_status' => $payment->midtrans_transaction_status ?? 'manual',
         ])->save();
 

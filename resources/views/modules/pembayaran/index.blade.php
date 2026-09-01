@@ -14,6 +14,8 @@
             detailOpen: false,
             detail: null,
             
+            lunasOpen: false,
+            lunasData: { action_url: "", siswa_materi: "", order_id: "", nominal: "", tanggal_bayar: "" },
             // Searchable Student State (from Cetak Kartu)
             selectedStudentId: "",
             selectedStudentName: "Pilih Siswa",
@@ -54,6 +56,16 @@
             closePaymentDetail() {
                 this.detailOpen = false;
                 this.detail = null;
+            },
+            openLunasModal(action, siswa, materi, order, nominal) {
+                this.lunasData = {
+                    action_url: action,
+                    siswa_materi: siswa + (materi ? " - " + materi : ""),
+                    order_id: order,
+                    nominal: nominal,
+                    tanggal_bayar: new Date().toISOString().split("T")[0]
+                };
+                this.lunasOpen = true;
             },
             async pay(id) {
                 if (! window.snap || ! window.payWithMidtrans) return;
@@ -133,6 +145,24 @@
         <div class="rounded-3xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/5">
             <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 p-6">
                 <form method="GET" class="flex flex-wrap items-center gap-3">
+                    <div class="min-w-[200px]">
+                        <label class="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-700">Cari Pembayaran</label>
+                        <div class="relative">
+                            <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Nama, Order ID, NIK..." class="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+                    </div>
+                    @if (auth()->user()->hasRole('super_admin'))
+                        <div class="min-w-[140px]">
+                            <label class="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-700">Cabang</label>
+                            <select name="cabang_id" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
+                                <option value="">Semua Cabang</option>
+                                @foreach ($cabangs as $c)
+                                    <option value="{{ $c->id }}" @selected(($filters['cabang_id'] ?? '') == $c->id)>{{ $c->nama_cabang }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     @if ($isSiswa || $isAdmin)
                         <div class="min-w-[140px]">
                             <label class="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-700">Periode</label>
@@ -261,8 +291,9 @@
                                                         'item_biaya' => $pay->fee?->nama_biaya,
                                                         'fee_tipe' => $pay->fee?->tipe,
                                                         'nominal_dibayar' => (int) round((float) $pay->nominal),
-                                                        'created_at_fmt' => optional($pay->tanggal_bayar)?->translatedFormat('d F Y'),
+                                                        'created_at_fmt' => optional($pay->created_at)->translatedFormat('d F Y'),
                                                         'due_date_fmt' => $pay->due_date?->translatedFormat('d F Y') ?: '—',
+                                                        'tanggal_bayar_fmt' => optional($pay->tanggal_bayar)?->translatedFormat('d F Y'),
                                                         'paid_at_fmt' => $pay->paid_at
                                                             ? $pay->paid_at->timezone(config('app.timezone'))->translatedFormat('d F Y — H:i')
                                                             : null,
@@ -285,10 +316,7 @@
                                                 @endphp
                                                 <button @click="openPaymentDetail({{ \Illuminate\Support\Js::from($detailPayload) }})" class="text-xs font-bold text-blue-600 hover:underline">Detail</button>
                                             @else
-                                                <form method="POST" action="{{ route("pembayaran.mark-lunas", $pay) }}" onsubmit="event.preventDefault(); confirmAction(this, 'Tandai Lunas?', 'Tagihan akan ditandai lunas secara manual.', 'Ya, Lunas');">
-                                                    @csrf
-                                                    <button type="submit" class="text-xs font-bold text-emerald-600 hover:underline">Tandai Lunas</button>
-                                                </form>
+                                                <button type="button" @click="openLunasModal('{{ route('pembayaran.mark-lunas', $pay) }}', '{{ addslashes(optional($pay->siswa)->nama) }}', '{{ addslashes(optional($pay->fee)->nama_biaya) }}', '{{ $pay->order_id }}', 'Rp {{ number_format((int) $pay->nominal, 0, ',', '.') }}')" class="text-xs font-bold text-emerald-600 hover:underline">Tandai Lunas</button>
                                             @endif
                                         @endif
                                     </div>
@@ -525,8 +553,8 @@
                                 </dd>
                             </div>
                             <div>
-                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Waktu lunas</dt>
-                                <dd class="mt-0.5 text-sm font-semibold text-emerald-800" x-text="detail?.paid_at_fmt || '— (belum tercatat / manual)'"></dd>
+                                <dt class="text-[11px] font-semibold uppercase text-slate-500">Tanggal lunas</dt>
+                                <dd class="mt-0.5 text-sm font-semibold text-emerald-800" x-text="detail?.tanggal_bayar_fmt || '— (belum tercatat / manual)'"></dd>
                             </div>
                             <div>
                                 <dt class="text-[11px] font-semibold uppercase text-slate-500">Nominal dibayar</dt>
@@ -638,6 +666,49 @@
             </script>
         @endpush
     @endif
+
+        {{-- Modal Tandai Lunas --}}
+        <div x-show="lunasOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]">
+            <div @click.outside="lunasOpen = false" @keydown.escape.window="lunasOpen = false" class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-900/5">
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-slate-900">Tandai Lunas</h3>
+                    <button type="button" @click="lunasOpen = false" class="text-slate-400 hover:text-slate-600">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <form method="POST" :action="lunasData.action_url" class="p-6">
+                    @csrf
+                    <div class="mb-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                        <div class="mb-2">
+                            <span class="block text-[10px] font-black uppercase tracking-widest text-blue-500">Siswa & Biaya</span>
+                            <span class="font-bold text-blue-900" x-text="lunasData.siswa_materi"></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="block text-[10px] font-black uppercase tracking-widest text-blue-500">Order ID</span>
+                                <span class="font-mono text-sm font-bold text-slate-700" x-text="lunasData.order_id"></span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block text-[10px] font-black uppercase tracking-widest text-blue-500">Nominal</span>
+                                <span class="font-bold text-emerald-600" x-text="lunasData.nominal"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Tanggal Bayar <span class="text-rose-500">*</span></label>
+                            <input type="date" name="tanggal_bayar" x-model="lunasData.tanggal_bayar" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" @click="lunasOpen = false" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>
+                        <button type="submit" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">Lunas</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
     </div>
 </x-layouts.dashboard-shell>

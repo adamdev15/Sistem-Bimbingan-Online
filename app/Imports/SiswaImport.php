@@ -39,6 +39,13 @@ class SiswaImport implements ToModel, WithHeadingRow, WithValidation
         if ($user->hasRole('admin_cabang')) {
             $cabangId = Cabang::where('user_id', $user->id)->value('id');
         }
+        $jenisSiswa = strtolower(trim($row['jenis_siswa'] ?? ''));
+
+        if (in_array($jenisSiswa, ['siswa lama', 'lama'])) {
+            $registrationType = 'lama';
+        } else {
+            $registrationType = 'baru';
+        }
 
         return new Siswa([
             'nama'              => $row['nama'],
@@ -56,7 +63,7 @@ class SiswaImport implements ToModel, WithHeadingRow, WithValidation
             'nama_ayah'         => $row['nama_ayah'] ?? null,
             'nama_ibu'          => $row['nama_ibu'] ?? null,
             'no_hp_orang_tua'   => $row['no_hp_orang_tua'] ?? null,
-            'registration_type' => strtolower($row['jenis_siswa'] ?? '') === 'lama' ? 'lama' : 'baru',
+            'registration_type' => $registrationType,
         ]);
     }
 
@@ -64,7 +71,8 @@ class SiswaImport implements ToModel, WithHeadingRow, WithValidation
     {
         return [
             'nama' => 'required',
-            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan,laki_laki,perempuan',
+            'jenis_kelamin' => 'required|in:Laki-laki,Laki-Laki,Perempuan,laki_laki,perempuan,laki-laki',
+            'jenis_siswa' => 'nullable|in:Siswa Lama,Siswa Baru,lama,baru,siswa lama,siswa baru',
         ];
     }
 

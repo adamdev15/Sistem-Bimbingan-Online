@@ -99,7 +99,7 @@
                 <form method="GET" class="flex flex-wrap items-end gap-3 flex-1">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cari</label>
-                        <input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama / NIK" class="mt-1.5 min-w-[220px] rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        <input name="search" value="{{ $filters['search'] ?? '' }}" type="search" placeholder="Nama / NIK" class="mt-1.5 min-w-[20px] rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Cabang</label>
@@ -292,8 +292,8 @@
                             <input name="nis" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="text-xs font-semibold text-slate-500">Materi Les</label>
-                            <select name="materi_les_id" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            <label class="text-xs font-semibold text-slate-500">Materi Les <span class="text-red-500">*</span></label> </label>
+                            <select name="materi_les_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="">Pilih materi</option>
                                 @foreach ($materiLes as $materi)
                                     <option value="{{ $materi->id }}">{{ $materi->nama_materi }}</option>

@@ -19,6 +19,7 @@ class UserManagementController extends Controller
         return view('modules.users.index', [
             'users' => $this->service->adminUserIndex($request),
             'roleOptions' => $this->service->assignableRoleNames(),
+            'cabangs' => \App\Models\Cabang::all(),
             'filters' => $request->only(['search', 'role', 'verified']),
         ]);
     }
@@ -30,6 +31,7 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', Rule::in($this->service->assignableRoleNames())],
+            'cabang_id' => ['nullable', 'exists:cabangs,id'],
             'email_verified' => ['nullable', 'boolean'],
         ]);
 
@@ -42,6 +44,10 @@ class UserManagementController extends Controller
 
         $user->syncRoles([$data['role']]);
 
+        if (!empty($data['cabang_id'])) {
+            \App\Models\Cabang::where('id', $data['cabang_id'])->update(['user_id' => $user->id]);
+        }
+
         return back()->with('status', 'Pengguna "' . $user->name . '" berhasil ditambahkan.');
     }
 
@@ -52,6 +58,7 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', Rule::in($this->service->assignableRoleNames())],
+            'cabang_id' => ['nullable', 'exists:cabangs,id'],
             'email_verified' => ['nullable', 'boolean'],
         ]);
 
@@ -73,6 +80,13 @@ class UserManagementController extends Controller
 
         $user->save();
         $user->syncRoles([$data['role']]);
+
+        if (array_key_exists('cabang_id', $data)) {
+            \App\Models\Cabang::where('user_id', $user->id)->update(['user_id' => null]); // Unlink old
+            if (!empty($data['cabang_id'])) {
+                \App\Models\Cabang::where('id', $data['cabang_id'])->update(['user_id' => $user->id]); // Link new
+            }
+        }
 
         return back()->with('status', 'Data pengguna "' . $user->name . '" telah diperbarui.');
     }

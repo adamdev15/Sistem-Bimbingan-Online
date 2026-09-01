@@ -128,9 +128,20 @@ class CabangController extends Controller
                         $user->email = $data['admin_email'];
                     }
                     if (! empty($data['admin_password'])) {
-                        $user->password = $data['admin_password'];
+                        $user->password = \Illuminate\Support\Facades\Hash::make($data['admin_password']);
                     }
                     $user->save();
+                }
+            } else {
+                if (!empty($data['admin_name']) && !empty($data['admin_email']) && !empty($data['admin_password'])) {
+                    $user = User::query()->create([
+                        'name' => $data['admin_name'],
+                        'email' => $data['admin_email'],
+                        'password' => \Illuminate\Support\Facades\Hash::make($data['admin_password']),
+                        'email_verified_at' => now(),
+                    ]);
+                    $user->syncRoles(['admin_cabang']);
+                    $cabang->update(['user_id' => $user->id]);
                 }
             }
         });

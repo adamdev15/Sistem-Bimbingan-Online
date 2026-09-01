@@ -196,7 +196,7 @@ class LaporanKeuanganController extends Controller
         $payments = Payment::with(['siswa.materiLes', 'fee'])
             ->where('status', 'lunas')
             ->whereBetween('tanggal_bayar', [$start, $end])
-            ->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $selectedCabangId))
+            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
             ->get();
 
         $aggregated = [];
@@ -215,7 +215,7 @@ class LaporanKeuanganController extends Controller
 
         // EXPENSES (Operasional)
         $totalOperasional = Pengeluaran::whereBetween('tanggal', [$start, $end])
-            ->where('cabang_id', $selectedCabangId)
+            ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
             ->sum('nominal');
 
         $date = Carbon::parse($month);
@@ -229,7 +229,7 @@ class LaporanKeuanganController extends Controller
                   ->orWhere('periode', 'like', "%{$monthNameId}%{$year}%")
                   ->orWhere('periode', 'like', "%{$monthNameEn}%{$year}%");
             })
-            ->whereHas('tutor', fn($t) => $t->where('cabang_id', $selectedCabangId))
+            ->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))
             ->sum('total_gaji');
 
         // Total Expenses might include salaries too, but based on image, "Operasional" is the main one shown.
@@ -266,7 +266,7 @@ class LaporanKeuanganController extends Controller
         $payments = Payment::with(['siswa.materiLes', 'fee'])
             ->where('status', 'lunas')
             ->whereBetween('tanggal_bayar', [$start, $end])
-            ->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $selectedCabangId))
+            ->when($filterCabangId, fn($q) => $q->whereHas('siswa', fn($s) => $s->withTrashed()->where('cabang_id', $filterCabangId)))
             ->get();
 
         $incomeBreakdown = [];
@@ -278,7 +278,7 @@ class LaporanKeuanganController extends Controller
 
         // EXPENSE breakdown by Category
         $expenseBreakdown = Pengeluaran::whereBetween('tanggal', [$start, $end])
-            ->where('cabang_id', $selectedCabangId)
+            ->when($filterCabangId, fn($q) => $q->where('cabang_id', $filterCabangId))
             ->join('kategori_pengeluarans', 'pengeluarans.kategori_id', '=', 'kategori_pengeluarans.id')
             ->select('kategori_pengeluarans.nama_kategori', DB::raw('SUM(pengeluarans.nominal) as total'))
             ->groupBy('kategori_pengeluarans.nama_kategori')
@@ -296,7 +296,7 @@ class LaporanKeuanganController extends Controller
                   ->orWhere('periode', 'like', "%{$monthNameId}%{$year}%")
                   ->orWhere('periode', 'like', "%{$monthNameEn}%{$year}%");
             })
-            ->whereHas('tutor', fn($t) => $t->where('cabang_id', $selectedCabangId))
+            ->when($filterCabangId, fn($q) => $q->whereHas('tutor', fn($t) => $t->where('cabang_id', $filterCabangId)))
             ->sum('total_gaji');
 
         $totalIncome = $incomeBreakdown->sum('total');
@@ -471,14 +471,15 @@ class LaporanKeuanganController extends Controller
         $feeLower = strtolower($feeName);
 
         $isRegistration = str_contains($feeLower, 'pendaftaran');
-        $isMonthly = str_contains($feeLower, 'spp') ||
+        $isLainnya = str_contains($feeLower, 'lainnya');
+        $isMonthly = ! $isLainnya && (str_contains($feeLower, 'spp') ||
                      str_contains($feeLower, 'matematika intensif') ||
                      str_contains($feeLower, 'kelas prima') ||
                      str_contains($feeLower, 'jarimatika') ||
                      str_contains($feeLower, 'calistung') ||
-                     str_contains($feeLower, 'iec');
+                     str_contains($feeLower, 'iec'));
 
-        if ($isRegistration) {
+        if ($isRegistration || $isLainnya) {
             return $feeName;
         } elseif ($isMonthly) {
             $materi = $pay->siswa?->materiLes?->nama_materi ?? 'Lain-lain';

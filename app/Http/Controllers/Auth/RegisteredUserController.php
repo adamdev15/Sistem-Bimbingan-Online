@@ -90,42 +90,67 @@ class RegisteredUserController extends Controller
             ]);
 
             if ($siswa->materi_les_id) {
-                $materiLes = \App\Models\MateriLes::find($siswa->materi_les_id);
-                if ($materiLes) {
+                $priceRecord = \App\Models\BranchMateriPrice::where('cabang_id', $siswa->cabang_id)
+                    ->where('materi_les_id', $siswa->materi_les_id)
+                    ->first();
+                
+                if ($priceRecord) {
                     $now = now();
-                    
+                    $materi = \App\Models\MateriLes::find($siswa->materi_les_id);
+                    $materiName = $materi ? strtolower($materi->nama_materi) : '';
+
                     // 1. Tagihan Pendaftaran
-                    if ($materiLes->biaya_daftar > 0) {
-                        $paymentReg = \App\Models\Payment::create([
-                            'order_id' => 'REG-' . time() . rand(1000, 9999),
-                            'student_id' => $siswa->id,
-                            'biaya_id' => 2, // Pendaftaran Bimbel Jarimatrik
-                            'invoice_period' => $now->format('Y-m'),
-                            'nominal' => $materiLes->biaya_daftar,
-                            'tanggal_bayar' => $now->format('Y-m-d'),
-                            'due_date' => $now->format('Y-m-d'),
-                            'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
-                            'status' => 'belum',
-                            'catatan' => 'Tagihan otomatis untuk Pendaftaran Biaya Awal.',
-                        ]);
-                        $this->whatsapp->notifySiswaInvoiceCreated($paymentReg);
+                    if ($priceRecord->biaya_daftar > 0) {
+                        $feeRegName = 'Pendaftaran Bimbel Jarimatrik'; // Single pendaftaran fee for now
+                        $feeReg = \App\Models\Fee::where('nama_biaya', $feeRegName)->first();
+                        
+                        if ($feeReg) {
+                            $paymentReg = \App\Models\Payment::create([
+                                'order_id' => 'REG-' . time() . rand(1000, 9999),
+                                'student_id' => $siswa->id,
+                                'biaya_id' => $feeReg->id,
+                                'invoice_period' => $now->format('Y-m'),
+                                'nominal' => $priceRecord->biaya_daftar,
+                                'tanggal_bayar' => $now->format('Y-m-d'),
+                                'due_date' => $now->format('Y-m-d'),
+                                'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
+                                'status' => 'belum',
+                                'catatan' => "Tagihan otomatis untuk $feeRegName Biaya Awal.",
+                            ]);
+                            $this->whatsapp->notifySiswaInvoiceCreated($paymentReg);
+                        }
                     }
 
                     // 2. Tagihan SPP Bulan Pertama
-                    if ($materiLes->biaya_spp > 0) {
-                        $paymentSpp = \App\Models\Payment::create([
-                            'order_id' => 'SPP-' . time() . rand(1000, 9999),
-                            'student_id' => $siswa->id,
-                            'biaya_id' => 9, // SPP Bulanan Bimbel Jarimatrik
-                            'invoice_period' => $now->format('Y-m'),
-                            'nominal' => $materiLes->biaya_spp,
-                            'tanggal_bayar' => $now->format('Y-m-d'),
-                            'due_date' => $now->format('Y-m-d'),
-                            'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
-                            'status' => 'belum',
-                            'catatan' => 'Tagihan otomatis untuk SPP Bulan Pertama.',
-                        ]);
-                        $this->whatsapp->notifySiswaInvoiceCreated($paymentSpp);
+                    if ($priceRecord->biaya_spp > 0) {
+                        $feeSppName = 'SPP MAPEL / Prima - Bahasa Inggris'; // Default
+                        if (str_contains($materiName, 'jarimatika')) {
+                            $feeSppName = 'SPP Jarimatrika';
+                        } elseif (str_contains($materiName, 'calistung')) {
+                            $feeSppName = 'SPP Baca/Calistung';
+                        } elseif (str_contains($materiName, 'matematika')) {
+                            $feeSppName = 'SPP Matematika Intensif';
+                        } elseif (str_contains($materiName, 'iec')) {
+                            $feeSppName = 'SPP IEC';
+                        } 
+
+                        $feeSpp = \App\Models\Fee::where('nama_biaya', $feeSppName)->first();
+                        
+                        if ($feeSpp) {
+                            $paymentSpp = \App\Models\Payment::create([
+                                'order_id' => 'SPP-' . time() . rand(1000, 9999),
+                                'student_id' => $siswa->id,
+                                'biaya_id' => $feeSpp->id,
+                                'invoice_period' => $now->format('Y-m'),
+                                'nominal' => $priceRecord->biaya_spp,
+                                'tanggal_bayar' => $now->format('Y-m-d'),
+                                'due_date' => $now->format('Y-m-d'),
+                                'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
+                                'status' => 'belum',
+                                'catatan' => "Tagihan otomatis untuk $feeSppName Bulan Pertama.",
+                            ]);
+                            $this->whatsapp->notifySiswaInvoiceCreated($paymentSpp);
+                        }
                     }
                 }
             }

@@ -91,7 +91,9 @@
         <table width="100%">
             <tr>
                 <td>
-                    <p>Admin Cabang</p>
+                    @if($selectedCabangId && $selectedCabangId !== 'all' && $cabang)
+                    <p>Admin Cabang {{ $cabang->user->name ?? 'Admin Cabang' }},</p>
+                    @endif
                     <div class="signature-space"></div>
                     <p>__________________________</p>
                 </td>
@@ -99,7 +101,7 @@
                     <p>Tegal, {{ now()->translatedFormat('d F Y') }}</p>
                     <p>Kepala Pusat Bimbel</p>
                     <div class="signature-space"></div>
-                    <p><strong>Dr. Nurhayati Sueb</strong></p>
+                    <p><strong>Bu Omah</strong></p>
                 </td>
             </tr>
         </table>

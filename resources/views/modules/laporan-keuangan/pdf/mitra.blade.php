@@ -105,18 +105,18 @@
         <table width="100%">
             <tr>
                 <td>
-                    <p>Penerima,</p>
+                    @if($selectedCabangId && $selectedCabangId !== 'all' && $cabang)
+                    <p>Investor Cabang {{ $cabang->user->name ?? 'Admin Cabang' }},</p>
+                    @endif
                     <div class="signature-space"></div>
                     <p>__________________________</p>
-                    <p>Investor Cabang</p>
                 </td>
                 <td>
                     <p>{{ $cabang ? $cabang->kota : 'Tegal' }}, {{ now()->translatedFormat('d F Y') }}</p>
                     <p>Hormat Kami,</p>
                     <div class="signature-space"></div>
                     @if($selectedCabangId && $selectedCabangId !== 'all' && $cabang)
-                        <p><strong>{{ $cabang->user->name ?? 'Admin Cabang' }}</strong></p>
-                        <p>Admin Cabang {{ $cabang->nama_cabang }}</p>
+                        <p><strong>Admin Cabang {{ $cabang->nama_cabang }}</strong></p>
                     @else
                         <p><strong>Admin Pusat Jarimatrik</strong></p>
                         <p>Pusat Jarimatrik</p>

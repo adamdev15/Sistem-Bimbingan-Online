@@ -24,6 +24,9 @@ class Tutor extends Model
         'cabang_id',
         'status',
         'jenis_tutor',
+        'nama_bank',
+        'atas_nama',
+        'nomor_rekening',
         'jabatan',
     ];
 

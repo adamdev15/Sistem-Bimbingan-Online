@@ -78,7 +78,7 @@
                             <td class="px-4 py-3 text-slate-400">{{ $loop->iteration + ($kehadirans->firstItem() - 1) }}</td>
                             <td class="px-4 py-3 font-mono text-xs text-slate-900">{{ $k->tanggal->format('d/m/Y') }}</td>
                             @if($isSuperAdmin) <td class="px-4 py-3 text-xs font-bold text-slate-900">{{ $k->cabang->nama_cabang }}</td> @endif
-                            <td class="px-4 py-3 font-medium text-slate-900">{{ $k->tutor->nama }}</td>
+                            <td class="px-4 py-3 font-medium text-slate-900">{{ $k->tutor->nama ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 <span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase">{{ str_replace('_', '-', $k->kehadiran) }}</span>
                             </td>

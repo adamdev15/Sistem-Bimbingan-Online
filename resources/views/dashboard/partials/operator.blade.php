@@ -353,8 +353,15 @@
                         'Les Matematika Intensif' => ['color' => 'rgb(56 189 248)', 'bg' => 'bg-sky-50', 'ring' => 'ring-sky-100', 'text' => 'text-sky-900', 'dot' => 'bg-sky-400'],
                         'Les Kelas Prima' => ['color' => 'rgb(251 191 36)', 'bg' => 'bg-amber-50', 'ring' => 'ring-amber-100', 'text' => 'text-amber-900', 'dot' => 'bg-amber-400'],
                         'Les Jarimatika' => ['color' => 'rgb(239 68 68)', 'bg' => 'bg-red-50', 'ring' => 'ring-red-100', 'text' => 'text-red-900', 'dot' => 'bg-red-500'],
-                        'Les Baca AHE' => ['color' => 'rgb(234 88 12)', 'bg' => 'bg-orange-50', 'ring' => 'ring-orange-100', 'text' => 'text-orange-900', 'dot' => 'bg-orange-600'],
+                        'Les Calistung' => ['color' => 'rgb(234 88 12)', 'bg' => 'bg-orange-50', 'ring' => 'ring-orange-100', 'text' => 'text-orange-900', 'dot' => 'bg-orange-600'],
                         'Les IEC' => ['color' => 'rgb(30 58 138)', 'bg' => 'bg-indigo-50', 'ring' => 'ring-indigo-100', 'text' => 'text-indigo-900', 'dot' => 'bg-indigo-900'],
+                        'Les Coding' => [
+                            'color' => 'rgb(16 185 129)',
+                            'bg' => 'bg-emerald-50',
+                            'ring' => 'ring-emerald-100',
+                            'text' => 'text-emerald-900',
+                            'dot' => 'bg-emerald-500',
+                        ],
                     ];
 
                     $gradientStops = [];

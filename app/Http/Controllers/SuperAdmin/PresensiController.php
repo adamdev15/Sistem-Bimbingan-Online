@@ -68,6 +68,11 @@ class PresensiController extends Controller
             if ($request->filled('materi_les_id')) {
                 $query->where('materi_les_id', $request->materi_les_id);
             }
+            if ($request->filled('nama')) {
+                $query->whereHas('siswa', function ($q) use ($request) {
+                    $q->where('nama', 'like', '%' . $request->nama . '%');
+                });
+            }
         }
 
         $presensis = $query->paginate(15)->withQueryString();
@@ -85,7 +90,7 @@ class PresensiController extends Controller
             'isSiswa' => $isSiswa,
             'materis' => $materis,
             'cabangs' => $cabangs,
-            'filters' => $request->only(['tanggal', 'status', 'materi_les_id', 'bulan', 'tahun', 'cabang_id', 'month'])
+            'filters' => $request->only(['tanggal', 'status', 'materi_les_id', 'bulan', 'tahun', 'cabang_id', 'month','nama'])
         ]);
     }
 
@@ -127,6 +132,10 @@ class PresensiController extends Controller
 
         DB::transaction(function () use ($validated, $user, $cabangToUse, $request) {
             foreach ($validated['statuses'] as $studentId => $status) {
+                $siswa = \App\Models\Siswa::find((int) $studentId);
+                $siswaCabangId = $siswa ? $siswa->cabang_id : null;
+                $finalCabangId = $siswaCabangId ?: ($cabangToUse ?: null);
+
                 KehadiranSiswa::updateOrCreate(
                     [
                         'student_id' => (int) $studentId,
@@ -136,7 +145,7 @@ class PresensiController extends Controller
                         'jam_selesai' => $validated['jam_selesai'],
                     ],
                     [
-                        'cabang_id' => $cabangToUse,
+                        'cabang_id' => $finalCabangId,
                         'status' => $status,
                         'created_by' => $user->id,
                         'catatan' => $request->input('catatans.'.$studentId),

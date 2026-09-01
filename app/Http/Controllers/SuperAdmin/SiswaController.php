@@ -105,37 +105,62 @@ class SiswaController extends Controller
                 
                 if ($pricing) {
                     $now = now();
-                    
+                    $materi = \App\Models\MateriLes::find($newSiswa->materi_les_id);
+                    $materiName = $materi ? strtolower($materi->nama_materi) : '';
+
+                    // 1. Tagihan Pendaftaran
                     if ($pricing->biaya_daftar > 0) {
-                        $paymentReg = \App\Models\Payment::create([
-                            'order_id' => 'REG-' . time() . rand(1000, 9999),
-                            'student_id' => $newSiswa->id,
-                            'biaya_id' => 2, // Pendaftaran Bimbel Jarimatrik
-                            'invoice_period' => $now->format('Y-m'),
-                            'nominal' => $pricing->biaya_daftar,
-                            'tanggal_bayar' => $now->format('Y-m-d'),
-                            'due_date' => $now->format('Y-m-d'),
-                            'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
-                            'status' => 'belum',
-                            'catatan' => 'Tagihan otomatis untuk Pendaftaran Biaya Awal.',
-                        ]);
-                        $this->whatsapp->notifySiswaInvoiceCreated($paymentReg);
+                        $feeRegName = 'PENDAFTARAN BIMBEL'; // Single pendaftaran fee for now
+                        $feeReg = \App\Models\Fee::where('nama_biaya', $feeRegName)->first();
+                        
+                        if ($feeReg) {
+                            $paymentReg = \App\Models\Payment::create([
+                                'order_id' => 'REG-' . time() . rand(1000, 9999),
+                                'student_id' => $newSiswa->id,
+                                'biaya_id' => $feeReg->id,
+                                'invoice_period' => $now->format('Y-m'),
+                                'nominal' => $pricing->biaya_daftar,
+                                'tanggal_bayar' => $now->format('Y-m-d'),
+                                'due_date' => $now->format('Y-m-d'),
+                                'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
+                                'status' => 'belum',
+                                'catatan' => "Tagihan otomatis untuk $feeRegName Biaya Awal.",
+                            ]);
+                            $this->whatsapp->notifySiswaInvoiceCreated($paymentReg);
+                        }
                     }
 
+                    // 2. Tagihan SPP Bulan Pertama
                     if ($pricing->biaya_spp > 0) {
-                        $paymentSpp = \App\Models\Payment::create([
-                            'order_id' => 'SPP-' . time() . rand(1000, 9999),
-                            'student_id' => $newSiswa->id,
-                            'biaya_id' => 9, // SPP Bulanan Bimbel Jarimatrik
-                            'invoice_period' => $now->format('Y-m'),
-                            'nominal' => $pricing->biaya_spp,
-                            'tanggal_bayar' => $now->format('Y-m-d'),
-                            'due_date' => $now->format('Y-m-d'),
-                            'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
-                            'status' => 'belum',
-                            'catatan' => 'Tagihan otomatis untuk SPP Bulan Pertama.',
-                        ]);
-                        $this->whatsapp->notifySiswaInvoiceCreated($paymentSpp);
+                        $feeSppName = 'SPP - Les Mapel';
+
+                        if (str_contains($materiName, 'jarimatika')) {
+                            $feeSppName = 'SPP - Jarimatika';
+                        } elseif (str_contains($materiName, 'calistung')) {
+                            $feeSppName = 'SPP - Les Calistung';
+                        } elseif (str_contains($materiName, 'matematika intensif')) {
+                            $feeSppName = 'SPP - Les Matematika Intensif';
+                        } elseif (str_contains($materiName, 'iec')) {
+                            $feeSppName = 'SPP - Les IEC';
+                        }
+
+                        $feeSpp = \App\Models\Fee::where('nama_biaya', $feeSppName)->first();
+                        
+                        if ($feeSpp) {
+                            $paymentSpp = \App\Models\Payment::create([
+                                'order_id' => 'SPP-' . time() . rand(1000, 9999),
+                                'student_id' => $newSiswa->id,
+                                'biaya_id' => $feeSpp->id,
+                                'invoice_period' => $now->format('Y-m'),
+                                'nominal' => $pricing->biaya_spp,
+                                'tanggal_bayar' => $now->format('Y-m-d'),
+                                'due_date' => $now->format('Y-m-d'),
+                                'tanggal_jatuh_tempo' => $now->format('Y-m-d'),
+                                'status' => 'belum',
+                                'catatan' => "Tagihan otomatis untuk $feeSppName Bulan Pertama.",
+                            ]);
+                            $this->whatsapp->notifySiswaInvoiceCreated($paymentSpp);
+                        }
                     }
                 }
             }
@@ -318,8 +343,8 @@ class SiswaController extends Controller
             return;
         }
 
-        $adminCabangId = Cabang::query()->where('user_id', $user->id)->value('id');
-        if ((int) $adminCabangId !== (int) $modelCabangId) {
+        $adminCabangIds = Cabang::query()->where('user_id', $user->id)->pluck('id')->toArray();
+        if (! in_array((int) $modelCabangId, $adminCabangIds)) {
             abort(403);
         }
     }
@@ -328,7 +353,13 @@ class SiswaController extends Controller
     {
         $user = auth()->user();
         if ($user && $user->hasRole('admin_cabang')) {
-            $data['cabang_id'] = Cabang::query()->where('user_id', $user->id)->value('id');
+            $allowedCabangIds = Cabang::query()->where('user_id', $user->id)->pluck('id')->toArray();
+            
+            if (isset($data['cabang_id']) && in_array((int)$data['cabang_id'], $allowedCabangIds)) {
+                // Valid selection within authorized branches
+            } else {
+                $data['cabang_id'] = $allowedCabangIds[0] ?? null;
+            }
         }
     }
 }

@@ -16,6 +16,7 @@ use App\Http\Controllers\SuperAdmin\SalaryController;
 use App\Http\Controllers\SuperAdmin\SiswaController;
 use App\Http\Controllers\SuperAdmin\TutorController;
 use App\Http\Controllers\SuperAdmin\UserManagementController;
+use App\Http\Controllers\SuperAdmin\TarifPersesiCabangController;
 use App\Http\Controllers\SuperAdmin\WhatsappSettingsController;
 use App\Http\Controllers\SuperAdmin\SettingController;
 use App\Http\Controllers\Tutor\DashboardController as TutorDashboardController;
@@ -91,6 +92,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/siswa/{siswa}', [SiswaController::class, 'destroy'])->name('siswa.destroy');
 
         Route::get('/tutors', [TutorController::class, 'index'])->name('tutors.index');
+        Route::get('/tutors/export/excel', [TutorController::class, 'exportExcel'])->name('tutors.export.excel');
+        Route::patch('/tutors/{tutor}/status', [TutorController::class, 'updateStatus'])->name('tutors.updateStatus');
         Route::get('/tutors/{tutor}', [TutorController::class, 'show'])->name('tutors.show');
         Route::post('/tutors', [TutorController::class, 'store'])->name('tutors.store');
         Route::put('/tutors/{tutor}', [TutorController::class, 'update'])->name('tutors.update');
@@ -98,6 +101,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/harga-cabang', [BranchPriceController::class, 'index'])->name('branch-prices.index');
         Route::put('/harga-cabang', [BranchPriceController::class, 'update'])->name('branch-prices.update');
+
+        Route::get('/tarif-persesi-cabang', [TarifPersesiCabangController::class, 'index'])->name('tarif-persesi-cabang.index');
+        Route::put('/tarif-persesi-cabang', [TarifPersesiCabangController::class, 'update'])->name('tarif-persesi-cabang.update');
     });
 
     Route::middleware('role:super_admin|admin_cabang|tutor|siswa')->group(function () {

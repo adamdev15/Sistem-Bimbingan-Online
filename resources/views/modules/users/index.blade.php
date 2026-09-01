@@ -21,6 +21,7 @@
                 name: '',
                 email: '',
                 role: 'siswa',
+                cabang_id: '',
                 emailVerified: false,
             },
             doEdit(u, role) {
@@ -29,6 +30,7 @@
                     name: u.name,
                     email: u.email,
                     role: role || 'siswa',
+                    cabang_id: u.cabang ? u.cabang.id : '',
                     emailVerified: !!u.email_verified_at,
                 };
                 this.editOpen = true;
@@ -135,7 +137,7 @@
                                     <div class="flex flex-wrap items-center justify-end gap-3">
                                         <button
                                             type="button"
-                                            @click="doEdit({{ json_encode($u) }}, '{{ $rname }}')"
+                                            @click="doEdit({{ json_encode($u->loadMissing('cabang')) }}, '{{ $rname }}')"
                                             class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition-colors" title="Edit">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
@@ -206,7 +208,7 @@
                     </div>
                     <div>
                         <label for="uc-role" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Peran</label>
-                        <select id="uc-role" name="role" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                        <select id="uc-role" name="role" x-model="edit.role" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                             @foreach ($roleOptions as $r)
                                 <option value="{{ $r }}" @selected(old('form_context') === 'user_create' && old('role') === $r)>{{ $roleLabels[$r] ?? $r }}</option>
                             @endforeach
@@ -214,6 +216,15 @@
                         @error('role')
                             @if (old('form_context') === 'user_create')<p class="mt-1.5 text-xs font-medium text-rose-600">{{ $message }}</p>@endif
                         @enderror
+                    </div>
+                    <div x-show="edit.role === 'admin_cabang'" x-transition>
+                        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pilih Cabang <span class="text-xs font-normal lowercase">(Khusus Admin Cabang)</span></label>
+                        <select name="cabang_id" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            <option value="">Pilih Cabang...</option>
+                            @foreach ($cabangs as $cabang)
+                                <option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }} - {{ $cabang->kota }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
                         <input id="uc-ev" name="email_verified" value="1" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" @checked(old('form_context') === 'user_create' && old('email_verified'))>
@@ -300,6 +311,15 @@
                         @error('role')
                             @if (old('form_context') === 'user_edit')<p class="mt-1.5 text-xs font-medium text-rose-600">{{ $message }}</p>@endif
                         @enderror
+                    </div>
+                    <div x-show="edit.role === 'admin_cabang'" x-transition>
+                        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pilih Cabang <span class="text-xs font-normal lowercase">(Khusus Admin Cabang)</span></label>
+                        <select name="cabang_id" x-model="edit.cabang_id" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            <option value="">Pilih Cabang...</option>
+                            @foreach ($cabangs as $cabang)
+                                <option value="{{ $cabang->id }}">{{ $cabang->nama_cabang }} - {{ $cabang->kota }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
                         <input id="ue-ev" name="email_verified" value="1" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" :checked="edit.emailVerified" @change="edit.emailVerified = $event.target.checked">

@@ -16,6 +16,9 @@
                 cabang_ids: [],
                 status: 'aktif',
                 jenis_tutor: 'parttime',
+                nama_bank: '',
+                atas_nama: '',
+                nomor_rekening: '',
             },
             doEdit(item) {
                 this.edit = {
@@ -27,9 +30,30 @@
                     alamat: item.alamat,
                     cabang_ids: item.cabangs.map(c => c.id),
                     status: item.status,
-                    jenis_tutor: item.jenis_tutor
+                    jenis_tutor: item.jenis_tutor,
+                    nama_bank: item.nama_bank || '',
+                    atas_nama: item.atas_nama || '',
+                    nomor_rekening: item.nomor_rekening || ''
                 };
                 this.editOpen = true;
+            },
+            async updateStatus(id, status) {
+                try {
+                    const res = await fetch(`/tutors/${id}/status`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ status })
+                    });
+                    if (!res.ok) throw new Error('Gagal memperbarui status');
+                    alert('Status berhasil diperbarui.');
+                } catch (e) {
+                    alert(e.message);
+                    window.location.reload();
+                }
             },
             removeId: null,
         }"
@@ -77,17 +101,21 @@
                         <select name="status" class="mt-1.5 px-6 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                             <option value="">Semua</option>
                             <option value="aktif" @selected(($filters['status'] ?? '') === 'aktif')>Aktif</option>
-                            <option value="nonaktif" @selected(($filters['status'] ?? '') === 'nonaktif')>Nonaktif</option>
+                            <option value="inaktif" @selected(($filters['status'] ?? '') === 'inaktif')>Inaktif</option>
                         </select>
                     </div>
                     <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">Terapkan</button>
                 </form>
 
                 {{-- BUTTON RIGHT --}}
-                <div class="ml-auto">
+                <div class="ml-auto flex items-center gap-2">
+                    <a href="{{ route('tutors.export.excel', request()->query()) }}" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-emerald-600/20 transition hover:bg-emerald-700">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Excel
+                    </a>
                     <button @click="createOpen = true" type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-600/20 transition hover:bg-blue-700">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                        Tambah tutor
+                        Tutor
                     </button>
                 </div>
             </div>
@@ -121,7 +149,10 @@
                                     <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider {{ $tutor->jenis_tutor === 'fulltime' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">{{ $tutor->jenis_tutor }}</span>
                                 </td>
                                 <td class="px-4 py-3.5">
-                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $tutor->status === 'aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700' }}">{{ ucfirst($tutor->status) }}</span>
+                                    <select @change="updateStatus({{ $tutor->id }}, $event.target.value)" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/20 {{ $tutor->status === 'aktif' ? 'text-emerald-700' : 'text-slate-600' }}">
+                                        <option value="aktif" @selected($tutor->status === 'aktif')>Aktif</option>
+                                        <option value="inaktif" @selected($tutor->status === 'inaktif')>Inaktif</option>
+                                    </select>
                                 </td>
                                 <td class="px-4 py-3.5 text-right">
                                     <div class="flex flex-wrap items-center justify-end gap-3">
@@ -267,8 +298,22 @@
                             <label class="text-xs font-semibold text-slate-500">Status <span class="text-red-500">*</span></label>
                             <select name="status" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="aktif">Aktif</option>
-                                <option value="nonaktif">Nonaktif</option>
+                                <option value="inaktif">Inaktif</option>
                             </select>
+                        </div>
+                        <div class="sm:col-span-2 grid gap-3 sm:grid-cols-3">
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500">Nama Bank</label>
+                                <input name="nama_bank" value="{{ old('nama_bank') }}" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500">No. Rekening</label>
+                                <input name="nomor_rekening" value="{{ old('nomor_rekening') }}" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500">Atas Nama</label>
+                                <input name="atas_nama" value="{{ old('atas_nama') }}" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            </div>
                         </div>
                          <div class="sm:col-span-2">
                             <label class="text-xs font-semibold text-slate-500">Alamat <span class="text-red-500">*</span></label>
@@ -390,8 +435,22 @@
                             <label class="text-xs font-semibold text-slate-500">Status <span class="text-red-500">*</span></label>
                             <select name="status" x-model="edit.status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
                                 <option value="aktif">Aktif</option>
-                                <option value="nonaktif">Nonaktif</option>
+                                <option value="inaktif">Inaktif</option>
                             </select>
+                        </div>
+                        <div class="sm:col-span-2 grid gap-3 sm:grid-cols-3">
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500">Nama Bank</label>
+                                <input name="nama_bank" x-model="edit.nama_bank" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500">No. Rekening</label>
+                                <input name="nomor_rekening" x-model="edit.nomor_rekening" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500">Atas Nama</label>
+                                <input name="atas_nama" x-model="edit.atas_nama" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-500/15">
+                            </div>
                         </div>
                          <div class="sm:col-span-2">
                             <label class="text-xs font-semibold text-slate-500">Alamat <span class="text-red-500">*</span></label>

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\KehadiranTutor;
 use App\Models\Cabang;
 use App\Models\Salary;
+use App\Models\TarifPersesiCabang;
 use App\Models\Tutor;
 use App\Services\SuperAdmin\ManagementService;
 use App\Services\WhatsApp\WhatsAppNotifier;
@@ -60,7 +61,8 @@ class SalaryController extends Controller
         return view('modules.salaries.index', [
             'salaries' => $this->service->salaryIndex($request),
             'tutors' => $this->tutorsForSalaryForm(),
-            'filters' => $request->only(['status', 'tutor_id']),
+            'cabangs' => Cabang::query()->orderBy('nama_cabang')->get(),
+            'filters' => $request->only(['status', 'tutor_id', 'cabang_id']),
             'stats' => $stats,
         ]);
     }
@@ -187,18 +189,24 @@ class SalaryController extends Controller
             'kelas_malam' => 'Kelas Malam',
         ];
 
+        // Get tarif from TarifPersesiCabang based on tutor's cabang
+        $tutor = Tutor::with('cabang.tarifPersesiCabang')->find($tutorId);
+        $tarifPersesi = (float) ($tutor?->cabang?->tarifPersesiCabang?->nominal ?? 0);
+
         $items = [];
         foreach ($types as $key => $label) {
+            $qty = (float) ($counts[$key] ?? 0);
             $items[] = [
                 'nama_item' => $label,
-                'qty' => (float) ($counts[$key] ?? 0),
-                'tarif' => 0,
-                'subtotal' => 0,
+                'qty' => $qty,
+                'tarif' => $tarifPersesi,
+                'subtotal' => $qty * $tarifPersesi,
             ];
         }
 
         return response()->json([
             'items' => $items,
+            'tarif_persesi' => $tarifPersesi,
         ]);
     }
 
@@ -287,6 +295,7 @@ class SalaryController extends Controller
         return Tutor::query()
             ->with('cabang:id,nama_cabang')
             ->select('id', 'nama', 'cabang_id', 'jenis_tutor')
+            ->where('status', 'aktif')
             ->when(
                 auth()->user()?->hasRole('admin_cabang') && $cabangId,
                 fn ($q) => $q->where('cabang_id', $cabangId)
